@@ -54,6 +54,15 @@ class MoveAnalysis:
     missed_win: bool
     is_best: bool
 
+    # move facts (python-chess, for grounded natural-language explanations)
+    is_capture: bool = False
+    is_castle: bool = False
+    is_promotion: bool = False
+    gives_check: bool = False
+    is_mate: bool = False
+    best_is_capture: bool = False
+    best_is_check: bool = False
+
     def to_dict(self) -> dict:
         return asdict(self)
 
@@ -144,6 +153,16 @@ def analyze_game(
         # eval AFTER the move, White POV (for graphs / eval bar)
         w_cp, w_mate = _white_pov(eval_after, boards[i + 1].turn)
 
+        # move facts (computed on the position before the move was played)
+        is_capture = before_board.is_capture(mv)
+        is_castle = before_board.is_castling(mv)
+        is_promotion = mv.promotion is not None
+        gives_check = before_board.gives_check(mv)
+        is_mate = boards[i + 1].is_checkmate()
+        best_mv = eval_before.best_move
+        best_is_capture = bool(best_mv and before_board.is_capture(best_mv))
+        best_is_check = bool(best_mv and before_board.gives_check(best_mv))
+
         san = replay.san(mv)
         replay.push(mv)
 
@@ -167,6 +186,13 @@ def analyze_game(
             symbol=cls.symbol,
             missed_win=cls.missed_win,
             is_best=is_best,
+            is_capture=is_capture,
+            is_castle=is_castle,
+            is_promotion=is_promotion,
+            gives_check=gives_check,
+            is_mate=is_mate,
+            best_is_capture=best_is_capture,
+            best_is_check=best_is_check,
         ))
 
     white = _aggregate(analyses, "white")

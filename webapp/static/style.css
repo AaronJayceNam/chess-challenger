@@ -96,6 +96,8 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:10px 0 4
 .summary b { color:#fff; }
 .tag { display:inline-block; padding:2px 9px; border-radius:10px; font-size:12px;
   font-weight:700; color:#111; }
+.aiexplain { margin-top:10px; padding:10px 12px; background:#1b1c1f; border-left:3px solid var(--accent);
+  border-radius:6px; font-size:14.5px; line-height:1.6; color:#e6e6e6; }
 .detail .r { margin-top:8px; font-size:14px; color:var(--muted); }
 .detail .r b { color:var(--ink); }
 .pv { font-family:'Consolas',monospace; color:#cbd5e1; }

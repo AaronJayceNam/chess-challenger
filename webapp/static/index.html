@@ -54,28 +54,16 @@
           <div><label class="field">백 (White)</label><input type="text" id="recWhite" value="White"></div>
           <div><label class="field">흑 (Black)</label><input type="text" id="recBlack" value="Black"></div>
         </div>
-        <label class="field">설명 제목</label>
-        <input type="text" id="recTitle" value="체스 설명 (Chess Study)">
-      </div>
-      <div class="card">
-        <h3>이 수 설명 <span id="recPlyLabel" style="color:#9aa0a6;font-weight:400"></span></h3>
-        <textarea id="recComment" placeholder="이 수/포지션에 대한 설명을 적으세요. 사람들에게 보여줄 해설입니다.&#10;예) 중앙을 장악하고 비숍 길을 여는 수."></textarea>
-        <div class="status">설명은 자동 저장됩니다. 화살표/강조도 현재 수에 함께 저장됩니다.</div>
       </div>
       <div class="card">
         <h3>기보 (둔 수)</h3>
         <div class="movelist" id="recMoves"><span class="num">아직 둔 수가 없습니다. 보드에서 수를 두세요.</span></div>
       </div>
       <div class="card">
-        <h3>공유 / 내보내기</h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="primary" id="recShare">🔗 공유용 HTML 저장</button>
-          <button class="ghost" id="recExportPgn">⬇ 주석 PGN</button>
-        </div>
-        <div class="status" id="recShareStatus">공유용 HTML은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.</div>
-      </div>
-      <div class="card">
-        <h3>AI 평가</h3>
+        <h3>AI 평가 &amp; 해설</h3>
+        <p style="font-size:13px;color:#9aa0a6;margin:0 0 10px">
+          수를 다 둔 뒤 평가하면, <b>AI가 각 수를 자동으로 설명</b>합니다. (직접 적을 필요 없음)
+          보드의 화살표/칸 강조는 공유본에 함께 담깁니다.</p>
         <label class="field">엔진 깊이 (depth) — 높을수록 정확하지만 느림</label>
         <select id="recDepth">
           <option value="12">12 (빠름)</option>
@@ -83,7 +71,7 @@
           <option value="20">20 (정밀)</option>
         </select>
         <div style="margin-top:12px;">
-          <button class="primary" id="recAnalyze">🤖 둔 수 AI로 평가하기</button>
+          <button class="primary" id="recAnalyze">🤖 AI 평가 &amp; 해설 받기</button>
         </div>
         <div class="status" id="recStatus"></div>
       </div>
@@ -149,11 +137,18 @@
       <div class="card detail" id="rvDetail"></div>
       <div class="card"><h3>기보</h3><div class="movelist" id="rvMoves"></div></div>
       <div class="card">
-        <h3>코치 평 (LLM)</h3>
-        <div id="rvCoach"></div>
-        <div style="margin-top:10px; display:flex; gap:8px;">
-          <button class="ghost" id="rvExport">⬇ 주석 PGN 내보내기</button>
+        <h3>공유 / 내보내기</h3>
+        <p style="font-size:13px;color:#9aa0a6;margin:0 0 10px">
+          AI가 만든 수별 해설이 담긴 공유본을 만듭니다. 보드의 화살표/강조도 함께 들어갑니다.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="primary" id="rvShare">🔗 AI 해설 공유본(HTML) 저장</button>
+          <button class="ghost" id="rvExport">⬇ 주석 PGN</button>
         </div>
+        <div class="status" id="rvShareStatus">공유본은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.</div>
+      </div>
+      <div class="card">
+        <h3>코치 평 (LLM, 선택)</h3>
+        <div id="rvCoach"></div>
       </div>
     </div>
   </div>

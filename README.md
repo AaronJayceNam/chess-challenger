@@ -119,11 +119,14 @@ A local web app (FastAPI) that combines three things in one page:
 1. **Record / upload + AI evaluation** — play moves on an interactive board to
    record a game, *or* paste/upload a PGN, then have the engine evaluate every
    move you played (classification, CPL, win%, best move).
-2. **Teach / explain** — on the record board you can step back and forth through
-   the line, write a **written explanation for each move**, and draw **arrows
-   (right-click + drag)** and **square highlights (right-click)** to explain
-   visually. Export it as an **annotated PGN** or a **standalone shareable HTML
-   study** (`POST /api/study_html`) that opens offline — hand it to anyone.
+2. **Teach / explain (AI)** — record the line and draw **arrows (right-click +
+   drag)** and **square highlights (right-click)**. You don't write the prose:
+   after **AI 평가 & 해설**, the app generates an **accurate explanation for every
+   move** (see `chess_coach/explain.py`) grounded only in engine facts
+   (classification, centipawn loss, win% change, best move + PV, and concrete
+   facts like capture/check/castle/promotion) — so it never makes things up.
+   Export it as an **annotated PGN** or a **standalone shareable HTML study**
+   (`POST /api/study_html`) that opens offline — hand it to anyone.
 3. **Visual review** — step through the game on a board with the eval bar, eval
    graph, engine best-move arrows, and a colour-coded annotated move list.
 

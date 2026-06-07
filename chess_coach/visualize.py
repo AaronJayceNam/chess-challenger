@@ -14,6 +14,7 @@ import chess.svg
 import chess.pgn
 
 from .analyze import GameAnalysis
+from .explain import explain_move
 
 BOARD_SIZE = 440
 
@@ -119,6 +120,7 @@ def build_view_data(game: chess.pgn.Game, ga: GameAnalysis) -> dict:
         "pv": m.pv,
         "isBest": m.is_best,
         "missedWin": m.missed_win,
+        "explain": explain_move(m),
         "clsColor": _COLOR.get(m.classification, "#ddd"),
     } for m in ga.moves]
 
