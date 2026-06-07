@@ -66,6 +66,7 @@ class AnalyzeRequest(BaseModel):
     white: str = "White"
     black: str = "Black"
     depth: int = 16
+    movetime: Optional[int] = None    # ms per position (preferred; predictable speed)
     coach: bool = False
 
 
@@ -170,9 +171,18 @@ def analyze(req: AnalyzeRequest):
     cfg = EngineConfig()
     if not cfg.path:
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다. STOCKFISH_PATH 설정 필요.")
-    cfg.depth = max(6, min(24, req.depth))
-    cfg.movetime_ms = None
+    # Use most of the machine: a single engine thread on a 12-core box made a
+    # 33-move game take ~2 minutes. Multi-thread + a per-move time budget keeps
+    # a full game around ~10s with good quality.
+    cfg.threads = max(1, (os.cpu_count() or 2) - 1)
+    cfg.hash_mb = 256
     cfg.multipv = 2          # enables "only good move" detection in explanations
+    if req.movetime:
+        cfg.movetime_ms = max(50, min(3000, req.movetime))
+        cfg.depth = None
+    else:
+        cfg.depth = max(6, min(24, req.depth))
+        cfg.movetime_ms = None
 
     if req.pgn and req.pgn.strip():
         game = read_first_game(req.pgn)

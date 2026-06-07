@@ -327,7 +327,7 @@ $("recAnalyze").onclick = async () => {
     moves: REC.moves,
     white: $("recWhite").value || "White",
     black: $("recBlack").value || "Black",
-    depth: +$("recDepth").value,
+    movetime: +$("recDepth").value,
   });
 };
 
@@ -362,7 +362,7 @@ $("upSample").onclick = () => {
 $("upAnalyze").onclick = async () => {
   const pgn = $("pgnText").value.trim();
   if (!pgn) { setStatus("upStatus", "먼저 경기 파일(.pgn)을 삽입하거나 기보를 붙여넣으세요.", true); return; }
-  await runAnalyze({ pgn, depth: +$("upDepth").value });
+  await runAnalyze({ pgn, movetime: +$("upDepth").value });
 };
 
 function setStatus(id, msg, err) {
@@ -378,7 +378,7 @@ let LAST_REQ = null;
 
 async function runAnalyze(req) {
   LAST_REQ = req;
-  overlay(true, "엔진이 둔 수를 평가 중입니다…");
+  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 10~40초)");
   try {
     const view = await api("/api/analyze", req);
     loadReview(view);
@@ -386,7 +386,13 @@ async function runAnalyze(req) {
   } catch (e) {
     overlay(false);
     const id = req.pgn ? "upStatus" : "recStatus";
-    setStatus(id, "분석 실패: " + e.message, true);
+    // "Failed to fetch" = the request never reached the server (server stopped).
+    const offline = /failed to fetch|networkerror|load failed/i.test(e.message || "");
+    const msg = offline
+      ? "서버에 연결할 수 없습니다. 실행 런처(검은 창)가 닫혔을 수 있습니다. " +
+        "바탕화면의 'Chess Coach'를 다시 실행한 뒤, 이 페이지를 새로고침하세요."
+      : "분석 실패: " + e.message;
+    setStatus(id, msg, true);
     return;
   }
   overlay(false);

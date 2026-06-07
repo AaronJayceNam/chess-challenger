@@ -64,11 +64,11 @@
         <p style="font-size:13px;color:#9aa0a6;margin:0 0 10px">
           수를 다 둔 뒤 평가하면, <b>AI가 각 수를 자동으로 설명</b>합니다. (직접 적을 필요 없음)
           보드의 화살표/칸 강조는 공유본에 함께 담깁니다.</p>
-        <label class="field">엔진 깊이 (depth) — 높을수록 정확하지만 느림</label>
+        <label class="field">분석 정밀도 — 높을수록 정확하지만 느림</label>
         <select id="recDepth">
-          <option value="12">12 (빠름)</option>
-          <option value="16" selected>16 (권장)</option>
-          <option value="20">20 (정밀)</option>
+          <option value="150">빠름 (약 10초)</option>
+          <option value="350" selected>권장 (약 20초)</option>
+          <option value="700">정밀 (약 40초)</option>
         </select>
         <div style="margin-top:12px;">
           <button class="primary" id="recAnalyze">🤖 AI 평가 &amp; 해설 받기</button>
@@ -99,9 +99,9 @@
         <h3>② 확인 → AI 평가</h3>
         <label class="field">분석 정밀도 (높을수록 정확하지만 느림)</label>
         <select id="upDepth">
-          <option value="12">빠름</option>
-          <option value="16" selected>권장</option>
-          <option value="20">정밀</option>
+          <option value="150">빠름 (약 10초)</option>
+          <option value="350" selected>권장 (약 20초)</option>
+          <option value="700">정밀 (약 40초)</option>
         </select>
         <div style="margin-top:14px;">
           <button class="primary" id="upAnalyze">✔ 확인 — AI로 평가하기</button>
