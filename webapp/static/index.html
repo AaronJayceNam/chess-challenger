@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Coach Studio</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="top">
+  <h1>♟ Chess Coach Studio</h1>
+  <div class="sf" id="sfStatus">엔진 확인 중…</div>
+</header>
+
+<div class="tabs">
+  <button data-tab="record" class="active">① 녹화 (Record)</button>
+  <button data-tab="upload">① PGN 업로드</button>
+  <button data-tab="review" id="tabReview" disabled>② AI 평가 / 리뷰</button>
+</div>
+
+<!-- ====================== RECORD ====================== -->
+<section class="tab active" id="tab-record">
+  <div class="cols">
+    <div>
+      <div class="boardwrap">
+        <div class="cboard" id="recBoard"></div>
+      </div>
+      <div class="turn" id="recTurn"><span class="pill"></span>백(White) 차례</div>
+      <div class="controls">
+        <button class="ghost" id="recUndo">↩ 한 수 무르기</button>
+        <button class="ghost" id="recReset">⟲ 처음부터</button>
+        <button class="ghost" id="recFlip">⇅ 보드 뒤집기</button>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:300px; max-width:460px;">
+      <div class="card">
+        <h3>대국자</h3>
+        <div class="row2">
+          <div><label class="field">백 (White)</label><input type="text" id="recWhite" value="White"></div>
+          <div><label class="field">흑 (Black)</label><input type="text" id="recBlack" value="Black"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>기보 (둔 수)</h3>
+        <div class="movelist" id="recMoves"><span class="num">아직 둔 수가 없습니다. 보드에서 수를 두세요.</span></div>
+      </div>
+      <div class="card">
+        <h3>AI 평가</h3>
+        <label class="field">엔진 깊이 (depth) — 높을수록 정확하지만 느림</label>
+        <select id="recDepth">
+          <option value="12">12 (빠름)</option>
+          <option value="16" selected>16 (권장)</option>
+          <option value="20">20 (정밀)</option>
+        </select>
+        <div style="margin-top:12px;">
+          <button class="primary" id="recAnalyze">🤖 둔 수 AI로 평가하기</button>
+        </div>
+        <div class="status" id="recStatus"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== UPLOAD ====================== -->
+<section class="tab" id="tab-upload">
+  <div class="cols">
+    <div style="flex:1; min-width:320px; max-width:620px;">
+      <div class="card">
+        <h3>PGN 붙여넣기 또는 파일 업로드</h3>
+        <textarea id="pgnText" placeholder="여기에 PGN을 붙여넣으세요…&#10;&#10;예) 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 ..."></textarea>
+        <label class="field">또는 .pgn 파일 선택</label>
+        <input type="file" id="pgnFile" accept=".pgn,.txt">
+      </div>
+      <div class="card">
+        <h3>AI 평가</h3>
+        <label class="field">엔진 깊이 (depth)</label>
+        <select id="upDepth">
+          <option value="12">12 (빠름)</option>
+          <option value="16" selected>16 (권장)</option>
+          <option value="20">20 (정밀)</option>
+        </select>
+        <div style="margin-top:12px;">
+          <button class="primary" id="upAnalyze">🤖 업로드한 게임 AI로 평가하기</button>
+          <button class="ghost" id="upSample">샘플 게임 불러오기</button>
+        </div>
+        <div class="status" id="upStatus"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== REVIEW ====================== -->
+<section class="tab" id="tab-review">
+  <div class="card summary" id="rvSummary"></div>
+  <div class="cols">
+    <div>
+      <div class="boardwrap">
+        <div class="evalbar"><div class="white" id="rvBar"></div><div class="lbl" id="rvBarLbl"></div></div>
+        <div class="svgboard" id="rvBoard"></div>
+      </div>
+      <div class="controls">
+        <button class="ghost" id="rvFirst" title="처음">⏮</button>
+        <button class="ghost" id="rvPrev" title="이전 (←)">◀</button>
+        <button class="ghost" id="rvNext" title="다음 (→)">▶</button>
+        <button class="ghost" id="rvLast" title="끝">⏭</button>
+        <input type="range" id="rvSlider" min="0" value="0">
+      </div>
+      <div class="legend">
+        <span style="color:#15781b">▮ 엔진 추천(녹색 화살표)</span>
+        <span style="color:#2e7d32">● Best</span>
+        <span style="color:#c9a227">● ?!</span>
+        <span style="color:#e07a1f">● ?</span>
+        <span style="color:#c62828">● ??</span>
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:320px; max-width:520px;">
+      <div class="card"><svg class="graph" id="rvGraph" preserveAspectRatio="none"></svg></div>
+      <div class="card detail" id="rvDetail"></div>
+      <div class="card"><h3>기보</h3><div class="movelist" id="rvMoves"></div></div>
+      <div class="card">
+        <h3>코치 평 (LLM)</h3>
+        <div id="rvCoach"></div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button class="ghost" id="rvExport">⬇ 주석 PGN 내보내기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="overlay hidden" id="overlay">
+  <div class="box"><div class="spin"></div><div id="overlayMsg">엔진이 분석 중입니다…</div></div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

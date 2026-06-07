@@ -112,11 +112,41 @@ per position; a little inline JavaScript adds:
 Add `--open` to launch it in your default browser automatically. The desktop
 launcher (`launcher/Chess Coach.bat`) does this for you.
 
-## Desktop launcher
+## Chess Coach Studio — web app (record/upload + AI eval + review)
 
-`launcher/Chess Coach.bat` (copied to the Desktop): **drag any `.pgn` onto it**
-to analyze that game and open the visual board, or double-click to be prompted
-for a path (Enter = bundled sample game).
+A local web app (FastAPI) that combines two features in one page:
+
+1. **Record / upload + AI evaluation** — play moves on an interactive board to
+   record a game, *or* paste/upload a PGN, then have the engine evaluate every
+   move you played (classification, CPL, win%, best move).
+2. **Visual review** — step through the game on a board with the eval bar, eval
+   graph, engine best-move arrows, and a colour-coded annotated move list.
+
+`python-chess` (the backend) is the **single source of move legality** — the
+browser has no chess engine of its own, so the whole app runs offline (no CDN).
+Optional Claude coaching activates only if `ANTHROPIC_API_KEY` is set; without
+it, all engine evaluation still works.
+
+Run it:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn webapp.server:app --port 8000
+# then open http://127.0.0.1:8000
+```
+
+Endpoints: `POST /api/legal` (validate moves + legal-move map),
+`POST /api/analyze` (PGN or move list → full analysis view), `GET /api/health`.
+
+## Desktop launchers
+
+Two launchers live in `launcher/` (copied to the Desktop):
+
+- **`Chess Coach Studio.bat`** — starts the web app and opens it in your browser.
+  Keep its window open while using the app; close it to stop the server.
+- **`Chess Coach.bat`** — quick single-game analyzer: **drag any `.pgn` onto it**
+  to analyze and open the static visual board, or double-click for a prompt
+  (Enter = bundled sample game).
 
 ## Tests
 

@@ -95,12 +95,19 @@ def _movelist_html(ga: GameAnalysis) -> str:
     return "\n".join(parts)
 
 
-def render_html(game: chess.pgn.Game, ga: GameAnalysis) -> str:
+def build_view_data(game: chess.pgn.Game, ga: GameAnalysis) -> dict:
+    """Everything the front-end needs to render an analysed game.
+
+    Shared by the static HTML generator (`render_html`) and the web API, so the
+    board/eval/movelist rendering is identical in both.
+    """
     svgs, white_win, eval_labels = _build_svgs_and_series(game, ga)
 
     moves_payload = [{
         "ply": m.ply,
+        "moveNumber": m.move_number,
         "san": m.san,
+        "uci": m.uci,
         "symbol": m.symbol,
         "color": m.color,
         "classification": m.classification,
@@ -116,36 +123,44 @@ def render_html(game: chess.pgn.Game, ga: GameAnalysis) -> str:
     } for m in ga.moves]
 
     h = ga.headers
-    title = f"{h.get('White','White')} vs {h.get('Black','Black')}"
-    sub = f"{h.get('Event','')} {h.get('Date','')}  •  {ga.result}".strip()
-    opening = f"{h.get('ECO','')} {h.get('Opening','')}".strip()
     eng = ga.engine
     budget = (f"depth {eng['depth']}" if eng.get("depth") and not eng.get("movetime_ms")
               else f"movetime {eng['movetime_ms']}ms")
-    eng_line = f"Stockfish • {budget} • threads {eng['threads']} • hash {eng['hash_mb']}MB"
 
-    data = {
+    return {
+        "title": f"{h.get('White','White')} vs {h.get('Black','Black')}",
+        "sub": f"{h.get('Event','')} {h.get('Date','')}  •  {ga.result}".strip(),
+        "opening": f"{h.get('ECO','')} {h.get('Opening','')}".strip(),
+        "engLine": f"Stockfish • {budget} • threads {eng['threads']} • hash {eng['hash_mb']}MB",
+        "result": ga.result,
+        "white": {"accuracy": ga.white.accuracy, "acpl": ga.white.acpl,
+                  "counts": ga.white.counts},
+        "black": {"accuracy": ga.black.accuracy, "acpl": ga.black.acpl,
+                  "counts": ga.black.counts},
         "svgs": svgs,
         "whiteWin": white_win,
         "evalLabels": eval_labels,
         "moves": moves_payload,
     }
-    data_json = json.dumps(data, ensure_ascii=False)
 
+
+def render_html(game: chess.pgn.Game, ga: GameAnalysis) -> str:
+    view = build_view_data(game, ga)
+    data = {k: view[k] for k in ("svgs", "whiteWin", "evalLabels", "moves")}
     summary = (
-        f"<b>White</b> {ga.white.accuracy:.1f}% (ACPL {ga.white.acpl:.0f}) &nbsp;·&nbsp; "
-        f"<b>Black</b> {ga.black.accuracy:.1f}% (ACPL {ga.black.acpl:.0f})"
+        f"<b>White</b> {view['white']['accuracy']:.1f}% (ACPL {view['white']['acpl']:.0f}) "
+        f"&nbsp;·&nbsp; <b>Black</b> {view['black']['accuracy']:.1f}% "
+        f"(ACPL {view['black']['acpl']:.0f})"
     )
-
     return _TEMPLATE.format(
-        title=title,
-        sub=sub,
-        opening=opening,
-        eng_line=eng_line,
+        title=view["title"],
+        sub=view["sub"],
+        opening=view["opening"],
+        eng_line=view["engLine"],
         summary=summary,
         movelist=_movelist_html(ga),
         board_size=BOARD_SIZE,
-        data_json=data_json,
+        data_json=json.dumps(data, ensure_ascii=False),
     )
 
 
