@@ -91,10 +91,32 @@ Useful flags:
 python -m chess_coach.cli data\sample.pgn --depth 20
 python -m chess_coach.cli data\sample.pgn --movetime 500
 python -m chess_coach.cli data\sample.pgn --json out\report.json
+python -m chess_coach.cli data\sample.pgn --html out\game.html --open   # visual board
 python -m chess_coach.cli mygame.pgn --stockfish C:\path\to\stockfish.exe
 ```
 
 The bundled `data/sample.pgn` is Morphy's 1858 "Opera Game".
+
+## Visual board (offline, no Node/CDN)
+
+`--html out\game.html` renders a **single self-contained HTML file** you can open
+in any browser — no internet, no build step. python-chess renders one SVG board
+per position; a little inline JavaScript adds:
+
+- move navigation (◀ ▶ buttons, slider, ←/→ arrow keys, click a move to jump),
+- an **eval bar** + an **eval graph** (white win-probability over the game),
+- the **engine's best move** drawn as a green arrow on each position,
+- an annotated, colour-coded move list synced to the board,
+- a detail panel per move (classification, CPL, win%, best move, PV) in Korean.
+
+Add `--open` to launch it in your default browser automatically. The desktop
+launcher (`launcher/Chess Coach.bat`) does this for you.
+
+## Desktop launcher
+
+`launcher/Chess Coach.bat` (copied to the Desktop): **drag any `.pgn` onto it**
+to analyze that game and open the visual board, or double-click to be prompted
+for a path (Enter = bundled sample game).
 
 ## Tests
 

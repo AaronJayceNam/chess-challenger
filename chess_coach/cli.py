@@ -91,6 +91,9 @@ def main(argv=None) -> int:
     p.add_argument("--threads", type=int, help="engine threads")
     p.add_argument("--multipv", type=int, help="number of candidate lines to store")
     p.add_argument("--json", help="also write the full analysis as JSON to this path")
+    p.add_argument("--html", help="write an interactive HTML board visualization to this path")
+    p.add_argument("--open", action="store_true", help="open the HTML report in a browser")
+    p.add_argument("--quiet", action="store_true", help="suppress the text table")
     args = p.parse_args(argv)
 
     cfg = build_engine_config(args)
@@ -107,13 +110,28 @@ def main(argv=None) -> int:
     with Engine(cfg) as engine:
         ga = analyze_game(game, engine)
 
-    _print_report(ga)
+    if not args.quiet:
+        _print_report(ga)
 
     if args.json:
-        os.makedirs(os.path.dirname(os.path.abspath(args.json)), exist_ok=True)
+        os.makedirs(os.path.dirname(os.path.abspath(args.json)) or ".", exist_ok=True)
         with open(args.json, "w", encoding="utf-8") as fh:
             json.dump(ga.to_dict(), fh, indent=2, ensure_ascii=False)
         print(f"\nWrote JSON report -> {args.json}")
+
+    html_path = args.html
+    if args.open and not html_path:
+        html_path = os.path.join("out", "game.html")
+    if html_path:
+        from .visualize import render_html
+        os.makedirs(os.path.dirname(os.path.abspath(html_path)) or ".", exist_ok=True)
+        with open(html_path, "w", encoding="utf-8") as fh:
+            fh.write(render_html(game, ga))
+        abs_html = os.path.abspath(html_path)
+        print(f"\nWrote HTML visualization -> {abs_html}")
+        if args.open:
+            import webbrowser
+            webbrowser.open(f"file:///{abs_html.replace(os.sep, '/')}")
 
     return 0
 

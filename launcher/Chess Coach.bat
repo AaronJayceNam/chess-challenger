@@ -44,12 +44,14 @@ if not exist "%PGN%" (
 echo.
 echo Analyzing: %PGN%
 echo Engine: Stockfish depth 18  ^(this can take a few seconds^)
+echo An interactive board will open in your browser when done.
 echo --------------------------------------------
 echo.
-"%PY%" -m chess_coach.cli "%PGN%" --depth 18
+"%PY%" -m chess_coach.cli "%PGN%" --depth 18 --html "out\game.html" --open
 
 echo.
 echo --------------------------------------------
-echo Done. Tip: drag any .pgn file onto this icon to analyze it.
+echo Done. The visual board opened in your browser.
+echo Tip: drag any .pgn file onto this icon to analyze it.
 echo.
 pause
