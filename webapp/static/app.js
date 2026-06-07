@@ -374,6 +374,12 @@ function setStatus(id, msg, err) {
   el.className = "status" + (err ? " err" : "");
 }
 
+// "Failed to fetch" = the request never reached the server (server not running).
+function isOffline(e) {
+  return /failed to fetch|networkerror|load failed|connection refused/i.test((e && e.message) || "");
+}
+const OFFLINE_MSG = "서버에 연결할 수 없습니다. 바탕화면의 'Chess Coach' 아이콘을 다시 한 번 실행한 뒤, 이 페이지를 새로고침(F5)하세요.";
+
 // =========================================================================== //
 // ANALYZE -> REVIEW
 // =========================================================================== //
@@ -389,13 +395,7 @@ async function runAnalyze(req) {
   } catch (e) {
     overlay(false);
     const id = req.pgn ? "upStatus" : "recStatus";
-    // "Failed to fetch" = the request never reached the server (server stopped).
-    const offline = /failed to fetch|networkerror|load failed/i.test(e.message || "");
-    const msg = offline
-      ? "서버에 연결할 수 없습니다. 실행 런처(검은 창)가 닫혔을 수 있습니다. " +
-        "바탕화면의 'Chess Coach'를 다시 실행한 뒤, 이 페이지를 새로고침하세요."
-      : "분석 실패: " + e.message;
-    setStatus(id, msg, true);
+    setStatus(id, isOffline(e) ? OFFLINE_MSG : "분석 실패: " + e.message, true);
     return;
   }
   overlay(false);
@@ -692,7 +692,7 @@ async function aiHumanMove(uci) {
   const moves = [...AIG.moves, uci];
   let st;
   try { st = await api("/api/legal", { moves }); }
-  catch (e) { setStatus("aiStatus", "수 처리 오류: " + e.message, true); return; }
+  catch (e) { setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "수 처리 오류: " + e.message, true); return; }
   AIG.moves = moves; AIG.state = st; AIG.sel = null;
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (st.gameOver) { aiEndGame(); return; }
@@ -703,7 +703,7 @@ async function aiReply() {
   AIG.thinking = true; updateAiTurn(); renderAiBoard();
   let res;
   try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level }); }
-  catch (e) { AIG.thinking = false; setStatus("aiStatus", "AI 응수 오류: " + e.message, true); return; }
+  catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "AI 응수 오류: " + e.message, true); return; }
   AIG.thinking = false;
   if (res.move) AIG.moves.push(res.move);
   AIG.state = res;
@@ -737,7 +737,7 @@ async function aiStart() {
   AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true;
   $("aiAnalyze").classList.add("hidden");
   try { AIG.state = await api("/api/legal", { moves: [] }); }
-  catch (e) { setStatus("aiStatus", "시작 오류: " + e.message, true); return; }
+  catch (e) { AIG.started = false; setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "시작 오류: " + e.message, true); return; }
   setStatus("aiStatus", `레벨 ${AIG.level} 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (AIG.human === "b") await aiReply();   // AI (white) moves first
