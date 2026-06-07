@@ -150,19 +150,30 @@ python -m uvicorn webapp.server:app --port 8000
 Endpoints: `POST /api/legal` (validate moves + legal-move map),
 `POST /api/analyze` (PGN or move list → full analysis view), `GET /api/health`.
 
-## Desktop launcher
+## Desktop launcher (runs in the background)
 
-The Desktop has a single shortcut **`Chess Coach.lnk`** (knight icon) that runs
-the whole visual app: it starts the web server (minimized to the taskbar) and
-opens **Chess Coach Studio** in your browser. Close the minimized server window
-to stop it.
+Two Desktop shortcuts (knight icon):
 
-It points at `launcher/Chess Coach Studio.bat`. The `launcher/` folder also keeps:
+- **`Chess Coach.lnk`** — starts the app and opens it in your browser. The server
+  runs **windowless in the background** (a detached `pythonw` process), so there
+  is **no window to accidentally close** and it keeps running. Re-running the
+  shortcut just re-opens the browser (it won't start a second server). Logs go to
+  `~/.chess_coach_server.log`.
+- **`Chess Coach 종료.lnk`** — stops the background server.
 
-- `Chess Coach Studio.bat` — start the web app (target of the shortcut).
-- `Chess Coach.bat` — quick single-game analyzer: **drag any `.pgn` onto it** to
-  analyze and open the static visual board (Enter = bundled sample game).
+The `launcher/` folder keeps:
+
+- `Chess Coach Studio.bat` — start launcher (target of the shortcut); idempotent.
+- `Stop Chess Coach.bat` — stop launcher.
+- `Chess Coach Studio (debug).bat` — runs the server with a **visible console** so
+  you can see logs/errors if something goes wrong.
+- `webapp/run_bg.py` — windowless entry point (redirects logs to a file so
+  `pythonw` never crashes on a missing console).
+- `Chess Coach.bat` — quick single-game analyzer: drag a `.pgn` onto it.
 - `make_icon.py` / `chesscoach.ico` — the app icon and its generator.
+
+Performance: analysis is spread across an engine pool (one Stockfish per CPU
+pair) with a per-move time budget, so a full game finishes in ~5–10s.
 
 To recreate the shortcut (e.g. after moving the project):
 

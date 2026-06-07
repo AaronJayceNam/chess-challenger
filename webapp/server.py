@@ -29,7 +29,7 @@ from pydantic import BaseModel
 
 from chess_coach.config import EngineConfig
 from chess_coach.engine import Engine
-from chess_coach.analyze import analyze_game, read_first_game
+from chess_coach.analyze import analyze_game_parallel, read_first_game
 from chess_coach.visualize import build_view_data, render_study_html
 from chess_coach import coach as coach_mod
 
@@ -171,11 +171,9 @@ def analyze(req: AnalyzeRequest):
     cfg = EngineConfig()
     if not cfg.path:
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다. STOCKFISH_PATH 설정 필요.")
-    # Use most of the machine: a single engine thread on a 12-core box made a
-    # 33-move game take ~2 minutes. Multi-thread + a per-move time budget keeps
-    # a full game around ~10s with good quality.
-    cfg.threads = max(1, (os.cpu_count() or 2) - 1)
-    cfg.hash_mb = 256
+    # Spread the work over a pool of engines so a full game finishes in a few
+    # seconds instead of minutes. Size the pool to the CPU; a per-move time
+    # budget keeps wall-clock predictable.
     cfg.multipv = 2          # enables "only good move" detection in explanations
     if req.movetime:
         cfg.movetime_ms = max(50, min(3000, req.movetime))
@@ -183,6 +181,11 @@ def analyze(req: AnalyzeRequest):
     else:
         cfg.depth = max(6, min(24, req.depth))
         cfg.movetime_ms = None
+
+    total = os.cpu_count() or 4
+    workers = max(2, min(6, total // 2))
+    cfg.threads = max(1, total // workers)
+    cfg.hash_mb = 128        # per engine
 
     if req.pgn and req.pgn.strip():
         game = read_first_game(req.pgn)
@@ -195,8 +198,14 @@ def analyze(req: AnalyzeRequest):
     else:
         raise HTTPException(400, "pgn 또는 moves 중 하나는 필요합니다.")
 
-    with Engine(cfg) as engine:
-        ga = analyze_game(game, engine)
+    engines = [Engine(cfg) for _ in range(workers)]
+    for e in engines:
+        e.open()
+    try:
+        ga = analyze_game_parallel(game, engines)
+    finally:
+        for e in engines:
+            e.close()
     view = build_view_data(game, ga)
 
     if req.coach:

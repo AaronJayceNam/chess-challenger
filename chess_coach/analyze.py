@@ -135,25 +135,81 @@ def _white_pov(pe: PositionEval, turn: bool) -> tuple[Optional[int], Optional[in
     return cp, mate
 
 
+def build_boards(game: chess.pgn.Game) -> list[chess.Board]:
+    """The N+1 distinct positions of the game (start + after each ply)."""
+    board = game.board()
+    boards = [board.copy()]
+    for mv in game.mainline_moves():
+        board.push(mv)
+        boards.append(board.copy())
+    return boards
+
+
+def evaluate_boards_parallel(boards: list[chess.Board], engines: list[Engine]) -> list[PositionEval]:
+    """Evaluate every position once, spread across a pool of engines.
+
+    Each engine is used by at most one worker at a time (one-engine-per-thread
+    via a queue), so the separate Stockfish subprocesses run concurrently. With
+    a per-move time budget, wall-clock ~= ceil(positions / engines) * movetime.
+    """
+    import queue
+    from concurrent.futures import ThreadPoolExecutor
+
+    if len(engines) == 1:
+        return [engines[0].evaluate(b) for b in boards]
+
+    pool: "queue.Queue[Engine]" = queue.Queue()
+    for e in engines:
+        pool.put(e)
+    results: list[PositionEval | None] = [None] * len(boards)
+
+    def work(idx_board):
+        idx, b = idx_board
+        eng = pool.get()
+        try:
+            results[idx] = eng.evaluate(b)
+        finally:
+            pool.put(eng)
+
+    with ThreadPoolExecutor(max_workers=len(engines)) as ex:
+        list(ex.map(work, list(enumerate(boards))))
+    return [r for r in results]  # type: ignore[return-value]
+
+
 def analyze_game(
     game: chess.pgn.Game,
     engine: Engine,
     classify_cfg: ClassifyConfig | None = None,
 ) -> GameAnalysis:
-    classify_cfg = classify_cfg or ClassifyConfig()
+    boards = build_boards(game)
+    evals = [engine.evaluate(b) for b in boards]
+    return _assemble(game, boards, evals, engine.config.describe(), classify_cfg)
 
-    board = game.board()
+
+def analyze_game_parallel(
+    game: chess.pgn.Game,
+    engines: list[Engine],
+    classify_cfg: ClassifyConfig | None = None,
+) -> GameAnalysis:
+    """Same as analyze_game but spreads position evaluation over an engine pool."""
+    boards = build_boards(game)
+    evals = evaluate_boards_parallel(boards, engines)
+    desc = engines[0].config.describe()
+    desc["workers"] = len(engines)
+    return _assemble(game, boards, evals, desc, classify_cfg)
+
+
+def _assemble(
+    game: chess.pgn.Game,
+    boards: list[chess.Board],
+    evals: list[PositionEval],
+    engine_desc: dict,
+    classify_cfg: ClassifyConfig | None = None,
+) -> GameAnalysis:
+    classify_cfg = classify_cfg or ClassifyConfig()
     moves = list(game.mainline_moves())
 
-    # 1) Collect the N+1 positions and evaluate each exactly once.
-    boards: list[chess.Board] = [board.copy()]
-    for mv in moves:
-        board.push(mv)
-        boards.append(board.copy())
-
-    evals: list[PositionEval] = [engine.evaluate(b) for b in boards]
-
-    # 2) Walk the moves, deriving CPL / win% / class from adjacent evals.
+    # Walk the moves, deriving CPL / win% / class from adjacent evals.
     analyses: list[MoveAnalysis] = []
     replay = game.board()
 
@@ -260,7 +316,7 @@ def analyze_game(
 
     return GameAnalysis(
         headers=dict(game.headers),
-        engine=engine.config.describe(),
+        engine=engine_desc,
         moves=analyses,
         white=white,
         black=black,

@@ -378,7 +378,7 @@ let LAST_REQ = null;
 
 async function runAnalyze(req) {
   LAST_REQ = req;
-  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 10~40초)");
+  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 5~15초)");
   try {
     const view = await api("/api/analyze", req);
     loadReview(view);
