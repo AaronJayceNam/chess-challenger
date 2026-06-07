@@ -19,6 +19,29 @@ async function api(path, body) {
 const $ = (id) => document.getElementById(id);
 const GLYPH = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
 
+// Slide the piece that just moved from its origin square to its destination,
+// so moves look smooth even though the board is re-rendered from scratch.
+function animateMove(boardEl, fromSq, toSq, orient) {
+  if (!boardEl || !fromSq || !toSq) return;
+  const files = orient === "w" ? "abcdefgh" : "hgfedcba";
+  const ranks = orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const fc = files.indexOf(fromSq[0]), fr = ranks.indexOf(+fromSq[1]);
+  const tc = files.indexOf(toSq[0]), tr = ranks.indexOf(+toSq[1]);
+  if (fc < 0 || tc < 0 || fr < 0 || tr < 0) return;
+  const cell = (boardEl.clientWidth || 440) / 8;
+  const dx = (fc - tc) * cell, dy = (fr - tr) * cell;
+  const sqDiv = boardEl.children[tr * 8 + tc];
+  const pc = sqDiv && sqDiv.querySelector(".pc");
+  if (!pc) return;
+  pc.style.transition = "none";
+  pc.style.transform = `translate(${dx}px, ${dy}px)`;
+  pc.style.zIndex = "12";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    pc.style.transition = "transform .22s cubic-bezier(.22,.61,.36,1)";
+    pc.style.transform = "translate(0, 0)";
+  }));
+}
+
 function overlay(show, msg) {
   $("overlay").classList.toggle("hidden", !show);
   if (msg) $("overlayMsg").textContent = msg;
@@ -216,6 +239,7 @@ async function commitMove(uci) {
     REC.view = next.length;
     REC.sel = null;
     renderAll();
+    animateMove($("recBoard"), uci.slice(0, 2), uci.slice(2, 4), REC.orient);
   } catch (e) { setStatus("recStatus", "수 처리 오류: " + e.message, true); }
 }
 
@@ -695,6 +719,7 @@ async function aiHumanMove(uci) {
   catch (e) { setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "수 처리 오류: " + e.message, true); return; }
   AIG.moves = moves; AIG.state = st; AIG.sel = null;
   renderAiBoard(); renderAiMoves(); updateAiTurn();
+  animateMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   if (st.gameOver) { aiEndGame(); return; }
   await aiReply();
 }
@@ -708,6 +733,7 @@ async function aiReply() {
   if (res.move) AIG.moves.push(res.move);
   AIG.state = res;
   renderAiBoard(); renderAiMoves(); updateAiTurn();
+  if (res.move) animateMove($("aiBoard"), res.move.slice(0, 2), res.move.slice(2, 4), AIG.orient);
   if (res.gameOver) aiEndGame();
 }
 
