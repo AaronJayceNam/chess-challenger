@@ -391,22 +391,26 @@ function clsColor(c) {
   return ({ Best: "#2e7d32", Excellent: "#2e7d32", Good: "#9e9e9e",
     Inaccuracy: "#c9a227", Mistake: "#e07a1f", Blunder: "#c62828" })[c] || "#ddd";
 }
+function clsLabel(c) {
+  return ({ Best: "최선", Excellent: "훌륭함", Good: "무난", Inaccuracy: "부정확",
+    Mistake: "실수", Blunder: "블런더" })[c] || c;
+}
 
 function loadReview(view) {
   RV.view = view; RV.N = view.svgs.length - 1; RV.idx = 0;
   $("tabReview").disabled = false;
 
   $("rvSummary").innerHTML =
-    `<b>${view.title}</b> &nbsp; <span style="color:#9aa0a6">${view.opening || ""} · ${view.engLine}</span><br>` +
-    `정확도 — <b>백 ${view.white.accuracy.toFixed(1)}%</b> (ACPL ${view.white.acpl.toFixed(0)}) ` +
-    `&nbsp;·&nbsp; <b>흑 ${view.black.accuracy.toFixed(1)}%</b> (ACPL ${view.black.acpl.toFixed(0)})`;
+    `<b>${view.title}</b> &nbsp; <span style="color:#9aa0a6">${view.opening || ""}</span><br>` +
+    `정확도(둔 수가 최선에 얼마나 가까웠는지) — ` +
+    `<b>백 ${view.white.accuracy.toFixed(1)}%</b> &nbsp;·&nbsp; <b>흑 ${view.black.accuracy.toFixed(1)}%</b>`;
 
   // movelist
   let html = "";
   view.moves.forEach((m) => {
     if (m.color === "white") html += `<span class="num">${m.moveNumber}.</span>`;
     html += `<span class="mv" data-idx="${m.ply}" style="color:${m.clsColor}" ` +
-      `title="${m.classification} | CPL ${m.cpl} | 승률 ${m.winBefore.toFixed(0)}%→${m.winAfter.toFixed(0)}%">` +
+      `title="${clsLabel(m.classification)} — ${(m.explain || "").replace(/"/g, "'")}">` +
       `${m.san}${m.symbol}</span> `;
   });
   $("rvMoves").innerHTML = html;
@@ -425,18 +429,17 @@ function rvDetail() {
   const m = RV.view.moves[RV.idx - 1];
   const turn = m.color === "white" ? "백" : "흑";
   const tag = m.isBest
-    ? '<span class="tag" style="background:#2e7d32;color:#fff">Best</span>'
-    : `<span class="tag" style="background:${m.clsColor}">${m.classification} ${m.symbol}</span>`;
+    ? '<span class="tag" style="background:#2e7d32;color:#fff">최선</span>'
+    : `<span class="tag" style="background:${m.clsColor}">${clsLabel(m.classification)} ${m.symbol}</span>`;
   const missed = m.missedWin ? ' <b style="color:#c62828">· 승리 놓침</b>' : "";
-  const bestRow = m.isBest ? "" : `<div class="r">엔진 최선: <b>${m.best || "—"}</b></div>`;
   const explain = m.explain
     ? `<div class="aiexplain">🤖 ${escapeHtml(m.explain)}</div>` : "";
+  const pv = (m.pv || []).slice(0, 8).join(" ");
+  const pvRow = pv ? `<div class="r">예상 진행 수순: <span class="pv">${pv}</span></div>` : "";
   $("rvDetail").innerHTML =
     `<div><b style="font-size:16px">${m.moveNumber}${m.color === "white" ? "." : "..."} ${turn} ${m.san}${m.symbol}</b> &nbsp; ${tag}${missed}</div>` +
     explain +
-    `<div class="r">CPL <b>${m.cpl}</b> · 승률 <b>${m.winBefore.toFixed(0)}%→${m.winAfter.toFixed(0)}%</b> · 정확도 <b>${m.accuracy.toFixed(0)}</b></div>` +
-    bestRow +
-    `<div class="r">주 변화(PV): <span class="pv">${(m.pv || []).slice(0, 8).join(" ")}</span></div>`;
+    pvRow;
 }
 
 function rvGraph() {

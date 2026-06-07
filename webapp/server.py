@@ -172,6 +172,7 @@ def analyze(req: AnalyzeRequest):
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다. STOCKFISH_PATH 설정 필요.")
     cfg.depth = max(6, min(24, req.depth))
     cfg.movetime_ms = None
+    cfg.multipv = 2          # enables "only good move" detection in explanations
 
     if req.pgn and req.pgn.strip():
         game = read_first_game(req.pgn)

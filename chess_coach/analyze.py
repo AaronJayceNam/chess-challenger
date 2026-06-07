@@ -62,6 +62,12 @@ class MoveAnalysis:
     is_mate: bool = False
     best_is_capture: bool = False
     best_is_check: bool = False
+    captured_piece: Optional[str] = None     # Korean name of piece this move captured
+    reply_san: Optional[str] = None          # opponent's best reply after this move
+    reply_captures: Optional[str] = None      # Korean name of piece that reply would win
+    only_move: bool = False                  # best move and clearly the only good one
+    piece_moved: Optional[str] = None        # Korean name of the piece that moved
+    develops: bool = False                   # an opening developing move (N/B off back rank)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -94,6 +100,31 @@ class GameAnalysis:
             "black": asdict(self.black),
             "moves": [m.to_dict() for m in self.moves],
         }
+
+
+_KOR_PIECE = {
+    chess.PAWN: "폰", chess.KNIGHT: "나이트", chess.BISHOP: "비숍",
+    chess.ROOK: "룩", chess.QUEEN: "퀸", chess.KING: "킹",
+}
+
+
+def _captured_name(board: chess.Board, mv: chess.Move) -> Optional[str]:
+    """Korean name of the piece captured by `mv` on `board` (None if not a capture)."""
+    if not board.is_capture(mv):
+        return None
+    if board.is_en_passant(mv):
+        return "폰"
+    pc = board.piece_at(mv.to_square)
+    return _KOR_PIECE.get(pc.piece_type) if pc else None
+
+
+def _mp_signed(entry: dict, mate_value: int = 100_000) -> int:
+    """Signed centipawns for a multipv entry (mover POV)."""
+    if entry.get("mate") is not None:
+        m = entry["mate"]
+        base = mate_value - abs(m) * 100
+        return base if m > 0 else -base
+    return entry.get("cp") or 0
 
 
 def _white_pov(pe: PositionEval, turn: bool) -> tuple[Optional[int], Optional[int]]:
@@ -163,6 +194,29 @@ def analyze_game(
         best_is_capture = bool(best_mv and before_board.is_capture(best_mv))
         best_is_check = bool(best_mv and before_board.gives_check(best_mv))
 
+        captured_piece = _captured_name(before_board, mv)
+        moved_pt = before_board.piece_type_at(mv.from_square)
+        piece_moved = _KOR_PIECE.get(moved_pt) if moved_pt else None
+        develops = (
+            moved_pt in (chess.KNIGHT, chess.BISHOP)
+            and chess.square_rank(mv.from_square) in (0, 7)
+            and before_board.fullmove_number <= 12
+            and not is_capture
+        )
+
+        # opponent's best reply (the position after the move was already evaluated)
+        after_board = boards[i + 1]
+        reply_mv = eval_after.best_move
+        reply_san = eval_after.best_move_san
+        reply_captures = _captured_name(after_board, reply_mv) if reply_mv else None
+
+        # "only good move": this move is best and the 2nd choice is much worse
+        only_move = False
+        mp = eval_before.multipv
+        if is_best and len(mp) >= 2:
+            gap = _mp_signed(mp[0]) - _mp_signed(mp[1])
+            only_move = gap >= 130   # ~1.3 pawns / points
+
         san = replay.san(mv)
         replay.push(mv)
 
@@ -193,6 +247,12 @@ def analyze_game(
             is_mate=is_mate,
             best_is_capture=best_is_capture,
             best_is_check=best_is_check,
+            captured_piece=captured_piece,
+            reply_san=reply_san,
+            reply_captures=reply_captures,
+            only_move=only_move,
+            piece_moved=piece_moved,
+            develops=develops,
         ))
 
     white = _aggregate(analyses, "white")
