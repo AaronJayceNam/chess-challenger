@@ -114,13 +114,21 @@ launcher (`launcher/Chess Coach.bat`) does this for you.
 
 ## Chess Coach Studio — web app (record/upload + AI eval + review)
 
-A local web app (FastAPI) that combines two features in one page:
+A local web app (FastAPI) that combines three things in one page:
 
 1. **Record / upload + AI evaluation** — play moves on an interactive board to
    record a game, *or* paste/upload a PGN, then have the engine evaluate every
    move you played (classification, CPL, win%, best move).
-2. **Visual review** — step through the game on a board with the eval bar, eval
+2. **Teach / explain** — on the record board you can step back and forth through
+   the line, write a **written explanation for each move**, and draw **arrows
+   (right-click + drag)** and **square highlights (right-click)** to explain
+   visually. Export it as an **annotated PGN** or a **standalone shareable HTML
+   study** (`POST /api/study_html`) that opens offline — hand it to anyone.
+3. **Visual review** — step through the game on a board with the eval bar, eval
    graph, engine best-move arrows, and a colour-coded annotated move list.
+
+When launched from the desktop shortcut the server opens the browser itself once
+it is ready (`CC_OPEN_BROWSER=1`), so you land on the board, not a console.
 
 `python-chess` (the backend) is the **single source of move legality** — the
 browser has no chess engine of its own, so the whole app runs offline (no CDN).

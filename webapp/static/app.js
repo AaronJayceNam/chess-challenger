@@ -57,7 +57,22 @@ function switchTab(name) {
 // =========================================================================== //
 // RECORD MODE
 // =========================================================================== //
-const REC = { moves: [], state: null, sel: null, orient: "w" };
+// A teaching board: play moves (python-chess validates), step back/forward
+// through the line, and annotate each position with a written explanation plus
+// arrows / square highlights — then export a shareable study.
+const REC = {
+  moves: [],        // full UCI line
+  states: [],       // states[k] = /api/legal response for the position after k moves
+  view: 0,          // currently viewed position index (0..N)
+  orient: "w",
+  sel: null,
+  comments: {},     // index(str) -> explanation text
+  shapes: {},       // index(str) -> {arrows:[[a,b]], circles:[sq]}
+  rcStart: null,    // right-click drag origin square
+};
+const ARROW_COLOR = "#e0413f", CIRCLE_COLOR = "#15781b";
+const N = () => REC.moves.length;
+const cur = () => REC.states[REC.view];
 
 function parseFen(fen) {
   const rows = fen.split(" ")[0].split("/");
@@ -72,33 +87,44 @@ function parseFen(fen) {
   return map;
 }
 
+function filesRanks() {
+  return {
+    files: REC.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"],
+    ranks: REC.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8],
+  };
+}
+function cellCenter(sq) {
+  const { files, ranks } = filesRanks();
+  const fi = files.indexOf(sq[0]);
+  const ri = ranks.indexOf(+sq[1]);
+  return [fi * 55 + 27.5, ri * 55 + 27.5];
+}
+
 function renderRecBoard() {
   const board = $("recBoard");
   board.innerHTML = "";
-  if (!REC.state) return;
-  const map = parseFen(REC.state.fen);
-  const files = REC.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"];
-  const ranks = REC.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
-  const lastUci = REC.moves.length ? REC.moves[REC.moves.length - 1] : null;
+  const st = cur();
+  if (!st) return;
+  const map = parseFen(st.fen);
+  const { files, ranks } = filesRanks();
+  const lastUci = REC.view > 0 ? REC.moves[REC.view - 1] : null;
   const lastFrom = lastUci ? lastUci.slice(0, 2) : null;
   const lastTo = lastUci ? lastUci.slice(2, 4) : null;
-  const kingChar = REC.state.turn === "w" ? "K" : "k";
+  const kingChar = st.turn === "w" ? "K" : "k";
   let kingSq = null;
   for (const sq in map) if (map[sq] === kingChar) kingSq = sq;
-  const legal = REC.state.legal || {};
+  const legal = st.legal || {};
 
   for (const rank of ranks) {
     for (const f of files) {
       const sq = f + rank;
       const fi = "abcdefgh".indexOf(f);
-      const light = (fi + rank) % 2 === 0;
       const div = document.createElement("div");
-      div.className = "sq " + (light ? "light" : "dark");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
       if (sq === lastFrom || sq === lastTo) div.classList.add("last");
       if (REC.sel === sq) div.classList.add("sel");
-      if (REC.state.check && sq === kingSq) div.classList.add("check");
+      if (st.check && sq === kingSq) div.classList.add("check");
       div.dataset.sq = sq;
-
       const p = map[sq];
       if (p) {
         const span = document.createElement("span");
@@ -106,7 +132,6 @@ function renderRecBoard() {
         span.textContent = GLYPH[p.toLowerCase()];
         div.appendChild(span);
       }
-      // legal-move dot
       if (REC.sel && legal[REC.sel] && legal[REC.sel].includes(sq)) {
         const dot = document.createElement("div");
         dot.className = "dot" + (map[sq] ? " cap" : "");
@@ -118,15 +143,31 @@ function renderRecBoard() {
   }
 }
 
+function renderShapes() {
+  const sh = REC.shapes[String(REC.view)] || {};
+  let s = "";
+  (sh.circles || []).forEach((sq) => {
+    const [x, y] = cellCenter(sq);
+    s += `<circle cx="${x}" cy="${y}" r="25" fill="none" stroke="${CIRCLE_COLOR}" stroke-width="4" opacity="0.9"/>`;
+  });
+  (sh.arrows || []).forEach(([a, b]) => {
+    const [x1, y1] = cellCenter(a), [x2, y2] = cellCenter(b);
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len, head = 18, w = 9;
+    const ex = x2 - ux * head, ey = y2 - uy * head, px = -uy, py = ux;
+    s += `<line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" stroke="${ARROW_COLOR}" stroke-width="9" stroke-linecap="round" opacity="0.85"/>` +
+      `<polygon points="${x2},${y2} ${ex + px * w},${ey + py * w} ${ex - px * w},${ey - py * w}" fill="${ARROW_COLOR}" opacity="0.85"/>`;
+  });
+  $("recShapes").innerHTML = s;
+}
+
 function onRecClick(sq) {
-  if (REC.state.gameOver) return;
-  const map = parseFen(REC.state.fen);
-  const legal = REC.state.legal || {};
+  const st = cur();
+  if (st.gameOver) return;
+  const map = parseFen(st.fen);
+  const legal = st.legal || {};
   if (REC.sel) {
-    if (legal[REC.sel] && legal[REC.sel].includes(sq)) {
-      tryMove(REC.sel, sq, map[REC.sel]);
-      return;
-    }
+    if (legal[REC.sel] && legal[REC.sel].includes(sq)) { tryMove(REC.sel, sq, map[REC.sel]); return; }
     if (legal[sq]) { REC.sel = sq; renderRecBoard(); return; }
     REC.sel = null; renderRecBoard(); return;
   }
@@ -135,28 +176,22 @@ function onRecClick(sq) {
 
 function tryMove(from, to, pieceChar) {
   const toRank = +to[1];
-  const isPawn = pieceChar && pieceChar.toLowerCase() === "p";
-  if (isPawn && (toRank === 8 || toRank === 1)) {
+  if (pieceChar && pieceChar.toLowerCase() === "p" && (toRank === 8 || toRank === 1)) {
     showPromo(from, to, pieceChar === "P");
-  } else {
-    commitMove(from + to);
-  }
+  } else { commitMove(from + to); }
 }
 
 function showPromo(from, to, isWhite) {
   closePromo();
   const picker = document.createElement("div");
-  picker.className = "promo";
-  picker.id = "promoPicker";
+  picker.className = "promo"; picker.id = "promoPicker";
   ["q", "r", "b", "n"].forEach((p) => {
     const d = document.createElement("div");
     d.className = "pc " + (isWhite ? "w" : "b");
-    d.textContent = GLYPH[p];
-    d.style.color = isWhite ? "#111" : "#111";
+    d.textContent = GLYPH[p]; d.style.color = "#111";
     d.onclick = () => { closePromo(); commitMove(from + to + p); };
     picker.appendChild(d);
   });
-  // center over the board
   const wrap = $("recBoard").getBoundingClientRect();
   picker.style.left = (wrap.left + wrap.width / 2 - 30) + "px";
   picker.style.top = (wrap.top + wrap.height / 2 - 80) + "px";
@@ -164,55 +199,185 @@ function showPromo(from, to, isWhite) {
 }
 function closePromo() { const p = $("promoPicker"); if (p) p.remove(); }
 
+function pruneBeyond(idx) {
+  for (const k of Object.keys(REC.comments)) if (+k > idx) delete REC.comments[k];
+  for (const k of Object.keys(REC.shapes)) if (+k > idx) delete REC.shapes[k];
+}
+
 async function commitMove(uci) {
-  const next = [...REC.moves, uci];
+  const next = [...REC.moves.slice(0, REC.view), uci];
   try {
     const st = await api("/api/legal", { moves: next });
-    REC.moves = next; REC.state = st; REC.sel = null;
-    renderRecBoard(); renderRecMoves(st.san); updateTurn();
+    REC.states = REC.states.slice(0, REC.view + 1);
+    REC.states.push(st);
+    pruneBeyond(REC.view);     // drop annotations from any replaced forward line
+    REC.moves = next;
+    REC.view = next.length;
+    REC.sel = null;
+    renderAll();
   } catch (e) { setStatus("recStatus", "수 처리 오류: " + e.message, true); }
 }
 
-function renderRecMoves(san) {
+function renderRecMoves() {
   const el = $("recMoves");
-  if (!san || !san.length) {
-    el.innerHTML = '<span class="num">아직 둔 수가 없습니다. 보드에서 수를 두세요.</span>';
-    return;
-  }
-  let html = "";
+  const san = REC.states[N()] ? REC.states[N()].san : [];
+  let html = `<span class="mv${REC.comments["0"] ? " has" : ""}" data-i="0">시작${REC.comments["0"] ? " 💬" : ""}</span> `;
   san.forEach((s, i) => {
     if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
-    html += `<span class="mv">${s}</span> `;
+    const idx = i + 1, has = REC.comments[idx] ? " has" : "";
+    html += `<span class="mv${has}" data-i="${idx}">${s}${REC.comments[idx] ? " 💬" : ""}</span> `;
   });
   el.innerHTML = html;
-  el.scrollTop = el.scrollHeight;
+  el.querySelectorAll(".mv").forEach((m) =>
+    m.classList.toggle("active", +m.dataset.i === REC.view));
+  const a = el.querySelector(".mv.active"); if (a) a.scrollIntoView({ block: "nearest" });
 }
 
 function updateTurn() {
-  const t = $("recTurn");
-  if (REC.state.gameOver) {
-    t.innerHTML = `<b>대국 종료 — 결과 ${REC.state.result}</b>`;
-    return;
-  }
-  const w = REC.state.turn === "w";
+  const st = cur(), t = $("recTurn");
+  if (st.gameOver) { t.innerHTML = `<b>대국 종료 — 결과 ${st.result}</b>`; return; }
+  const w = st.turn === "w";
   t.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? "백(White)" : "흑(Black)"} 차례` +
-    (REC.state.check ? "  · <b style='color:#ff8a80'>체크!</b>" : "");
+    (st.check ? "  · <b style='color:#ff8a80'>체크!</b>" : "");
 }
+
+function syncComment() {
+  const k = String(REC.view);
+  $("recComment").value = REC.comments[k] || "";
+  let label = "시작 포지션";
+  if (REC.view > 0) {
+    const san = REC.states[N()].san[REC.view - 1];
+    const num = Math.floor((REC.view - 1) / 2) + 1;
+    label = `${num}${(REC.view - 1) % 2 === 0 ? "." : "..."} ${san}`;
+  }
+  $("recPlyLabel").textContent = "— " + label;
+}
+
+function renderAll() {
+  $("recSlider").max = N();
+  $("recSlider").value = REC.view;
+  renderRecBoard(); renderShapes(); renderRecMoves(); updateTurn(); syncComment();
+}
+
+function recGo(i) { REC.view = Math.max(0, Math.min(N(), i)); REC.sel = null; renderAll(); }
 
 async function recInit() {
   const st = await api("/api/legal", { moves: [] });
-  REC.moves = []; REC.state = st; REC.sel = null;
-  renderRecBoard(); renderRecMoves([]); updateTurn();
+  REC.moves = []; REC.states = [st]; REC.view = 0; REC.sel = null;
+  REC.comments = {}; REC.shapes = {};
+  $("recComment").value = "";
+  renderAll();
 }
+
+// ---- shape drawing (right-click) ----
+function getShapes() {
+  const k = String(REC.view);
+  if (!REC.shapes[k]) REC.shapes[k] = { arrows: [], circles: [] };
+  return REC.shapes[k];
+}
+function cleanupShapes() {
+  const k = String(REC.view), sh = REC.shapes[k];
+  if (sh && !sh.arrows.length && !sh.circles.length) delete REC.shapes[k];
+}
+function toggleCircle(sq) {
+  const sh = getShapes(); const i = sh.circles.indexOf(sq);
+  if (i >= 0) sh.circles.splice(i, 1); else sh.circles.push(sq);
+  cleanupShapes();
+}
+function toggleArrow(a, b) {
+  const sh = getShapes();
+  const i = sh.arrows.findIndex((x) => x[0] === a && x[1] === b);
+  if (i >= 0) sh.arrows.splice(i, 1); else sh.arrows.push([a, b]);
+  cleanupShapes();
+}
+(function attachShapeHandlers() {
+  const bd = $("recBoard");
+  const sqFrom = (e) => { const el = e.target.closest(".sq"); return el ? el.dataset.sq : null; };
+  bd.addEventListener("contextmenu", (e) => e.preventDefault());
+  bd.addEventListener("mousedown", (e) => {
+    if (e.button === 2) { e.preventDefault(); REC.rcStart = sqFrom(e); }
+  });
+  bd.addEventListener("mouseup", (e) => {
+    if (e.button !== 2) return;
+    const sq = sqFrom(e);
+    if (REC.rcStart && sq) {
+      if (sq === REC.rcStart) toggleCircle(sq); else toggleArrow(REC.rcStart, sq);
+    }
+    REC.rcStart = null; renderShapes();
+  });
+})();
+
+$("recComment").addEventListener("input", (e) => {
+  const k = String(REC.view);
+  if (e.target.value) REC.comments[k] = e.target.value; else delete REC.comments[k];
+  renderRecMoves();
+});
+
+$("recFirst").onclick = () => recGo(0);
+$("recPrev").onclick = () => recGo(REC.view - 1);
+$("recNext").onclick = () => recGo(REC.view + 1);
+$("recLast").onclick = () => recGo(N());
+$("recSlider").oninput = (e) => recGo(+e.target.value);
 $("recUndo").onclick = async () => {
   if (!REC.moves.length) return;
   const next = REC.moves.slice(0, -1);
   const st = await api("/api/legal", { moves: next });
-  REC.moves = next; REC.state = st; REC.sel = null;
-  renderRecBoard(); renderRecMoves(st.san); updateTurn();
+  REC.states = REC.states.slice(0, next.length + 1); REC.states[next.length] = st;
+  pruneBeyond(next.length);
+  REC.moves = next; REC.view = next.length; REC.sel = null;
+  renderAll();
 };
 $("recReset").onclick = recInit;
-$("recFlip").onclick = () => { REC.orient = REC.orient === "w" ? "b" : "w"; renderRecBoard(); };
+$("recFlip").onclick = () => { REC.orient = REC.orient === "w" ? "b" : "w"; renderRecBoard(); renderShapes(); };
+
+document.addEventListener("keydown", (e) => {
+  if (!document.getElementById("tab-record").classList.contains("active")) return;
+  if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowLeft") { recGo(REC.view - 1); e.preventDefault(); }
+  if (e.key === "ArrowRight") { recGo(REC.view + 1); e.preventDefault(); }
+});
+
+function download(name, text, type) {
+  const b = new Blob([text], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(b); a.download = name; a.click();
+}
+
+$("recExportPgn").onclick = () => {
+  if (!REC.moves.length) { setStatus("recShareStatus", "먼저 수를 두세요.", true); return; }
+  const san = REC.states[N()].san;
+  const w = $("recWhite").value || "White", b = $("recBlack").value || "Black";
+  let txt = `[Event "Chess Coach Studio"]\n[White "${w}"]\n[Black "${b}"]\n[Result "${REC.states[N()].result}"]\n\n`;
+  if (REC.comments["0"]) txt += `{ ${REC.comments["0"]} } `;
+  san.forEach((s, i) => {
+    if (i % 2 === 0) txt += `${i / 2 + 1}. `;
+    txt += `${s} `;
+    if (REC.comments[i + 1]) txt += `{ ${REC.comments[i + 1]} } `;
+  });
+  txt += REC.states[N()].result || "*";
+  download("study.pgn", txt, "application/x-chess-pgn");
+  setStatus("recShareStatus", "주석 PGN을 저장했습니다.");
+};
+
+$("recShare").onclick = async () => {
+  if (!REC.moves.length) { setStatus("recShareStatus", "먼저 수를 두세요.", true); return; }
+  setStatus("recShareStatus", "공유용 HTML 생성 중…");
+  try {
+    const res = await fetch("/api/study_html", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        moves: REC.moves, comments: REC.comments, shapes: REC.shapes,
+        white: $("recWhite").value || "White", black: $("recBlack").value || "Black",
+        title: $("recTitle").value || "체스 설명",
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const html = await res.text();
+    const name = ($("recTitle").value || "study").replace(/[^\w가-힣 -]/g, "") + ".html";
+    download(name, html, "text/html");
+    setStatus("recShareStatus", "저장 완료! 이 파일은 인터넷 없이 열립니다. 사람들에게 그대로 보내세요.");
+  } catch (e) { setStatus("recShareStatus", "생성 실패: " + e.message, true); }
+};
 
 $("recAnalyze").onclick = async () => {
   if (!REC.moves.length) { setStatus("recStatus", "먼저 수를 두세요.", true); return; }

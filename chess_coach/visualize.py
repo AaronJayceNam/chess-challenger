@@ -349,3 +349,168 @@ render();
 </body>
 </html>
 """
+
+
+# =========================================================================== #
+# Shareable "study": user-annotated line (no engine) with arrows/highlights and
+# per-move explanations, baked into a single standalone HTML file.
+# =========================================================================== #
+_SHAPE_ARROW = "#e0413f"     # red arrow (teaching)
+_SHAPE_CIRCLE = "#15781b66"  # translucent green square highlight
+
+
+def _study_svg(board: chess.Board, lastmove, shape: dict) -> str:
+    arrows = []
+    for pair in (shape.get("arrows") or []):
+        try:
+            arrows.append(chess.svg.Arrow(
+                chess.parse_square(pair[0]), chess.parse_square(pair[1]),
+                color=_SHAPE_ARROW))
+        except Exception:
+            pass
+    fill = {}
+    for sq in (shape.get("circles") or []):
+        try:
+            fill[chess.parse_square(sq)] = _SHAPE_CIRCLE
+        except Exception:
+            pass
+    return chess.svg.board(board, size=BOARD_SIZE, lastmove=lastmove,
+                           arrows=arrows, fill=fill, coordinates=True)
+
+
+def render_study_html(*, moves: list[str], comments: dict, shapes: dict,
+                      white: str, black: str, title: str) -> str:
+    board = chess.Board()
+    items = [{
+        "svg": _study_svg(board, None, shapes.get("0", {})),
+        "comment": comments.get("0", ""),
+        "label": "시작 포지션",
+    }]
+    replay = chess.Board()
+    for k, u in enumerate(moves):
+        mv = chess.Move.from_uci(u)
+        san = replay.san(mv)
+        replay.push(mv)
+        board.push(mv)
+        num = (k // 2) + 1
+        label = f"{num}.{'' if k % 2 == 0 else '..'} {san}"
+        items.append({
+            "svg": _study_svg(board, mv, shapes.get(str(k + 1), {})),
+            "comment": comments.get(str(k + 1), ""),
+            "label": label,
+        })
+
+    data_json = json.dumps(items, ensure_ascii=False)
+    return _STUDY_TEMPLATE.format(
+        title=title or "Chess Study",
+        white=white or "White",
+        black=black or "Black",
+        board_size=BOARD_SIZE,
+        data_json=data_json,
+    )
+
+
+_STUDY_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<style>
+  :root {{ --bg:#1e1f22; --panel:#2b2d31; --ink:#e6e6e6; --muted:#9aa0a6; }}
+  * {{ box-sizing:border-box; }}
+  body {{ margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Segoe UI',system-ui,Arial,sans-serif; }}
+  header {{ padding:14px 20px; border-bottom:1px solid #000; }}
+  header h1 {{ font-size:18px; margin:0; }}
+  header .meta {{ color:var(--muted); font-size:13px; margin-top:3px; }}
+  .wrap {{ display:flex; gap:18px; padding:18px; align-items:flex-start; flex-wrap:wrap; }}
+  .board {{ width:{board_size}px; height:{board_size}px; }}
+  .controls {{ margin-top:10px; display:flex; gap:6px; align-items:center; }}
+  button {{ background:var(--panel); color:var(--ink); border:1px solid #000;
+    border-radius:6px; padding:6px 11px; font-size:15px; cursor:pointer; }}
+  button:hover {{ background:#3a3d43; }}
+  input[type=range] {{ flex:1; }}
+  .right {{ flex:1; min-width:300px; max-width:480px; }}
+  .card {{ background:var(--panel); border-radius:8px; padding:14px 16px; margin-bottom:14px; }}
+  .label {{ font-size:16px; font-weight:700; margin-bottom:8px; }}
+  .comment {{ font-size:15px; line-height:1.65; white-space:pre-wrap; }}
+  .comment.empty {{ color:var(--muted); }}
+  .moves {{ line-height:2.0; font-size:15px; max-height:260px; overflow:auto; }}
+  .moves .num {{ color:var(--muted); margin:0 4px 0 8px; }}
+  .moves .mv {{ cursor:pointer; padding:1px 4px; border-radius:4px; }}
+  .moves .mv:hover {{ background:#3a3d43; }}
+  .moves .mv.active {{ background:#4b5563; color:#fff; }}
+  .moves .has {{ color:#7bd88f; }}
+</style>
+</head>
+<body>
+<header>
+  <h1>{title}</h1>
+  <div class="meta">{white} (백) vs {black} (흑) — 화살표·강조와 설명으로 보는 해설</div>
+</header>
+<div class="wrap">
+  <div>
+    <div class="board" id="board"></div>
+    <div class="controls">
+      <button id="bFirst">⏮</button><button id="bPrev">◀</button>
+      <button id="bNext">▶</button><button id="bLast">⏭</button>
+      <input type="range" id="slider" min="0" value="0">
+    </div>
+  </div>
+  <div class="right">
+    <div class="card">
+      <div class="label" id="label"></div>
+      <div class="comment" id="comment"></div>
+    </div>
+    <div class="card"><div class="moves" id="moves"></div></div>
+  </div>
+</div>
+<script id="data" type="application/json">{data_json}</script>
+<script>
+const ITEMS = JSON.parse(document.getElementById('data').textContent);
+const N = ITEMS.length - 1;
+let idx = 0;
+const board = document.getElementById('board'), slider = document.getElementById('slider');
+const label = document.getElementById('label'), comment = document.getElementById('comment');
+slider.max = N;
+
+let html = '';
+ITEMS.forEach((it, i) => {{
+  if (i === 0) return;
+  if (i % 2 === 1) html += `<span class="num">${{(i-1)/2+1}}.</span>`;
+  const has = it.comment ? ' has' : '';
+  const lab = it.label.replace(/^\d+\.(\.\.)?\s*/, '');
+  html += `<span class="mv${{has}}" data-i="${{i}}">${{lab}}${{it.comment?' 💬':''}}</span> `;
+}});
+document.getElementById('moves').innerHTML = html;
+document.getElementById('moves').addEventListener('click', e => {{
+  const m = e.target.closest('.mv'); if (m) go(+m.dataset.i);
+}});
+
+function render() {{
+  const it = ITEMS[idx];
+  board.innerHTML = it.svg;
+  label.textContent = it.label;
+  comment.textContent = it.comment || '(이 수에는 설명이 없습니다)';
+  comment.className = 'comment' + (it.comment ? '' : ' empty');
+  slider.value = idx;
+  document.querySelectorAll('.mv').forEach(el =>
+    el.classList.toggle('active', +el.dataset.i === idx));
+  const a = document.querySelector('.mv.active'); if (a) a.scrollIntoView({{block:'nearest'}});
+}}
+function go(i) {{ idx = Math.max(0, Math.min(N, i)); render(); }}
+document.getElementById('bFirst').onclick = () => go(0);
+document.getElementById('bPrev').onclick = () => go(idx-1);
+document.getElementById('bNext').onclick = () => go(idx+1);
+document.getElementById('bLast').onclick = () => go(N);
+slider.oninput = e => go(+e.target.value);
+document.addEventListener('keydown', e => {{
+  if (e.key === 'ArrowLeft') {{ go(idx-1); e.preventDefault(); }}
+  if (e.key === 'ArrowRight') {{ go(idx+1); e.preventDefault(); }}
+}});
+render();
+</script>
+</body>
+</html>
+"""

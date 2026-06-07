@@ -1,38 +1,56 @@
 """FastAPI backend for Chess Coach Studio.
 
-Two features in one app:
+Features:
   1. Record (play moves on a board) or upload/paste a PGN, then get an engine
      "AI" evaluation of every move played.
   2. Review that evaluation visually (board, eval bar, eval graph, annotated
-     move list, engine best-move arrows) — the same renderer as the static tool.
+     move list, engine best-move arrows).
+  3. Teach: annotate the recorded line with per-move explanations and
+     arrows/highlights, and export a standalone shareable study HTML.
 
 python-chess is the SINGLE source of move legality (`/api/legal`); the browser
 never needs its own chess engine, so the whole thing runs offline.
 
-Run:  uvicorn webapp.server:app  (or python -m webapp.server)
+Run:  uvicorn webapp.server:app   (the desktop launcher sets CC_OPEN_BROWSER=1
+so the server opens the browser itself once it is ready).
 """
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import chess
 import chess.pgn
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from chess_coach.config import EngineConfig
 from chess_coach.engine import Engine
 from chess_coach.analyze import analyze_game, read_first_game
-from chess_coach.visualize import build_view_data
+from chess_coach.visualize import build_view_data, render_study_html
 from chess_coach import coach as coach_mod
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
 
-app = FastAPI(title="Chess Coach Studio")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # When launched from the desktop shortcut, open the app in the browser as
+    # soon as the server is ready (so the user sees the board, not just a console).
+    if os.environ.get("CC_OPEN_BROWSER") == "1":
+        import threading
+        import webbrowser
+        port = os.environ.get("PORT", "8000")
+        url = f"http://127.0.0.1:{port}/"
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    yield
+
+
+app = FastAPI(title="Chess Coach Studio", lifespan=lifespan)
 
 
 # --------------------------------------------------------------------------- #
@@ -49,6 +67,15 @@ class AnalyzeRequest(BaseModel):
     black: str = "Black"
     depth: int = 16
     coach: bool = False
+
+
+class StudyRequest(BaseModel):
+    moves: list[str] = []
+    comments: dict[str, str] = {}                 # index ("0".."N") -> text
+    shapes: dict[str, dict] = {}                  # index -> {arrows:[[a,b]], circles:[sq]}
+    white: str = "White"
+    black: str = "Black"
+    title: str = "체스 설명 (Chess Study)"
 
 
 # --------------------------------------------------------------------------- #
@@ -70,10 +97,11 @@ def _replay(moves: list[str]) -> chess.Board:
 def _legal_state(board: chess.Board) -> dict:
     legal: dict[str, list[str]] = {}
     for mv in board.legal_moves:
-        legal.setdefault(chess.square_name(mv.from_square), [])
+        src = chess.square_name(mv.from_square)
         dst = chess.square_name(mv.to_square)
-        if dst not in legal[chess.square_name(mv.from_square)]:
-            legal[chess.square_name(mv.from_square)].append(dst)
+        legal.setdefault(src, [])
+        if dst not in legal[src]:
+            legal[src].append(dst)
     over = board.is_game_over(claim_draw=True)
     return {
         "ok": True,
@@ -127,7 +155,6 @@ def legal(req: LegalRequest):
     """Validate the moves so far and return the legal-move map for the position."""
     board = _replay(req.moves)
     state = _legal_state(board)
-    # SAN history (for the recorded move list)
     san: list[str] = []
     b = chess.Board()
     for u in req.moves:
@@ -166,6 +193,21 @@ def analyze(req: AnalyzeRequest):
     else:
         view["coach"] = {"available": coach_mod.coaching_available()}
     return JSONResponse(view)
+
+
+@app.post("/api/study_html", response_class=PlainTextResponse)
+def study_html(req: StudyRequest):
+    """Bake the annotated line into a standalone, shareable HTML document."""
+    _replay(req.moves)  # validate
+    html = render_study_html(
+        moves=req.moves,
+        comments=req.comments,
+        shapes=req.shapes,
+        white=req.white,
+        black=req.black,
+        title=req.title,
+    )
+    return PlainTextResponse(html, media_type="text/html; charset=utf-8")
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

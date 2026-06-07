@@ -45,6 +45,9 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:10px 0 4
 
 /* ---- interactive board (record) ---- */
 .boardwrap { display:flex; gap:10px; }
+.boardstack { position:relative; width:440px; height:440px; }
+.shapes { position:absolute; inset:0; width:440px; height:440px; pointer-events:none;
+  z-index:5; }
 .cboard { width:440px; height:440px; display:grid;
   grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
   border-radius:6px; overflow:hidden; user-select:none; }
@@ -73,6 +76,7 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:10px 0 4
 .movelist .mv { cursor:pointer; padding:1px 4px; border-radius:4px; }
 .movelist .mv:hover { background:#3f424a; }
 .movelist .mv.active { background:#4b5563; color:#fff !important; }
+.movelist .mv.has { color:#7bd88f; }
 
 .status { font-size:13px; color:var(--muted); margin-top:8px; min-height:18px; }
 .status.err { color:#ff8a80; }

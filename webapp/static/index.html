@@ -24,27 +24,55 @@
   <div class="cols">
     <div>
       <div class="boardwrap">
-        <div class="cboard" id="recBoard"></div>
+        <div class="boardstack">
+          <div class="cboard" id="recBoard"></div>
+          <svg class="shapes" id="recShapes" viewBox="0 0 440 440"></svg>
+        </div>
       </div>
       <div class="turn" id="recTurn"><span class="pill"></span>백(White) 차례</div>
       <div class="controls">
-        <button class="ghost" id="recUndo">↩ 한 수 무르기</button>
+        <button class="ghost" id="recFirst" title="처음">⏮</button>
+        <button class="ghost" id="recPrev" title="이전 (←)">◀</button>
+        <button class="ghost" id="recNext" title="다음 (→)">▶</button>
+        <button class="ghost" id="recLast" title="끝">⏭</button>
+        <input type="range" id="recSlider" min="0" value="0">
+      </div>
+      <div class="controls">
+        <button class="ghost" id="recUndo">↩ 마지막 수 삭제</button>
         <button class="ghost" id="recReset">⟲ 처음부터</button>
         <button class="ghost" id="recFlip">⇅ 보드 뒤집기</button>
+      </div>
+      <div class="legend">
+        보드에서 <b>좌클릭</b>으로 기물 이동 · <b>우클릭+드래그</b>로 화살표 · <b>우클릭</b>으로 칸 강조
       </div>
     </div>
 
     <div style="flex:1; min-width:300px; max-width:460px;">
       <div class="card">
-        <h3>대국자</h3>
+        <h3>대국자 / 제목</h3>
         <div class="row2">
           <div><label class="field">백 (White)</label><input type="text" id="recWhite" value="White"></div>
           <div><label class="field">흑 (Black)</label><input type="text" id="recBlack" value="Black"></div>
         </div>
+        <label class="field">설명 제목</label>
+        <input type="text" id="recTitle" value="체스 설명 (Chess Study)">
+      </div>
+      <div class="card">
+        <h3>이 수 설명 <span id="recPlyLabel" style="color:#9aa0a6;font-weight:400"></span></h3>
+        <textarea id="recComment" placeholder="이 수/포지션에 대한 설명을 적으세요. 사람들에게 보여줄 해설입니다.&#10;예) 중앙을 장악하고 비숍 길을 여는 수."></textarea>
+        <div class="status">설명은 자동 저장됩니다. 화살표/강조도 현재 수에 함께 저장됩니다.</div>
       </div>
       <div class="card">
         <h3>기보 (둔 수)</h3>
         <div class="movelist" id="recMoves"><span class="num">아직 둔 수가 없습니다. 보드에서 수를 두세요.</span></div>
+      </div>
+      <div class="card">
+        <h3>공유 / 내보내기</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="primary" id="recShare">🔗 공유용 HTML 저장</button>
+          <button class="ghost" id="recExportPgn">⬇ 주석 PGN</button>
+        </div>
+        <div class="status" id="recShareStatus">공유용 HTML은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.</div>
       </div>
       <div class="card">
         <h3>AI 평가</h3>
