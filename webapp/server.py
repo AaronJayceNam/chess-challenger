@@ -70,6 +70,11 @@ class AnalyzeRequest(BaseModel):
     coach: bool = False
 
 
+class AiMoveRequest(BaseModel):
+    moves: list[str] = []
+    level: int = 5
+
+
 class StudyRequest(BaseModel):
     moves: list[str] = []
     comments: dict[str, str] = {}                 # index ("0".."N") -> text
@@ -116,6 +121,16 @@ def _legal_state(board: chess.Board) -> dict:
     }
 
 
+def _san_history(moves: list[str]) -> list[str]:
+    san: list[str] = []
+    b = chess.Board()
+    for u in moves:
+        mv = chess.Move.from_uci(u)
+        san.append(b.san(mv))
+        b.push(mv)
+    return san
+
+
 def _game_from_moves(moves: list[str], white: str, black: str) -> chess.pgn.Game:
     board = chess.Board()
     game = chess.pgn.Game()
@@ -156,13 +171,41 @@ def legal(req: LegalRequest):
     """Validate the moves so far and return the legal-move map for the position."""
     board = _replay(req.moves)
     state = _legal_state(board)
-    san: list[str] = []
-    b = chess.Board()
-    for u in req.moves:
-        mv = chess.Move.from_uci(u)
-        san.append(b.san(mv))
-        b.push(mv)
-    state["san"] = san
+    state["san"] = _san_history(req.moves)
+    return state
+
+
+@app.post("/api/ai_move")
+def ai_move(req: AiMoveRequest):
+    """Have the engine play one reply at the given difficulty (1-10).
+
+    Returns the reply move plus the legal-move state AFTER the reply (or move=None
+    if the game is already over).
+    """
+    cfg = EngineConfig()
+    if not cfg.path:
+        raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다.")
+    cfg.threads = 2
+    cfg.hash_mb = 64
+    cfg.multipv = 1
+
+    board = _replay(req.moves)
+    moves = list(req.moves)
+    reply_uci = None
+    reply_san = None
+    if not board.is_game_over(claim_draw=True):
+        with Engine(cfg) as eng:
+            mv = eng.play(board, req.level)
+        if mv is not None:
+            reply_san = board.san(mv)
+            board.push(mv)
+            reply_uci = mv.uci()
+            moves.append(reply_uci)
+
+    state = _legal_state(board)
+    state["move"] = reply_uci
+    state["sanMove"] = reply_san
+    state["san"] = _san_history(moves)
     return state
 
 

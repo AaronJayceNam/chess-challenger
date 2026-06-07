@@ -91,6 +91,27 @@ class Engine:
             return chess.engine.Limit(time=self.config.movetime_ms / 1000.0)
         return chess.engine.Limit(depth=self.config.depth or 18)
 
+    def play(self, board: chess.Board, level: int) -> Optional[chess.Move]:
+        """Pick a move at difficulty `level` (1=weakest .. 10=full strength).
+
+        Levels 1-9 cap the engine with UCI_LimitStrength/UCI_Elo (≈1320..2700);
+        level 10 plays at full strength. A small per-level time budget keeps the
+        reply snappy for interactive play.
+        """
+        assert self._engine is not None, "Engine not opened"
+        level = max(1, min(10, level))
+        try:
+            if level >= 10:
+                self._engine.configure({"UCI_LimitStrength": False})
+            else:
+                elo = int(round(1320 + (level - 1) / 8 * (2700 - 1320)))
+                self._engine.configure({"UCI_LimitStrength": True, "UCI_Elo": elo})
+        except chess.engine.EngineError:
+            pass  # option unsupported -> just play full strength
+        limit = chess.engine.Limit(time=(120 + level * 40) / 1000.0)
+        result = self._engine.play(board, limit)
+        return result.move
+
     def evaluate(self, board: chess.Board) -> PositionEval:
         """Analyse a position. Returns a mover-POV PositionEval.
 

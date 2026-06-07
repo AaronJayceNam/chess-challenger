@@ -14,10 +14,52 @@
 </header>
 
 <div class="tabs">
-  <button data-tab="upload" class="active">① 녹화 (경기 파일 삽입)</button>
-  <button data-tab="record">② 수동 입력 (보드에서 직접)</button>
-  <button data-tab="review" id="tabReview" disabled>③ AI 평가 / 리뷰</button>
+  <button data-tab="ai" class="active">① AI와 대국</button>
+  <button data-tab="upload">② 녹화 (경기 파일 삽입)</button>
+  <button data-tab="record">③ 수동 입력</button>
+  <button data-tab="review" id="tabReview" disabled>④ AI 평가 / 리뷰</button>
 </div>
+
+<!-- ====================== AI와 대국 ====================== -->
+<section class="tab active" id="tab-ai">
+  <div class="cols">
+    <div>
+      <div class="boardwrap">
+        <div class="boardstack"><div class="cboard" id="aiBoard"></div></div>
+      </div>
+      <div class="turn" id="aiTurn"><span class="pill"></span>새 대국을 시작하세요.</div>
+      <div class="controls">
+        <button class="ghost" id="aiResign">🏳️ 기권하고 평가받기</button>
+        <button class="ghost" id="aiFlip">⇅ 보드 뒤집기</button>
+      </div>
+    </div>
+    <div style="flex:1; min-width:300px; max-width:420px;">
+      <div class="card">
+        <h3>새 대국 설정</h3>
+        <label class="field">난이도 — 1(쉬움) ~ 10(최강)</label>
+        <input type="range" id="aiLevel" min="1" max="10" value="3" step="1" style="accent-color:var(--accent)">
+        <div id="aiLevelLabel" class="status" style="font-size:14px">레벨 3 · 초보</div>
+        <label class="field">내 색</label>
+        <select id="aiColor">
+          <option value="w">백 (내가 선공)</option>
+          <option value="b">흑 (AI가 선공)</option>
+        </select>
+        <div style="margin-top:14px;"><button class="primary" id="aiStart">▶ 새 대국 시작</button></div>
+        <div class="status" id="aiStatus"></div>
+      </div>
+      <div class="card">
+        <h3>기보</h3>
+        <div class="movelist" id="aiMoves"><span class="num">대국을 시작하면 여기에 기보가 쌓입니다.</span></div>
+      </div>
+      <div class="card">
+        <h3>경기 종료 후</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 8px">
+          대국이 끝나면 <b>자동으로 AI가 모든 수를 평가</b>하고 리뷰 화면으로 넘어갑니다.</p>
+        <button class="ghost hidden" id="aiAnalyze">🤖 평가 다시 보기</button>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ====================== 수동 입력 (interactive board) ====================== -->
 <section class="tab" id="tab-record">
@@ -80,7 +122,7 @@
 </section>
 
 <!-- ====================== 녹화 (경기 파일 삽입) ====================== -->
-<section class="tab active" id="tab-upload">
+<section class="tab" id="tab-upload">
   <div class="cols">
     <div style="flex:1; min-width:320px; max-width:640px;">
       <div class="card">

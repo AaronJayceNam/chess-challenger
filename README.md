@@ -114,7 +114,13 @@ launcher (`launcher/Chess Coach.bat`) does this for you.
 
 ## Chess Coach Studio — web app (record/upload + AI eval + review)
 
-A local web app (FastAPI) that combines three things in one page:
+A local web app (FastAPI) that combines several things in one page:
+
+0. **Play vs AI (levels 1–10)** — pick a side and a difficulty (Stockfish
+   `UCI_Elo`/`LimitStrength` scaling, ≈1320 Elo at level 1 up to full strength at
+   level 10). Play on the board; the engine replies. **When the game ends it
+   automatically runs the per-move AI evaluation** and drops you into the review.
+
 
 1. **녹화 (insert a game file) + AI evaluation** — drop in the `.pgn` file of a
    game you recorded (or paste the moves), press **확인**, and the engine

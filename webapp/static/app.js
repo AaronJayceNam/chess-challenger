@@ -180,7 +180,7 @@ function tryMove(from, to, pieceChar) {
   } else { commitMove(from + to); }
 }
 
-function showPromo(from, to, isWhite) {
+function promoChooser(boardEl, isWhite, cb) {
   closePromo();
   const picker = document.createElement("div");
   picker.className = "promo"; picker.id = "promoPicker";
@@ -188,15 +188,18 @@ function showPromo(from, to, isWhite) {
     const d = document.createElement("div");
     d.className = "pc " + (isWhite ? "w" : "b");
     d.textContent = GLYPH[p]; d.style.color = "#111";
-    d.onclick = () => { closePromo(); commitMove(from + to + p); };
+    d.onclick = () => { closePromo(); cb(p); };
     picker.appendChild(d);
   });
-  const wrap = $("recBoard").getBoundingClientRect();
+  const wrap = boardEl.getBoundingClientRect();
   picker.style.left = (wrap.left + wrap.width / 2 - 30) + "px";
   picker.style.top = (wrap.top + wrap.height / 2 - 80) + "px";
   document.body.appendChild(picker);
 }
 function closePromo() { const p = $("promoPicker"); if (p) p.remove(); }
+function showPromo(from, to, isWhite) {
+  promoChooser($("recBoard"), isWhite, (p) => commitMove(from + to + p));
+}
 
 function pruneBeyond(idx) {
   for (const k of Object.keys(REC.shapes)) if (+k > idx) delete REC.shapes[k];
@@ -592,5 +595,178 @@ $("rvShare").onclick = async () => {
   } catch (e) { setStatus("rvShareStatus", "생성 실패: " + e.message, true); }
 };
 
+// =========================================================================== //
+// PLAY vs AI (levels 1-10) -> auto-evaluate when the game ends
+// =========================================================================== //
+const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false };
+
+function levelDesc(n) {
+  if (n <= 3) return "초보";
+  if (n <= 6) return "중급";
+  if (n <= 9) return "상급";
+  return "최강";
+}
+
+function renderAiBoard() {
+  const board = $("aiBoard"); board.innerHTML = "";
+  const st = AIG.state; if (!st) return;
+  const map = parseFen(st.fen);
+  const files = AIG.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"];
+  const ranks = AIG.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const lastUci = AIG.moves.length ? AIG.moves[AIG.moves.length - 1] : null;
+  const lf = lastUci ? lastUci.slice(0, 2) : null, lt = lastUci ? lastUci.slice(2, 4) : null;
+  const kingChar = st.turn === "w" ? "K" : "k";
+  let kingSq = null;
+  for (const s in map) if (map[s] === kingChar) kingSq = s;
+  const canMove = !AIG.over && !AIG.thinking && st.turn === AIG.human;
+  const legal = canMove ? (st.legal || {}) : {};
+  for (const rank of ranks) {
+    for (const f of files) {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const div = document.createElement("div");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
+      if (sq === lf || sq === lt) div.classList.add("last");
+      if (AIG.sel === sq) div.classList.add("sel");
+      if (st.check && sq === kingSq) div.classList.add("check");
+      const p = map[sq];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "pc " + (p === p.toUpperCase() ? "w" : "b");
+        s.textContent = GLYPH[p.toLowerCase()];
+        div.appendChild(s);
+      }
+      if (AIG.sel && legal[AIG.sel] && legal[AIG.sel].includes(sq)) {
+        const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
+        div.appendChild(d);
+      }
+      div.onclick = () => onAiClick(sq);
+      board.appendChild(div);
+    }
+  }
+}
+
+function onAiClick(sq) {
+  const st = AIG.state;
+  if (!AIG.started || AIG.over || AIG.thinking || !st || st.turn !== AIG.human) return;
+  const map = parseFen(st.fen), legal = st.legal || {};
+  if (AIG.sel) {
+    if (legal[AIG.sel] && legal[AIG.sel].includes(sq)) {
+      const from = AIG.sel, piece = map[from], r = +sq[1];
+      AIG.sel = null;
+      if (piece && piece.toLowerCase() === "p" && (r === 8 || r === 1)) {
+        promoChooser($("aiBoard"), piece === "P", (pp) => aiHumanMove(from + sq + pp));
+      } else {
+        aiHumanMove(from + sq);
+      }
+      return;
+    }
+    if (legal[sq]) { AIG.sel = sq; renderAiBoard(); return; }
+    AIG.sel = null; renderAiBoard(); return;
+  }
+  if (legal[sq]) { AIG.sel = sq; renderAiBoard(); }
+}
+
+function updateAiTurn() {
+  const t = $("aiTurn"), st = AIG.state;
+  if (!st || !AIG.started) { t.innerHTML = '<span class="pill"></span>난이도와 색을 고르고 “새 대국 시작”을 누르세요.'; return; }
+  if (AIG.over) { t.innerHTML = "<b>대국 종료</b>"; return; }
+  if (AIG.thinking) { t.innerHTML = '<span class="pill b"></span>AI가 생각 중…'; return; }
+  const w = st.turn === "w", mine = st.turn === AIG.human;
+  t.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? "백" : "흑"} 차례` +
+    (mine ? " (당신)" : " (AI)") + (st.check ? " · <b style='color:#ff8a80'>체크!</b>" : "");
+}
+
+function renderAiMoves() {
+  const el = $("aiMoves");
+  const san = (AIG.state && AIG.state.san) ? AIG.state.san : [];
+  if (!san.length) { el.innerHTML = '<span class="num">대국을 시작하면 여기에 기보가 쌓입니다.</span>'; return; }
+  let html = "";
+  san.forEach((s, i) => {
+    if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
+    html += `<span class="mv" style="cursor:default">${s}</span> `;
+  });
+  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+}
+
+async function aiHumanMove(uci) {
+  const moves = [...AIG.moves, uci];
+  let st;
+  try { st = await api("/api/legal", { moves }); }
+  catch (e) { setStatus("aiStatus", "수 처리 오류: " + e.message, true); return; }
+  AIG.moves = moves; AIG.state = st; AIG.sel = null;
+  renderAiBoard(); renderAiMoves(); updateAiTurn();
+  if (st.gameOver) { aiEndGame(); return; }
+  await aiReply();
+}
+
+async function aiReply() {
+  AIG.thinking = true; updateAiTurn(); renderAiBoard();
+  let res;
+  try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level }); }
+  catch (e) { AIG.thinking = false; setStatus("aiStatus", "AI 응수 오류: " + e.message, true); return; }
+  AIG.thinking = false;
+  if (res.move) AIG.moves.push(res.move);
+  AIG.state = res;
+  renderAiBoard(); renderAiMoves(); updateAiTurn();
+  if (res.gameOver) aiEndGame();
+}
+
+function aiPlayerNames() {
+  const lv = AIG.level;
+  return AIG.human === "w"
+    ? { white: "나(You)", black: `AI 레벨 ${lv}` }
+    : { white: `AI 레벨 ${lv}`, black: "나(You)" };
+}
+
+function aiEndGame() {
+  AIG.over = true; renderAiBoard(); updateAiTurn();
+  const r = AIG.state.result;
+  let outcome = "무승부";
+  if (r === "1-0") outcome = AIG.human === "w" ? "당신 승리! 🎉" : "패배 😢";
+  else if (r === "0-1") outcome = AIG.human === "b" ? "당신 승리! 🎉" : "패배 😢";
+  setStatus("aiStatus", `대국 종료 (${r}) — ${outcome}  ·  AI 평가를 시작합니다…`);
+  $("aiAnalyze").classList.remove("hidden");
+  const { white, black } = aiPlayerNames();
+  runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
+}
+
+async function aiStart() {
+  AIG.level = +$("aiLevel").value;
+  AIG.human = $("aiColor").value;
+  AIG.orient = AIG.human;
+  AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true;
+  $("aiAnalyze").classList.add("hidden");
+  try { AIG.state = await api("/api/legal", { moves: [] }); }
+  catch (e) { setStatus("aiStatus", "시작 오류: " + e.message, true); return; }
+  setStatus("aiStatus", `레벨 ${AIG.level} 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
+  renderAiBoard(); renderAiMoves(); updateAiTurn();
+  if (AIG.human === "b") await aiReply();   // AI (white) moves first
+}
+
+$("aiLevel").oninput = (e) => {
+  const n = +e.target.value;
+  $("aiLevelLabel").textContent = `레벨 ${n} · ${levelDesc(n)}`;
+};
+$("aiStart").onclick = aiStart;
+$("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
+$("aiResign").onclick = () => {
+  if (!AIG.moves.length) { setStatus("aiStatus", "먼저 대국을 시작하고 한 수 이상 두세요.", true); return; }
+  AIG.over = true; updateAiTurn();
+  const { white, black } = aiPlayerNames();
+  setStatus("aiStatus", "기권했습니다. 둔 수들을 평가합니다…");
+  runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
+};
+$("aiAnalyze").onclick = () => {
+  if (!AIG.moves.length) return;
+  const { white, black } = aiPlayerNames();
+  runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
+};
+
+async function aiBoot() {
+  try { AIG.state = await api("/api/legal", { moves: [] }); renderAiBoard(); updateAiTurn(); }
+  catch (e) { /* board stays empty until 새 대국 시작 */ }
+}
+
 // boot
 recInit().catch((e) => setStatus("recStatus", "초기화 오류: " + e.message, true));
+aiBoot();
