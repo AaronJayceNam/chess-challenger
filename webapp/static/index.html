@@ -14,13 +14,13 @@
 </header>
 
 <div class="tabs">
-  <button data-tab="record" class="active">① 녹화 (Record)</button>
-  <button data-tab="upload">① PGN 업로드</button>
-  <button data-tab="review" id="tabReview" disabled>② AI 평가 / 리뷰</button>
+  <button data-tab="upload" class="active">① 녹화 (경기 파일 삽입)</button>
+  <button data-tab="record">② 수동 입력 (보드에서 직접)</button>
+  <button data-tab="review" id="tabReview" disabled>③ AI 평가 / 리뷰</button>
 </div>
 
-<!-- ====================== RECORD ====================== -->
-<section class="tab active" id="tab-record">
+<!-- ====================== 수동 입력 (interactive board) ====================== -->
+<section class="tab" id="tab-record">
   <div class="cols">
     <div>
       <div class="boardwrap">
@@ -79,27 +79,32 @@
   </div>
 </section>
 
-<!-- ====================== UPLOAD ====================== -->
-<section class="tab" id="tab-upload">
+<!-- ====================== 녹화 (경기 파일 삽입) ====================== -->
+<section class="tab active" id="tab-upload">
   <div class="cols">
-    <div style="flex:1; min-width:320px; max-width:620px;">
+    <div style="flex:1; min-width:320px; max-width:640px;">
       <div class="card">
-        <h3>PGN 붙여넣기 또는 파일 업로드</h3>
-        <textarea id="pgnText" placeholder="여기에 PGN을 붙여넣으세요…&#10;&#10;예) 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 ..."></textarea>
-        <label class="field">또는 .pgn 파일 선택</label>
+        <h3>① 녹화한 경기 파일 삽입</h3>
+        <p style="font-size:13px;color:#9aa0a6;margin:0 0 12px">
+          체스닷컴·리체스 등에서 내려받은 경기 기록 파일(<b>.pgn</b>)을 여기에 넣으세요.
+          그런 다음 아래 <b>확인</b> 버튼을 누르면 AI가 각 수를 평가·해설합니다.</p>
+        <label class="field">경기 파일 선택 (.pgn)</label>
         <input type="file" id="pgnFile" accept=".pgn,.txt">
+        <div id="fileName" class="status"></div>
+        <label class="field" style="margin-top:14px">또는 기보(PGN) 텍스트를 직접 붙여넣기</label>
+        <textarea id="pgnText" placeholder="예) 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 ..."></textarea>
+        <div style="margin-top:8px"><button class="ghost" id="upSample">샘플 경기 불러오기</button></div>
       </div>
       <div class="card">
-        <h3>AI 평가</h3>
-        <label class="field">엔진 깊이 (depth)</label>
+        <h3>② 확인 → AI 평가</h3>
+        <label class="field">분석 정밀도 (높을수록 정확하지만 느림)</label>
         <select id="upDepth">
-          <option value="12">12 (빠름)</option>
-          <option value="16" selected>16 (권장)</option>
-          <option value="20">20 (정밀)</option>
+          <option value="12">빠름</option>
+          <option value="16" selected>권장</option>
+          <option value="20">정밀</option>
         </select>
-        <div style="margin-top:12px;">
-          <button class="primary" id="upAnalyze">🤖 업로드한 게임 AI로 평가하기</button>
-          <button class="ghost" id="upSample">샘플 게임 불러오기</button>
+        <div style="margin-top:14px;">
+          <button class="primary" id="upAnalyze">✔ 확인 — AI로 평가하기</button>
         </div>
         <div class="status" id="upStatus"></div>
       </div>

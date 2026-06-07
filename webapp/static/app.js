@@ -348,13 +348,20 @@ const SAMPLE_PGN = `[Event "Paris"]
 $("pgnFile").onchange = (e) => {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
-  r.onload = () => { $("pgnText").value = r.result; };
+  r.onload = () => {
+    $("pgnText").value = r.result;
+    $("fileName").textContent = `삽입됨: ${f.name} — 아래 '확인'을 누르세요.`;
+    setStatus("upStatus", "");
+  };
   r.readAsText(f);
 };
-$("upSample").onclick = () => { $("pgnText").value = SAMPLE_PGN; setStatus("upStatus", "샘플 게임을 불러왔습니다. 평가하기를 누르세요."); };
+$("upSample").onclick = () => {
+  $("pgnText").value = SAMPLE_PGN;
+  $("fileName").textContent = "샘플 경기를 불러왔습니다 — 아래 '확인'을 누르세요.";
+};
 $("upAnalyze").onclick = async () => {
   const pgn = $("pgnText").value.trim();
-  if (!pgn) { setStatus("upStatus", "PGN을 붙여넣거나 파일을 선택하세요.", true); return; }
+  if (!pgn) { setStatus("upStatus", "먼저 경기 파일(.pgn)을 삽입하거나 기보를 붙여넣으세요.", true); return; }
   await runAnalyze({ pgn, depth: +$("upDepth").value });
 };
 

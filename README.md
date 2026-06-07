@@ -116,9 +116,10 @@ launcher (`launcher/Chess Coach.bat`) does this for you.
 
 A local web app (FastAPI) that combines three things in one page:
 
-1. **Record / upload + AI evaluation** — play moves on an interactive board to
-   record a game, *or* paste/upload a PGN, then have the engine evaluate every
-   move you played (classification, CPL, win%, best move).
+1. **녹화 (insert a game file) + AI evaluation** — drop in the `.pgn` file of a
+   game you recorded (or paste the moves), press **확인**, and the engine
+   evaluates every move. **수동 (Manual)** is a second tab where you instead play
+   the moves on an interactive board. Either way you get a per-move evaluation.
 2. **Teach / explain (AI)** — record the line and draw **arrows (right-click +
    drag)** and **square highlights (right-click)**. You don't write the prose:
    after **AI 평가 & 해설**, the app generates an **accurate explanation for every
