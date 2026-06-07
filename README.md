@@ -138,15 +138,31 @@ python -m uvicorn webapp.server:app --port 8000
 Endpoints: `POST /api/legal` (validate moves + legal-move map),
 `POST /api/analyze` (PGN or move list → full analysis view), `GET /api/health`.
 
-## Desktop launchers
+## Desktop launcher
 
-Two launchers live in `launcher/` (copied to the Desktop):
+The Desktop has a single shortcut **`Chess Coach.lnk`** (knight icon) that runs
+the whole visual app: it starts the web server (minimized to the taskbar) and
+opens **Chess Coach Studio** in your browser. Close the minimized server window
+to stop it.
 
-- **`Chess Coach Studio.bat`** — starts the web app and opens it in your browser.
-  Keep its window open while using the app; close it to stop the server.
-- **`Chess Coach.bat`** — quick single-game analyzer: **drag any `.pgn` onto it**
-  to analyze and open the static visual board, or double-click for a prompt
-  (Enter = bundled sample game).
+It points at `launcher/Chess Coach Studio.bat`. The `launcher/` folder also keeps:
+
+- `Chess Coach Studio.bat` — start the web app (target of the shortcut).
+- `Chess Coach.bat` — quick single-game analyzer: **drag any `.pgn` onto it** to
+  analyze and open the static visual board (Enter = bundled sample game).
+- `make_icon.py` / `chesscoach.ico` — the app icon and its generator.
+
+To recreate the shortcut (e.g. after moving the project):
+
+```powershell
+$ws = New-Object -ComObject WScript.Shell
+$lnk = $ws.CreateShortcut("$([Environment]::GetFolderPath('Desktop'))\Chess Coach.lnk")
+$lnk.TargetPath = "C:\Users\<you>\chess-coach\launcher\Chess Coach Studio.bat"
+$lnk.WorkingDirectory = "C:\Users\<you>\chess-coach"
+$lnk.IconLocation = "C:\Users\<you>\chess-coach\launcher\chesscoach.ico"
+$lnk.WindowStyle = 7   # minimized
+$lnk.Save()
+```
 
 ## Tests
 
