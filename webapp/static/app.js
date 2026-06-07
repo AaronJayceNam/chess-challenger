@@ -33,19 +33,21 @@ function animateMove(boardEl, fromSq, toSq, orient) {
   const sqDiv = boardEl.children[tr * 8 + tc];
   const pc = sqDiv && sqDiv.querySelector(".pc");
   if (!pc) return;
+  // start at the origin square, then transition to 0 (forced reflow so the
+  // start position registers — more reliable than requestAnimationFrame).
   pc.style.transition = "none";
   pc.style.transform = `translate(${dx}px, ${dy}px)`;
   pc.style.zIndex = "12";
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    pc.style.transition = "transform .22s cubic-bezier(.22,.61,.36,1)";
-    pc.style.transform = "translate(0, 0)";
-  }));
+  void pc.offsetWidth;
+  pc.style.transition = "transform .22s cubic-bezier(.22,.61,.36,1)";
+  pc.style.transform = "translate(0, 0)";
 }
 
 function overlay(show, msg) {
   $("overlay").classList.toggle("hidden", !show);
   if (msg) $("overlayMsg").textContent = msg;
 }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --------------------------------------------------------------------------- //
 // tabs
@@ -721,11 +723,14 @@ async function aiHumanMove(uci) {
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   animateMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   if (st.gameOver) { aiEndGame(); return; }
+  await sleep(230);   // let the player's piece finish sliding before the AI replies
   await aiReply();
 }
 
 async function aiReply() {
-  AIG.thinking = true; updateAiTurn(); renderAiBoard();
+  // NOTE: do not re-render the board here — that would wipe the player's
+  // in-flight slide animation. Input is already gated by AIG.thinking.
+  AIG.thinking = true; updateAiTurn();
   let res;
   try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level }); }
   catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "AI 응수 오류: " + e.message, true); return; }
