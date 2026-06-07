@@ -6,11 +6,21 @@ so the pipeline never has to juggle White/Black sign conventions per ply.
 """
 from __future__ import annotations
 
+import os
+import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
 import chess
 import chess.engine
+
+
+def _no_window_popen_args() -> dict:
+    """On Windows, launch the Stockfish console subprocess without flashing a
+    console window each time (this otherwise appears on every AI move/analysis)."""
+    if os.name == "nt":
+        return {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)}
+    return {}
 
 from .config import EngineConfig
 
@@ -71,7 +81,8 @@ class Engine:
         self.close()
 
     def open(self) -> None:
-        self._engine = chess.engine.SimpleEngine.popen_uci(self.config.path)
+        self._engine = chess.engine.SimpleEngine.popen_uci(
+            self.config.path, **_no_window_popen_args())
         opts = {}
         if self.config.threads:
             opts["Threads"] = self.config.threads
