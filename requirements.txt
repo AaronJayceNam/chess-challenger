@@ -1,0 +1,10 @@
+# Core analysis engine (M1)
+python-chess>=1.999      # PGN parsing, board model, legal-move gen, UCI engine, SVG
+# Anthropic SDK is only needed from M3 (LLM coaching). Kept here for convenience.
+anthropic>=0.40.0
+# FastAPI/uvicorn land in M4 (web API). Listed for the full roadmap.
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+# Test + tooling
+pytest>=8.0.0
+python-dotenv>=1.0.0
