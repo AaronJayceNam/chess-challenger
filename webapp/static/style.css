@@ -210,6 +210,16 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:12px 0 5
 .legend b { color:var(--ink); }
 .hidden { display:none !important; }
 
+/* ---------- review empty state ---------- */
+.empty-state { max-width:520px; margin:48px auto; text-align:center;
+  background:linear-gradient(180deg, var(--panel2), var(--panel));
+  border:1px solid var(--line); border-radius:18px; padding:40px 32px; box-shadow:var(--shadow); }
+.empty-state .icon { font-size:54px; line-height:1; margin-bottom:10px;
+  filter:drop-shadow(0 6px 14px rgba(99,102,241,.45)); }
+.empty-state h2 { margin:6px 0 10px; font-size:21px; }
+.empty-state p { color:var(--muted); font-size:15px; line-height:1.7; margin:0 0 22px; }
+.empty-state .actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
 /* ---------- overlay / spinner ---------- */
 .overlay { position:fixed; inset:0; background:rgba(6,8,12,.66); backdrop-filter:blur(3px);
   display:flex; align-items:center; justify-content:center; z-index:50; }

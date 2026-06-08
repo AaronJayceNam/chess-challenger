@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Chess Coach Studio", lifespan=lifespan)
+app = FastAPI(title="Chess Challenger", lifespan=lifespan)
 
 
 # --------------------------------------------------------------------------- #

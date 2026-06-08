@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chess Coach Studio</title>
+<title>Chess Challenger</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <header class="top">
-  <h1>♟ Chess Coach Studio</h1>
+  <h1>Chess Challenger</h1>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
 </header>
 
@@ -17,7 +17,7 @@
   <button data-tab="ai" class="active">① AI와 대국</button>
   <button data-tab="upload">② 녹화 (경기 파일 삽입)</button>
   <button data-tab="record">③ 친구와의 대국</button>
-  <button data-tab="review" id="tabReview" disabled>④ AI 평가 / 리뷰</button>
+  <button data-tab="review" id="tabReview">④ AI 평가 / 리뷰</button>
 </div>
 
 <!-- ====================== AI와 대국 ====================== -->
@@ -156,6 +156,17 @@
 
 <!-- ====================== REVIEW ====================== -->
 <section class="tab" id="tab-review">
+  <div class="empty-state" id="rvEmpty">
+    <div class="icon">🤖</div>
+    <h2>아직 평가한 게임이 없어요</h2>
+    <p>먼저 AI에게 분석을 맡기세요.<br>경기를 두거나 파일을 올린 뒤 평가하면 여기에 결과가 나타납니다.</p>
+    <div class="actions">
+      <button class="primary" data-goto="ai">♟ AI와 대국하러 가기</button>
+      <button class="ghost" data-goto="upload">⬆ 경기 파일 올리기</button>
+      <button class="ghost" data-goto="record">👥 친구와 대국하기</button>
+    </div>
+  </div>
+  <div id="rvContent" class="hidden">
   <div class="card summary" id="rvSummary"></div>
   <div class="cols">
     <div>
@@ -199,6 +210,7 @@
       </div>
     </div>
   </div>
+  </div><!-- /#rvContent -->
 </section>
 
 <div class="overlay hidden" id="overlay">

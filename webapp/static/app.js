@@ -61,6 +61,10 @@ function switchTab(name) {
   document.querySelectorAll(".tab").forEach((t) =>
     t.classList.toggle("active", t.id === "tab-" + name));
 }
+// empty-state "go analyze" buttons
+document.querySelectorAll("[data-goto]").forEach((b) => {
+  b.onclick = () => switchTab(b.dataset.goto);
+});
 
 // --------------------------------------------------------------------------- //
 // health
@@ -404,7 +408,7 @@ function setStatus(id, msg, err) {
 function isOffline(e) {
   return /failed to fetch|networkerror|load failed|connection refused/i.test((e && e.message) || "");
 }
-const OFFLINE_MSG = "서버에 연결할 수 없습니다. 바탕화면의 'Chess Coach' 아이콘을 다시 한 번 실행한 뒤, 이 페이지를 새로고침(F5)하세요.";
+const OFFLINE_MSG = "서버에 연결할 수 없습니다. 바탕화면의 'Chess Challenger' 아이콘을 다시 한 번 실행한 뒤, 이 페이지를 새로고침(F5)하세요.";
 
 // =========================================================================== //
 // ANALYZE -> REVIEW
@@ -440,7 +444,8 @@ function clsLabel(c) {
 
 function loadReview(view) {
   RV.view = view; RV.N = view.svgs.length - 1; RV.idx = 0;
-  $("tabReview").disabled = false;
+  $("rvEmpty").classList.add("hidden");      // hide the "analyze first" prompt
+  $("rvContent").classList.remove("hidden"); // reveal the review
 
   $("rvSummary").innerHTML =
     `<b>${view.title}</b> &nbsp; <span style="color:#9aa0a6">${view.opening || ""}</span><br>` +
