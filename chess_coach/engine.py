@@ -103,14 +103,15 @@ class Engine:
         return chess.engine.Limit(depth=self.config.depth or 18)
 
     def play(self, board: chess.Board, level: int) -> Optional[chess.Move]:
-        """Pick a move at difficulty `level` (1=weakest .. 10=full strength).
+        """Pick a move at difficulty `level` (1=weakest .. 15=hardest).
 
-        Levels 1-9 cap the engine with UCI_LimitStrength/UCI_Elo (≈1320..2700);
-        level 10 plays at full strength. A small per-level time budget keeps the
-        reply snappy for interactive play.
+        Levels 1-10 are unchanged: 1-9 cap the engine with UCI_LimitStrength/
+        UCI_Elo (≈1320..2700) and level 10 plays at full strength with a short
+        time budget. Levels 11-15 keep full strength but think progressively
+        longer (deeper search), so they are harder than 10.
         """
         assert self._engine is not None, "Engine not opened"
-        level = max(1, min(10, level))
+        level = max(1, min(15, level))
         try:
             if level >= 10:
                 self._engine.configure({"UCI_LimitStrength": False})
@@ -119,8 +120,11 @@ class Engine:
                 self._engine.configure({"UCI_LimitStrength": True, "UCI_Elo": elo})
         except chess.engine.EngineError:
             pass  # option unsupported -> just play full strength
-        limit = chess.engine.Limit(time=(120 + level * 40) / 1000.0)
-        result = self._engine.play(board, limit)
+        if level <= 10:
+            movetime = 120 + level * 40          # 1..10 unchanged (160..520ms)
+        else:
+            movetime = 520 + (level - 10) * 350  # 11..15: 870..2270ms (stronger)
+        result = self._engine.play(board, chess.engine.Limit(time=movetime / 1000.0))
         return result.move
 
     def evaluate(self, board: chess.Board) -> PositionEval:

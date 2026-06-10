@@ -246,7 +246,21 @@ async function commitMove(uci) {
     REC.sel = null;
     renderAll();
     animateMove($("recBoard"), uci.slice(0, 2), uci.slice(2, 4), REC.orient);
+    if (st.gameOver) friendEndGame(st);
   } catch (e) { setStatus("recStatus", "수 처리 오류: " + e.message, true); }
+}
+
+function friendEndGame(st) {
+  const white = $("recWhite").value || "백", black = $("recBlack").value || "흑";
+  const r = st.result;
+  let opts;
+  const analyze = { label: "🤖 AI 평가 보기", primary: true,
+    onClick: () => runAnalyze({ moves: REC.moves, white, black, movetime: 350 }) };
+  const again = { label: "다시 두기", onClick: () => {} };
+  if (r === "1-0") opts = { kind: "win", icon: "🏆", title: "백 승리!", sub: `${white} 님이 이겼습니다`, actions: [analyze, again] };
+  else if (r === "0-1") opts = { kind: "win", icon: "🏆", title: "흑 승리!", sub: `${black} 님이 이겼습니다`, actions: [analyze, again] };
+  else opts = { kind: "draw", icon: "🤝", title: "무승부", sub: "비겼습니다", actions: [analyze, again] };
+  setTimeout(() => showResult(opts), 500);
 }
 
 function renderRecMoves() {
@@ -631,12 +645,59 @@ $("rvShare").onclick = async () => {
 // =========================================================================== //
 const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false };
 
-function levelDesc(n) {
-  if (n <= 3) return "초보";
-  if (n <= 6) return "중급";
-  if (n <= 9) return "상급";
-  return "최강";
+// Level titles. Beating a level grants its title; the player's rank is the title
+// of the highest level they have beaten (persisted in localStorage).
+function titleFor(level) {
+  if (level >= 15) return "마스터";
+  if (level >= 11) return `고수 ${level - 10}`;   // 11..14 -> 1..4
+  if (level >= 6) return `중수 ${level - 5}`;      // 6..10  -> 1..5
+  return `초보자 ${level}`;                         // 1..5
 }
+function bestLevel() { return +(localStorage.getItem("cc_best_level") || 0); }
+function setBestLevel(n) { localStorage.setItem("cc_best_level", String(n)); }
+function updateRankBadge() {
+  const b = bestLevel(), el = $("aiRank");
+  if (!el) return;
+  if (b > 0) { el.textContent = "내 호칭: " + titleFor(b); el.classList.toggle("master", b >= 15); }
+  else { el.textContent = "내 호칭: 무관 (아직 호칭 없음)"; el.classList.remove("master"); }
+}
+
+// ---- big win/loss/draw result screen ----
+function showResult(o) {
+  const box = $("resultBox");
+  box.className = "result-box " + o.kind;
+  $("resultIcon").textContent = o.icon;
+  $("resultTitle").textContent = o.title;
+  $("resultSub").textContent = o.sub || "";
+  const badge = $("resultBadge");
+  if (o.badge) {
+    badge.classList.remove("hidden");
+    badge.classList.toggle("master", !!o.badge.master);
+    badge.innerHTML = `<span class="small">🎉 새 호칭 획득</span>${o.badge.text}`;
+  } else { badge.classList.add("hidden"); }
+  const act = $("resultActions"); act.innerHTML = "";
+  (o.actions || []).forEach((a) => {
+    const btn = document.createElement("button");
+    btn.className = a.primary ? "primary" : "ghost";
+    btn.textContent = a.label;
+    btn.onclick = () => { hideResult(); if (a.onClick) a.onClick(); };
+    act.appendChild(btn);
+  });
+  const conf = $("confetti"); conf.innerHTML = "";
+  if (o.kind === "win") {
+    const colors = ["#f5b301", "#6d5cff", "#3fb950", "#ff7a00", "#9ecbff", "#ff5c7a"];
+    for (let i = 0; i < 44; i++) {
+      const p = document.createElement("i");
+      p.style.left = Math.round(Math.random() * 100) + "%";
+      p.style.background = colors[i % colors.length];
+      p.style.animationDuration = (1.4 + Math.random() * 1.5) + "s";
+      p.style.animationDelay = (Math.random() * 0.5) + "s";
+      conf.appendChild(p);
+    }
+  }
+  $("resultOverlay").classList.remove("hidden");
+}
+function hideResult() { $("resultOverlay").classList.add("hidden"); }
 
 function renderAiBoard() {
   const board = $("aiBoard"); board.innerHTML = "";
@@ -756,14 +817,32 @@ function aiPlayerNames() {
 
 function aiEndGame() {
   AIG.over = true; renderAiBoard(); updateAiTurn();
-  const r = AIG.state.result;
-  let outcome = "무승부";
-  if (r === "1-0") outcome = AIG.human === "w" ? "당신 승리! 🎉" : "패배 😢";
-  else if (r === "0-1") outcome = AIG.human === "b" ? "당신 승리! 🎉" : "패배 😢";
-  setStatus("aiStatus", `대국 종료 (${r}) — ${outcome}  ·  AI 평가를 시작합니다…`);
+  const r = AIG.state.result, lv = AIG.level;
+  let kind = "draw";
+  if (r === "1-0") kind = AIG.human === "w" ? "win" : "loss";
+  else if (r === "0-1") kind = AIG.human === "b" ? "win" : "loss";
+
+  // Beating this level grants its title (if it's a new personal best).
+  let badge = null;
+  if (kind === "win" && lv > bestLevel()) {
+    setBestLevel(lv); updateRankBadge();
+    badge = { text: titleFor(lv), master: lv >= 15 };
+  }
+  setStatus("aiStatus", `대국 종료 (${r}).`);
   $("aiAnalyze").classList.remove("hidden");
+
   const { white, black } = aiPlayerNames();
-  runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
+  const actions = [
+    { label: "🤖 AI 평가 보기", primary: true,
+      onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 350 }) },
+    { label: "🔄 새 대국", onClick: () => switchTab("ai") },
+  ];
+  const opts = kind === "win"
+    ? { kind, icon: "🏆", title: "승리!", sub: `레벨 ${lv} (${titleFor(lv)}) AI를 이겼습니다`, badge, actions }
+    : kind === "loss"
+      ? { kind, icon: "😢", title: "패배", sub: `레벨 ${lv} (${titleFor(lv)}) AI에게 졌습니다. 다시 도전!`, actions }
+      : { kind, icon: "🤝", title: "무승부", sub: `레벨 ${lv} (${titleFor(lv)}) AI와 비겼습니다`, actions };
+  setTimeout(() => showResult(opts), 500);   // let the final move finish sliding
 }
 
 async function aiStart() {
@@ -781,7 +860,7 @@ async function aiStart() {
 
 $("aiLevel").oninput = (e) => {
   const n = +e.target.value;
-  $("aiLevelLabel").textContent = `레벨 ${n} · ${levelDesc(n)}`;
+  $("aiLevelLabel").textContent = `레벨 ${n} · ${titleFor(n)}`;
 };
 $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
@@ -799,6 +878,8 @@ $("aiAnalyze").onclick = () => {
 };
 
 async function aiBoot() {
+  updateRankBadge();
+  $("aiLevelLabel").textContent = `레벨 ${$("aiLevel").value} · ${titleFor(+$("aiLevel").value)}`;
   try { AIG.state = await api("/api/legal", { moves: [] }); renderAiBoard(); updateAiTurn(); }
   catch (e) { /* board stays empty until 새 대국 시작 */ }
 }

@@ -230,6 +230,44 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:12px 0 5
   border-top-color:var(--accent2); border-radius:50%; margin:0 auto 16px; animation:spin .9s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+/* ---------- rank badge ---------- */
+.rankbadge { display:inline-block; margin-bottom:12px; padding:6px 14px; border-radius:999px;
+  font-weight:800; font-size:13px; color:#fff;
+  background:linear-gradient(135deg,#6d5cff,#9b6bff); box-shadow:0 4px 14px -4px rgba(124,92,255,.7);
+  border:1px solid rgba(255,255,255,.15); }
+.rankbadge.master { background:linear-gradient(135deg,#f5b301,#ff7a00); box-shadow:0 4px 16px -3px rgba(245,150,0,.8); }
+
+/* ---------- win/loss result screen ---------- */
+.result-overlay { position:fixed; inset:0; background:rgba(6,8,12,.74); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; z-index:60; }
+.result-box { position:relative; overflow:hidden; width:min(420px,92vw); text-align:center;
+  background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--line2);
+  border-radius:22px; padding:34px 30px 28px; box-shadow:0 24px 60px -12px rgba(0,0,0,.7);
+  animation:pop .35s cubic-bezier(.2,1.2,.3,1); }
+@keyframes pop { from { transform:scale(.8); opacity:0; } to { transform:scale(1); opacity:1; } }
+.result-box.win  { border-color:rgba(245,180,1,.5); box-shadow:0 0 0 1px rgba(245,180,1,.25), 0 24px 60px -12px rgba(0,0,0,.7); }
+.result-box.loss { border-color:rgba(240,88,79,.35); }
+.result-icon { font-size:84px; line-height:1; margin-bottom:6px;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.5)); animation:bounceIn .5s; }
+@keyframes bounceIn { 0%{transform:scale(.3);opacity:0;} 60%{transform:scale(1.15);} 100%{transform:scale(1);opacity:1;} }
+.result-title { font-size:30px; font-weight:900; letter-spacing:.5px; margin:2px 0 6px; }
+.result-box.win  .result-title { color:#ffcf3f; text-shadow:0 2px 16px rgba(245,180,1,.45); }
+.result-box.loss .result-title { color:#ff8a82; }
+.result-box.draw .result-title { color:#c9d2dd; }
+.result-sub { color:var(--muted); font-size:15px; margin-bottom:14px; }
+.result-badge { margin:6px auto 16px; padding:10px 16px; border-radius:14px; font-weight:800; font-size:16px;
+  color:#fff; background:linear-gradient(135deg,#6d5cff,#9b6bff); box-shadow:0 8px 20px -6px rgba(124,92,255,.8);
+  animation:bounceIn .6s .15s both; }
+.result-badge.master { background:linear-gradient(135deg,#f5b301,#ff7a00); }
+.result-badge .small { display:block; font-size:11px; font-weight:700; opacity:.85; margin-bottom:2px; }
+.result-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
+
+/* confetti (victory) */
+.confetti { position:absolute; inset:0; pointer-events:none; }
+.confetti i { position:absolute; top:-12px; width:8px; height:13px; border-radius:2px; opacity:.9;
+  animation:fall linear forwards; }
+@keyframes fall { to { transform:translateY(440px) rotate(540deg); opacity:0; } }
+
 /* ---------- promotion picker ---------- */
 .promo { position:absolute; z-index:60; background:#fff; border-radius:10px;
   box-shadow:0 10px 30px rgba(0,0,0,.55); display:flex; flex-direction:column; overflow:hidden; }
