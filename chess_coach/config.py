@@ -45,8 +45,10 @@ def _candidate_stockfish_paths() -> list[str]:
         )
         paths.extend(sorted(glob.glob(pattern)))
 
-    # 4. Common Homebrew / Linux locations
+    # 4. Common Homebrew / Linux locations (Debian's apt package installs to
+    #    /usr/games/stockfish — used by the Docker image)
     paths += [
+        "/usr/games/stockfish",
         "/opt/homebrew/bin/stockfish",
         "/usr/local/bin/stockfish",
         "/usr/bin/stockfish",

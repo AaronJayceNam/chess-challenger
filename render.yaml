@@ -1,0 +1,22 @@
+# Render.com Blueprint — deploy Chess Challenger as a Docker web service.
+# In Render: New + > Blueprint > connect this repo. Render reads this file.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: chess-challenger
+    runtime: docker
+    # "free" = 512MB / shared CPU (sleeps when idle; analysis will be slow).
+    # Upgrade to "starter" for snappy analysis.
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: CC_WORKERS
+        value: "2"
+      - key: CC_ENGINE_THREADS
+        value: "1"
+      - key: CC_ENGINE_HASH_MB
+        value: "32"
+      - key: CC_MAX_CONCURRENT
+        value: "1"
+    # Render injects PORT automatically; the Docker CMD uses it.

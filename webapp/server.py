@@ -17,8 +17,13 @@ so the server opens the browser itself once it is ready).
 from __future__ import annotations
 
 import os
+import threading
 from contextlib import asynccontextmanager
 from typing import Optional
+
+# Bound how many heavy analyses run at once so a small cloud instance is not
+# overwhelmed. Configurable via env (set to 1 on tiny hosts).
+_ANALYZE_SEM = threading.Semaphore(int(os.environ.get("CC_MAX_CONCURRENT", "2")))
 
 import chess
 import chess.pgn
@@ -225,10 +230,13 @@ def analyze(req: AnalyzeRequest):
         cfg.depth = max(6, min(24, req.depth))
         cfg.movetime_ms = None
 
+    # Pool size / engine resources are env-configurable so the same image runs
+    # on a 12-core dev box and a 1-vCPU cloud instance (set CC_WORKERS=2,
+    # CC_ENGINE_THREADS=1, CC_ENGINE_HASH_MB=32 on tiny hosts).
     total = os.cpu_count() or 4
-    workers = max(2, min(6, total // 2))
-    cfg.threads = max(1, total // workers)
-    cfg.hash_mb = 128        # per engine
+    workers = int(os.environ.get("CC_WORKERS", max(2, min(6, total // 2))))
+    cfg.threads = int(os.environ.get("CC_ENGINE_THREADS", max(1, total // max(1, workers))))
+    cfg.hash_mb = int(os.environ.get("CC_ENGINE_HASH_MB", 128))   # per engine
 
     if req.pgn and req.pgn.strip():
         game = read_first_game(req.pgn)
@@ -241,14 +249,15 @@ def analyze(req: AnalyzeRequest):
     else:
         raise HTTPException(400, "pgn 또는 moves 중 하나는 필요합니다.")
 
-    engines = [Engine(cfg) for _ in range(workers)]
-    for e in engines:
-        e.open()
-    try:
-        ga = analyze_game_parallel(game, engines)
-    finally:
+    with _ANALYZE_SEM:                       # bound concurrent heavy analyses
+        engines = [Engine(cfg) for _ in range(workers)]
         for e in engines:
-            e.close()
+            e.open()
+        try:
+            ga = analyze_game_parallel(game, engines)
+        finally:
+            for e in engines:
+                e.close()
     view = build_view_data(game, ga)
 
     if req.coach:

@@ -1,0 +1,15 @@
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+out/
+engines/
+syzygy/
+.env
+tests/
+launcher/
+*.md
+.gitignore
