@@ -1,54 +1,78 @@
 ﻿$ErrorActionPreference = "SilentlyContinue"
 $host.UI.RawUI.WindowTitle = "Chess Challenger - Public Link"
+$proj = "C:\Users\jayce\chess-coach"
+$pyw  = "$proj\.venv\Scripts\pythonw.exe"
+$url  = "http://127.0.0.1:8000"
 
-# locate cloudflared (PATH first, then winget install dir)
-$cf = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
-if (-not $cf) {
-  $cf = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Cloudflare.cloudflared_Microsoft.Winget.Source_8wekyb3d8bbwe\cloudflared.exe"
+function App-Up {
+  try { Invoke-WebRequest "$url/api/health" -UseBasicParsing -TimeoutSec 2 | Out-Null; return $true }
+  catch { return $false }
 }
+
+# locate cloudflared
+$cf = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
+if (-not $cf) { $cf = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Cloudflare.cloudflared_Microsoft.Winget.Source_8wekyb3d8bbwe\cloudflared.exe" }
 if (-not (Test-Path $cf)) {
   Write-Host "cloudflared 가 설치되어 있지 않습니다. 설치: winget install Cloudflare.cloudflared" -ForegroundColor Red
   Read-Host "엔터를 누르면 종료"; exit
 }
 
-# make sure the app is running
-try { Invoke-WebRequest 'http://127.0.0.1:8000/api/health' -UseBasicParsing -TimeoutSec 2 | Out-Null }
-catch {
-  Write-Host "앱이 꺼져 있습니다. 먼저 바탕화면의 'Chess Challenger' 아이콘으로 앱을 켠 뒤 다시 실행하세요." -ForegroundColor Red
+# 1) make sure the app is running; if not, start it (so the link never shows a Cloudflare error)
+if (-not (App-Up)) {
+  Write-Host "앱 서버를 켜는 중입니다..." -ForegroundColor Cyan
+  $env:PORT = "8000"
+  Start-Process -FilePath $pyw -ArgumentList @("-m","webapp.run_bg") -WorkingDirectory $proj -WindowStyle Hidden
+  for ($i = 0; $i -lt 25; $i++) { Start-Sleep -Milliseconds 600; if (App-Up) { break } }
+}
+if (-not (App-Up)) {
+  Write-Host "앱 서버를 켜지 못했습니다. 먼저 'Chess Challenger' 아이콘으로 앱을 켠 뒤 다시 시도하세요." -ForegroundColor Red
   Read-Host "엔터를 누르면 종료"; exit
 }
 
+# 2) start the tunnel and wait for the public address
 $log = Join-Path $env:TEMP "cc_tunnel.log"
 Remove-Item $log -ErrorAction SilentlyContinue
-$p = Start-Process -FilePath $cf -ArgumentList "tunnel","--url","http://localhost:8000" -RedirectStandardError $log -PassThru -WindowStyle Hidden
+$tunnel = Start-Process -FilePath $cf -ArgumentList "tunnel","--url",$url -RedirectStandardError $log -PassThru -WindowStyle Hidden
 
 Write-Host ""
-Write-Host "공개 주소를 만드는 중입니다... 잠시만 기다리세요." -ForegroundColor Cyan
-
-$url = $null
-for ($i = 0; $i -lt 45; $i++) {
+Write-Host "공개 주소를 만드는 중입니다... (10~30초 정도 걸릴 수 있어요)" -ForegroundColor Cyan
+$public = $null
+for ($i = 0; $i -lt 60; $i++) {
   Start-Sleep -Milliseconds 700
   $m = Select-String -Path $log -Pattern "https://[a-z0-9-]+\.trycloudflare\.com" -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($m) { $url = $m.Matches[0].Value; break }
+  if ($m) { $public = $m.Matches[0].Value; break }
+  if ($i % 5 -eq 0) { Write-Host "." -NoNewline -ForegroundColor DarkGray }
 }
 
 Clear-Host
 Write-Host ""
-if ($url) {
-  Set-Clipboard -Value $url
+if ($public) {
+  # save to a file on the Desktop, copy to clipboard, and open it in the browser
+  $txt = Join-Path ([Environment]::GetFolderPath('Desktop')) "Chess Challenger 공유주소.txt"
+  Set-Content -Path $txt -Value $public -Encoding UTF8
+  $public | clip
+  Set-Clipboard -Value $public
+  Start-Process $public   # open it so you can SEE it works (and copy from the address bar)
+
   Write-Host "  ============================================================" -ForegroundColor Green
   Write-Host "    공개 주소가 만들어졌습니다!  아래 주소를 친구에게 보내세요" -ForegroundColor Green
   Write-Host "  ============================================================" -ForegroundColor Green
   Write-Host ""
-  Write-Host "      $url" -ForegroundColor Yellow
+  Write-Host "      $public" -ForegroundColor Yellow
   Write-Host ""
-  Write-Host "    (이 주소는 클립보드에 복사되었습니다 - 바로 붙여넣기 가능)" -ForegroundColor DarkGray
+  Write-Host "    - 방금 이 주소가 브라우저에 자동으로 열렸습니다 (정상 작동 확인용)" -ForegroundColor DarkGray
+  Write-Host "    - 클립보드에 복사됨 + 바탕화면 'Chess Challenger 공유주소.txt' 에도 저장됨" -ForegroundColor DarkGray
   Write-Host ""
   Write-Host "    * 이 창을 열어 두는 동안에만 주소가 작동합니다." -ForegroundColor DarkGray
   Write-Host "    * 공유를 끝내려면 이 창을 닫으세요." -ForegroundColor DarkGray
   Write-Host "  ============================================================" -ForegroundColor Green
 } else {
-  Write-Host "  주소 생성에 실패했습니다. 인터넷 연결을 확인하고 다시 시도하세요." -ForegroundColor Red
+  Write-Host "  공개 주소 생성에 실패했습니다." -ForegroundColor Red
+  Write-Host "  - 인터넷 연결을 확인하고 이 창을 닫은 뒤 다시 실행해 주세요." -ForegroundColor Gray
+  Write-Host "  - (이전에 복사해 둔 다른 링크가 클립보드에 남아 있을 수 있으니," -ForegroundColor Gray
+  Write-Host "     주소가 위에 노란색으로 안 보이면 아직 만들어지지 않은 것입니다.)" -ForegroundColor Gray
+  Stop-Process -Id $tunnel.Id -Force -ErrorAction SilentlyContinue
+  Read-Host "엔터를 누르면 종료"; exit
 }
 Write-Host ""
-Wait-Process -Id $p.Id -ErrorAction SilentlyContinue
+Wait-Process -Id $tunnel.Id -ErrorAction SilentlyContinue
