@@ -44,27 +44,40 @@ for ($i = 0; $i -lt 60; $i++) {
   if ($i % 5 -eq 0) { Write-Host "." -NoNewline -ForegroundColor DarkGray }
 }
 
-Clear-Host
-Write-Host ""
 if ($public) {
-  # save to a file on the Desktop, copy to clipboard, and open it in the browser
-  $txt = Join-Path ([Environment]::GetFolderPath('Desktop')) "Chess Challenger 공유주소.txt"
-  Set-Content -Path $txt -Value $public -Encoding UTF8
+  # The trycloudflare address takes a few seconds to become reachable. Wait for
+  # it to actually answer before opening the browser, so you never see a
+  # "this page can't be reached" error.
+  Write-Host ""
+  Write-Host "주소를 활성화하는 중입니다... (몇 초 더 걸립니다)" -ForegroundColor Cyan
+  $ready = $false
+  for ($i = 0; $i -lt 40; $i++) {
+    try { $r = Invoke-WebRequest "$public/api/health" -UseBasicParsing -TimeoutSec 4; if ($r.StatusCode -eq 200) { $ready = $true; break } } catch {}
+    Start-Sleep 1
+    if ($i % 4 -eq 0) { Write-Host "." -NoNewline -ForegroundColor DarkGray }
+  }
+
   $public | clip
   Set-Clipboard -Value $public
-  Start-Process $public   # open it so you can SEE it works (and copy from the address bar)
+  if ($ready) { Start-Process $public }   # only open once it actually works
 
+  Clear-Host
+  Write-Host ""
   Write-Host "  ============================================================" -ForegroundColor Green
   Write-Host "    공개 주소가 만들어졌습니다!  아래 주소를 친구에게 보내세요" -ForegroundColor Green
   Write-Host "  ============================================================" -ForegroundColor Green
   Write-Host ""
   Write-Host "      $public" -ForegroundColor Yellow
   Write-Host ""
-  Write-Host "    - 방금 이 주소가 브라우저에 자동으로 열렸습니다 (정상 작동 확인용)" -ForegroundColor DarkGray
-  Write-Host "    - 클립보드에 복사됨 + 바탕화면 'Chess Challenger 공유주소.txt' 에도 저장됨" -ForegroundColor DarkGray
+  if ($ready) {
+    Write-Host "    - 방금 이 주소가 브라우저에 열렸습니다 (정상 작동 확인됨)" -ForegroundColor DarkGray
+  } else {
+    Write-Host "    - 주소가 아직 준비 중일 수 있습니다. 안 열리면 10초 뒤 새로고침하세요." -ForegroundColor Yellow
+  }
+  Write-Host "    - 이 주소가 클립보드에 복사되었습니다 (카톡 등에 바로 붙여넣기)" -ForegroundColor DarkGray
   Write-Host ""
-  Write-Host "    * 이 창을 열어 두는 동안에만 주소가 작동합니다." -ForegroundColor DarkGray
-  Write-Host "    * 공유를 끝내려면 이 창을 닫으세요." -ForegroundColor DarkGray
+  Write-Host "    [중요] 이 창을 닫으면 주소도 즉시 사라집니다." -ForegroundColor Yellow
+  Write-Host "           매번 새로 실행하면 주소가 바뀌니, 예전 주소는 쓰지 마세요." -ForegroundColor Yellow
   Write-Host "  ============================================================" -ForegroundColor Green
 } else {
   Write-Host "  공개 주소 생성에 실패했습니다." -ForegroundColor Red
