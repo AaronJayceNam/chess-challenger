@@ -789,7 +789,7 @@ async function aiHumanMove(uci) {
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   animateMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   if (st.gameOver) { aiEndGame(); return; }
-  await sleep(230);   // let the player's piece finish sliding before the AI replies
+  await sleep(150);   // let the player's piece finish sliding before the AI replies
   await aiReply();
 }
 
@@ -1024,7 +1024,7 @@ async function pzUserMove(uci) {
   if (res.solved) { PZ.busy = false; PZ.legal = { legal: {} }; pzSolved(); return; }
 
   // defender replies after a short beat
-  await sleep(420);
+  await sleep(260);
   PZ.fen = res.fen; PZ.lastUci = res.replyUci; PZ.movesLeft = res.mateIn;
   renderPzBoard();
   if (res.replyUci) animateMove($("pzBoard"), res.replyUci.slice(0, 2), res.replyUci.slice(2, 4), "w");

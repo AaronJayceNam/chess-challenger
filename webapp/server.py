@@ -21,10 +21,6 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Optional
 
-# Bound how many heavy analyses run at once so a small cloud instance is not
-# overwhelmed. Configurable via env (set to 1 on tiny hosts).
-_ANALYZE_SEM = threading.Semaphore(int(os.environ.get("CC_MAX_CONCURRENT", "2")))
-
 import chess
 import chess.pgn
 from fastapi import FastAPI, HTTPException
@@ -41,18 +37,84 @@ from chess_coach import coach as coach_mod
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(HERE, "static")
 
+# --------------------------------------------------------------------------- #
+# Persistent engines — keep Stockfish processes alive and reuse them instead of
+# opening/closing a subprocess on every request (that startup made each AI move
+# and puzzle move ~150ms+ slower). Access is serialized with locks.
+# --------------------------------------------------------------------------- #
+_TOTAL = os.cpu_count() or 4
+_WORKERS = int(os.environ.get("CC_WORKERS", max(2, min(6, _TOTAL // 2))))
+_ETHREADS = int(os.environ.get("CC_ENGINE_THREADS", max(1, _TOTAL // max(1, _WORKERS))))
+_EHASH = int(os.environ.get("CC_ENGINE_HASH_MB", 128))
+
+_quick = {"e": None}            # single engine for ai_move / puzzle_move
+_qlock = threading.Lock()
+_pool = {"engines": None}       # engine pool for analysis
+_plock = threading.Lock()
+
+
+def _quick_engine() -> Engine:
+    if _quick["e"] is None:
+        cfg = EngineConfig()
+        cfg.threads, cfg.hash_mb, cfg.multipv = 2, 128, 1
+        cfg.movetime_ms = cfg.depth = None
+        e = Engine(cfg); e.open()
+        _quick["e"] = e
+    return _quick["e"]
+
+
+def _quick_reset():
+    try:
+        if _quick["e"]:
+            _quick["e"].close()
+    except Exception:
+        pass
+    _quick["e"] = None
+
+
+def _analysis_pool() -> list[Engine]:
+    if _pool["engines"] is None:
+        pool = []
+        for _ in range(_WORKERS):
+            cfg = EngineConfig()
+            cfg.threads, cfg.hash_mb, cfg.multipv = _ETHREADS, _EHASH, 2
+            cfg.movetime_ms = cfg.depth = None
+            e = Engine(cfg); e.open(); pool.append(e)
+        _pool["engines"] = pool
+    return _pool["engines"]
+
+
+def _pool_reset():
+    try:
+        for e in (_pool["engines"] or []):
+            e.close()
+    except Exception:
+        pass
+    _pool["engines"] = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # When launched from the desktop shortcut, open the app in the browser as
     # soon as the server is ready (so the user sees the board, not just a console).
     if os.environ.get("CC_OPEN_BROWSER") == "1":
-        import threading
         import webbrowser
         port = os.environ.get("PORT", "8000")
         url = f"http://127.0.0.1:{port}/"
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+
+    # Warm the quick engine in the background so the first AI/puzzle move is fast.
+    def _warm():
+        try:
+            with _qlock:
+                _quick_engine()
+        except Exception:
+            pass
+    threading.Thread(target=_warm, daemon=True).start()
+
     yield
+    _quick_reset()
+    _pool_reset()
 
 
 app = FastAPI(title="Chess Challenger", lifespan=lifespan)
@@ -207,20 +269,19 @@ def ai_move(req: AiMoveRequest):
     Returns the reply move plus the legal-move state AFTER the reply (or move=None
     if the game is already over).
     """
-    cfg = EngineConfig()
-    if not cfg.path:
+    if not EngineConfig().path:
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다.")
-    cfg.threads = 2
-    cfg.hash_mb = 64
-    cfg.multipv = 1
-
     board = _replay(req.moves)
     moves = list(req.moves)
     reply_uci = None
     reply_san = None
     if not board.is_game_over(claim_draw=True):
-        with Engine(cfg) as eng:
-            mv = eng.play(board, req.level)
+        with _qlock:
+            try:
+                mv = _quick_engine().play(board, req.level)
+            except Exception:
+                _quick_reset()
+                mv = _quick_engine().play(board, req.level)
         if mv is not None:
             reply_san = board.san(mv)
             board.push(mv)
@@ -236,27 +297,12 @@ def ai_move(req: AiMoveRequest):
 
 @app.post("/api/analyze")
 def analyze(req: AnalyzeRequest):
-    cfg = EngineConfig()
-    if not cfg.path:
+    if not EngineConfig().path:
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다. STOCKFISH_PATH 설정 필요.")
-    # Spread the work over a pool of engines so a full game finishes in a few
-    # seconds instead of minutes. Size the pool to the CPU; a per-move time
-    # budget keeps wall-clock predictable.
-    cfg.multipv = 2          # enables "only good move" detection in explanations
     if req.movetime:
-        cfg.movetime_ms = max(50, min(3000, req.movetime))
-        cfg.depth = None
+        mt, dp = max(50, min(3000, req.movetime)), None
     else:
-        cfg.depth = max(6, min(24, req.depth))
-        cfg.movetime_ms = None
-
-    # Pool size / engine resources are env-configurable so the same image runs
-    # on a 12-core dev box and a 1-vCPU cloud instance (set CC_WORKERS=2,
-    # CC_ENGINE_THREADS=1, CC_ENGINE_HASH_MB=32 on tiny hosts).
-    total = os.cpu_count() or 4
-    workers = int(os.environ.get("CC_WORKERS", max(2, min(6, total // 2))))
-    cfg.threads = int(os.environ.get("CC_ENGINE_THREADS", max(1, total // max(1, workers))))
-    cfg.hash_mb = int(os.environ.get("CC_ENGINE_HASH_MB", 128))   # per engine
+        mt, dp = None, max(6, min(24, req.depth))
 
     if req.pgn and req.pgn.strip():
         game = read_first_game(req.pgn)
@@ -269,15 +315,21 @@ def analyze(req: AnalyzeRequest):
     else:
         raise HTTPException(400, "pgn 또는 moves 중 하나는 필요합니다.")
 
-    with _ANALYZE_SEM:                       # bound concurrent heavy analyses
-        engines = [Engine(cfg) for _ in range(workers)]
-        for e in engines:
-            e.open()
+    # Reuse the persistent engine pool (no per-request subprocess startup).
+    with _plock:
         try:
-            ga = analyze_game_parallel(game, engines)
-        finally:
-            for e in engines:
-                e.close()
+            pool = _analysis_pool()
+            for e in pool:
+                e.config.multipv = 2
+                e.config.movetime_ms, e.config.depth = mt, dp
+            ga = analyze_game_parallel(game, pool)
+        except Exception:
+            _pool_reset()
+            pool = _analysis_pool()
+            for e in pool:
+                e.config.multipv = 2
+                e.config.movetime_ms, e.config.depth = mt, dp
+            ga = analyze_game_parallel(game, pool)
     view = build_view_data(game, ga)
 
     if req.coach:
@@ -295,17 +347,8 @@ def puzzle_move(req: PuzzleMoveRequest):
     in the remaining number of moves. On a correct non-final move the engine
     plays the defender's best (longest) reply and returns the new position.
     """
-    cfg = EngineConfig()
-    if not cfg.path:
+    if not EngineConfig().path:
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다.")
-    cfg.threads = 2
-    cfg.hash_mb = 64
-    cfg.multipv = 1
-    # time budget (not a deep fixed depth) so a wrong move is rejected quickly
-    # instead of searching a non-mate position to full depth.
-    cfg.depth = None
-    cfg.movetime_ms = 600
-
     try:
         board = chess.Board(req.fen)
     except ValueError:
@@ -326,8 +369,23 @@ def puzzle_move(req: PuzzleMoveRequest):
 
     # Defender to move: must be getting mated in (mateIn - 1).
     target = max(0, req.mateIn - 1)
-    with Engine(cfg) as eng:
-        pe = eng.evaluate(board)
+    def _eval_full(b):
+        qe = _quick_engine()
+        qe.config.multipv, qe.config.depth, qe.config.movetime_ms = 1, None, 350
+        # the shared quick engine may have UCI_LimitStrength set by ai_move; the
+        # puzzle check needs full strength to confirm the forced mate.
+        try:
+            qe._engine.configure({"UCI_LimitStrength": False})
+        except Exception:
+            pass
+        return qe.evaluate(b)
+
+    with _qlock:
+        try:
+            pe = _eval_full(board)
+        except Exception:
+            _quick_reset()
+            pe = _eval_full(board)
     ok = (pe.mate is not None and pe.mate < 0 and 1 <= (-pe.mate) <= target)
     if not ok:
         return {"ok": True, "correct": False, "userSan": user_san, "userFen": user_fen}
