@@ -301,8 +301,10 @@ def puzzle_move(req: PuzzleMoveRequest):
     cfg.threads = 2
     cfg.hash_mb = 64
     cfg.multipv = 1
-    cfg.depth = 22
-    cfg.movetime_ms = None
+    # time budget (not a deep fixed depth) so a wrong move is rejected quickly
+    # instead of searching a non-mate position to full depth.
+    cfg.depth = None
+    cfg.movetime_ms = 600
 
     try:
         board = chess.Board(req.fen)
@@ -328,7 +330,7 @@ def puzzle_move(req: PuzzleMoveRequest):
         pe = eng.evaluate(board)
     ok = (pe.mate is not None and pe.mate < 0 and 1 <= (-pe.mate) <= target)
     if not ok:
-        return {"ok": True, "correct": False, "userSan": user_san}
+        return {"ok": True, "correct": False, "userSan": user_san, "userFen": user_fen}
 
     # Correct — play the defender's best (longest) reply.
     reply = pe.best_move

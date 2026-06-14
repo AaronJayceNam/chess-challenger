@@ -881,7 +881,8 @@ $("aiAnalyze").onclick = () => {
 // CHECKMATE PUZZLES
 // =========================================================================== //
 const PZ = { list: [], idx: 0, cat: 0, baseFen: null, fen: null, mateIn: 0, movesLeft: 0,
-  sel: null, legal: {}, lastUci: null, hintSq: null, busy: false, solved: pzLoadSolved() };
+  sel: null, legal: {}, lastUci: null, hintSq: null, busy: false, locked: false, solved: pzLoadSolved() };
+function pzUnlocked(level) { return level === 1 || PZ.solved.has(level - 1); }
 
 function pzLoadSolved() {
   try { return new Set(JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]")); }
@@ -892,8 +893,12 @@ function pzSaveSolved() { localStorage.setItem("cc_puzzles_solved", JSON.stringi
 async function loadPuzzles() {
   try { PZ.list = await (await fetch("/static/puzzles.json")).json(); }
   catch (e) { PZ.list = []; }
-  if (PZ.list.length) { renderPzGrid(); loadPuzzle(0); }
-  else { $("pzPrompt").textContent = "퍼즐을 불러오지 못했습니다."; }
+  if (PZ.list.length) {
+    renderPzGrid();
+    let idx = PZ.list.findIndex((p) => !PZ.solved.has(p.level));  // resume at first unsolved
+    if (idx < 0) idx = 0;
+    loadPuzzle(idx);
+  } else { $("pzPrompt").textContent = "퍼즐을 불러오지 못했습니다."; }
 }
 
 function renderPzGrid() {
@@ -901,10 +906,12 @@ function renderPzGrid() {
   const start = PZ.cat * 25;
   for (let i = 0; i < 25; i++) {
     const idx = start + i, lvl = idx + 1;
+    const unlocked = pzUnlocked(lvl);
     const b = document.createElement("button");
-    b.textContent = lvl;
+    b.textContent = unlocked ? lvl : "";
     if (idx === PZ.idx) b.classList.add("cur");
     if (PZ.solved.has(lvl)) b.classList.add("solved");
+    if (!unlocked) b.classList.add("locked");
     b.onclick = () => loadPuzzle(idx);
     grid.appendChild(b);
   }
@@ -918,11 +925,20 @@ async function loadPuzzle(idx) {
   document.querySelectorAll("#pzCats button").forEach((b) =>
     b.classList.toggle("active", +b.dataset.cat === PZ.cat));
   const p = PZ.list[idx];
+  renderPzGrid();
+  if (!pzUnlocked(p.level)) {       // sequential lock — must beat the previous level first
+    PZ.locked = true; PZ.fen = p.fen; PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
+    PZ.legal = { legal: {} };
+    $("pzPrompt").innerHTML = `🔒 #${p.level} 잠김 — 앞 단계 #${p.level - 1}을(를) 먼저 깨야 합니다.`;
+    setStatus("pzFeedback", "이전 단계를 먼저 해결하세요.", true);
+    renderPzBoard();
+    return;
+  }
+  PZ.locked = false;
   PZ.baseFen = p.fen; PZ.fen = p.fen; PZ.mateIn = p.mateIn; PZ.movesLeft = p.mateIn;
   PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
   $("pzPrompt").innerHTML = `#${p.level} — 백이 두어 <b>${p.mateIn}수</b> 만에 체크메이트! (백 차례)`;
   $("pzFeedback").textContent = ""; $("pzFeedback").className = "status";
-  renderPzGrid();
   try { PZ.legal = await api("/api/legal_fen", { fen: PZ.fen }); }
   catch (e) { PZ.legal = { legal: {} }; }
   renderPzBoard();
@@ -964,7 +980,7 @@ function renderPzBoard() {
 }
 
 function onPzClick(sq) {
-  if (PZ.busy) return;
+  if (PZ.busy || PZ.locked) return;
   PZ.hintSq = null;
   const legal = PZ.legal.legal || {};
   if (PZ.sel) {
@@ -975,16 +991,29 @@ function onPzClick(sq) {
   if (legal[sq]) { PZ.sel = sq; renderPzBoard(); }
 }
 
+function pzWrongEffect() {
+  const stack = $("pzStack"), flash = $("pzFlash");
+  stack.classList.remove("shake"); void stack.offsetWidth; stack.classList.add("shake");
+  flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show");
+}
+
 async function pzUserMove(uci) {
   PZ.busy = true; PZ.sel = null; renderPzBoard();
+  const prevFen = PZ.fen, prevLast = PZ.lastUci;
   let res;
   try { res = await api("/api/puzzle_move", { fen: PZ.fen, move: uci, mateIn: PZ.movesLeft }); }
   catch (e) { PZ.busy = false; setStatus("pzFeedback", isOffline(e) ? OFFLINE_MSG : "오류: " + e.message, true); renderPzBoard(); return; }
 
   if (!res.correct) {
-    PZ.busy = false;
-    setStatus("pzFeedback", "❌ 그 수로는 메이트가 안 됩니다. 다시 시도하세요.", true);
+    // play the move, then shake the board + flash a big "오답!", then revert
+    PZ.fen = res.userFen; PZ.lastUci = uci;
     renderPzBoard();
+    animateMove($("pzBoard"), uci.slice(0, 2), uci.slice(2, 4), "w");
+    await sleep(260);
+    pzWrongEffect();
+    await sleep(760);
+    PZ.fen = prevFen; PZ.lastUci = prevLast;
+    PZ.busy = false; renderPzBoard();
     return;
   }
   // show the user's move
