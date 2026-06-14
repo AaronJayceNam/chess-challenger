@@ -80,6 +80,12 @@ class AiMoveRequest(BaseModel):
     level: int = 5
 
 
+class PuzzleMoveRequest(BaseModel):
+    fen: str
+    move: str           # UCI
+    mateIn: int         # remaining moves-to-mate target (White to move)
+
+
 class StudyRequest(BaseModel):
     moves: list[str] = []
     comments: dict[str, str] = {}                 # index ("0".."N") -> text
@@ -180,6 +186,20 @@ def legal(req: LegalRequest):
     return state
 
 
+class FenRequest(BaseModel):
+    fen: str
+
+
+@app.post("/api/legal_fen")
+def legal_fen(req: FenRequest):
+    """Legal-move map for an arbitrary FEN (used by the puzzle board)."""
+    try:
+        board = chess.Board(req.fen)
+    except ValueError:
+        raise HTTPException(400, "잘못된 FEN")
+    return _legal_state(board)
+
+
 @app.post("/api/ai_move")
 def ai_move(req: AiMoveRequest):
     """Have the engine play one reply at the given difficulty (1-10).
@@ -265,6 +285,63 @@ def analyze(req: AnalyzeRequest):
     else:
         view["coach"] = {"available": coach_mod.coaching_available()}
     return JSONResponse(view)
+
+
+@app.post("/api/puzzle_move")
+def puzzle_move(req: PuzzleMoveRequest):
+    """Verify a move in a mate-in-N puzzle and, if correct, play the best defense.
+
+    The move is correct if it delivers mate (when 1 left) or keeps a forced mate
+    in the remaining number of moves. On a correct non-final move the engine
+    plays the defender's best (longest) reply and returns the new position.
+    """
+    cfg = EngineConfig()
+    if not cfg.path:
+        raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다.")
+    cfg.threads = 2
+    cfg.hash_mb = 64
+    cfg.multipv = 1
+    cfg.depth = 22
+    cfg.movetime_ms = None
+
+    try:
+        board = chess.Board(req.fen)
+    except ValueError:
+        raise HTTPException(400, "잘못된 FEN")
+    try:
+        mv = chess.Move.from_uci(req.move)
+    except ValueError:
+        raise HTTPException(400, "잘못된 수")
+    if mv not in board.legal_moves:
+        return {"ok": True, "correct": False, "reason": "illegal"}
+
+    user_san = board.san(mv)
+    board.push(mv)
+    user_fen = board.fen()
+    if board.is_checkmate():
+        return {"ok": True, "correct": True, "solved": True,
+                "userSan": user_san, "userFen": user_fen, "fen": user_fen}
+
+    # Defender to move: must be getting mated in (mateIn - 1).
+    target = max(0, req.mateIn - 1)
+    with Engine(cfg) as eng:
+        pe = eng.evaluate(board)
+    ok = (pe.mate is not None and pe.mate < 0 and 1 <= (-pe.mate) <= target)
+    if not ok:
+        return {"ok": True, "correct": False, "userSan": user_san}
+
+    # Correct — play the defender's best (longest) reply.
+    reply = pe.best_move
+    reply_san = board.san(reply) if reply else None
+    if reply is not None:
+        board.push(reply)
+    return {
+        "ok": True, "correct": True, "solved": False,
+        "userSan": user_san, "userFen": user_fen,
+        "replyUci": reply.uci() if reply else None,
+        "replySan": reply_san, "fen": board.fen(),
+        "mateIn": req.mateIn - 1, "check": board.is_check(),
+    }
 
 
 @app.post("/api/study_html", response_class=PlainTextResponse)

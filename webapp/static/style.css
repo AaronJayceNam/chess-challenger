@@ -230,6 +230,19 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:12px 0 5
   border-top-color:var(--accent2); border-radius:50%; margin:0 auto 16px; animation:spin .9s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+/* ---------- puzzles ---------- */
+.pz-cats { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.pz-cats button { flex:1; min-width:84px; background:var(--elevated); color:var(--muted);
+  border:1px solid var(--line2); border-radius:9px; padding:8px 6px; font-size:13px; cursor:pointer; }
+.pz-cats button.active { background:var(--accent); color:#fff; border-color:transparent; font-weight:700; }
+.pz-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.pz-grid button { position:relative; aspect-ratio:1/1; background:#1b1c1f; color:var(--ink);
+  border:1px solid var(--line2); border-radius:8px; font-size:13px; cursor:pointer; }
+.pz-grid button:hover { background:var(--elevated); }
+.pz-grid button.cur { outline:2px solid var(--accent); outline-offset:1px; }
+.pz-grid button.solved { background:linear-gradient(135deg,#1f3b25,#16301c); border-color:#2ea04355; color:#7bd88f; }
+.pz-grid button.solved::after { content:"✓"; position:absolute; top:1px; right:4px; font-size:10px; color:#7bd88f; }
+
 /* ---------- rank badge ---------- */
 .rankbadge { display:inline-block; margin-bottom:12px; padding:6px 14px; border-radius:999px;
   font-weight:800; font-size:13px; color:#fff;

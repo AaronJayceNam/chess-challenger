@@ -17,7 +17,8 @@
   <button data-tab="ai" class="active">① AI와 대국</button>
   <button data-tab="upload">② 녹화 (경기 파일 삽입)</button>
   <button data-tab="record">③ 친구와의 대국</button>
-  <button data-tab="review" id="tabReview">④ AI 평가 / 리뷰</button>
+  <button data-tab="puzzle">④ 체크메이트 퍼즐</button>
+  <button data-tab="review" id="tabReview">⑤ AI 평가 / 리뷰</button>
 </div>
 
 <!-- ====================== AI와 대국 ====================== -->
@@ -150,6 +151,38 @@
           <button class="primary" id="upAnalyze">✔ 확인 — AI로 평가하기</button>
         </div>
         <div class="status" id="upStatus"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== 체크메이트 퍼즐 ====================== -->
+<section class="tab" id="tab-puzzle">
+  <div class="cols">
+    <div>
+      <div class="boardwrap"><div class="boardstack"><div class="cboard" id="pzBoard"></div></div></div>
+      <div class="turn" id="pzPrompt">퍼즐을 불러오는 중…</div>
+      <div class="status" id="pzFeedback" style="font-size:15px; min-height:22px;"></div>
+      <div class="controls">
+        <button class="ghost" id="pzPrev">◀ 이전</button>
+        <button class="ghost" id="pzReset">⟲ 다시 풀기</button>
+        <button class="ghost" id="pzHint">💡 힌트</button>
+        <button class="ghost" id="pzSolution">정답 보기</button>
+        <button class="ghost" id="pzNext">다음 ▶</button>
+      </div>
+    </div>
+    <div style="flex:1; min-width:300px; max-width:430px;">
+      <div class="card">
+        <h3>체크메이트 퍼즐 <span id="pzProgress" style="color:#9aa0a6;font-weight:400"></span></h3>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px">
+          백이 두어 정해진 수 안에 <b>체크메이트</b>를 만드세요. 상대는 가장 오래 버티는 수로 응수합니다.</p>
+        <div class="pz-cats" id="pzCats">
+          <button data-cat="0" class="active">1수 (1–25)</button>
+          <button data-cat="1">2수 (26–50)</button>
+          <button data-cat="2">3수 (51–75)</button>
+          <button data-cat="3">4수 (76–100)</button>
+        </div>
+        <div class="pz-grid" id="pzGrid"></div>
       </div>
     </div>
   </div>

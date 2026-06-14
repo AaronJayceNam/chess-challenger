@@ -877,7 +877,167 @@ $("aiAnalyze").onclick = () => {
   runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
 };
 
+// =========================================================================== //
+// CHECKMATE PUZZLES
+// =========================================================================== //
+const PZ = { list: [], idx: 0, cat: 0, baseFen: null, fen: null, mateIn: 0, movesLeft: 0,
+  sel: null, legal: {}, lastUci: null, hintSq: null, busy: false, solved: pzLoadSolved() };
+
+function pzLoadSolved() {
+  try { return new Set(JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]")); }
+  catch (e) { return new Set(); }
+}
+function pzSaveSolved() { localStorage.setItem("cc_puzzles_solved", JSON.stringify([...PZ.solved])); }
+
+async function loadPuzzles() {
+  try { PZ.list = await (await fetch("/static/puzzles.json")).json(); }
+  catch (e) { PZ.list = []; }
+  if (PZ.list.length) { renderPzGrid(); loadPuzzle(0); }
+  else { $("pzPrompt").textContent = "퍼즐을 불러오지 못했습니다."; }
+}
+
+function renderPzGrid() {
+  const grid = $("pzGrid"); grid.innerHTML = "";
+  const start = PZ.cat * 25;
+  for (let i = 0; i < 25; i++) {
+    const idx = start + i, lvl = idx + 1;
+    const b = document.createElement("button");
+    b.textContent = lvl;
+    if (idx === PZ.idx) b.classList.add("cur");
+    if (PZ.solved.has(lvl)) b.classList.add("solved");
+    b.onclick = () => loadPuzzle(idx);
+    grid.appendChild(b);
+  }
+  const solvedCount = PZ.list.filter((p) => PZ.solved.has(p.level)).length;
+  $("pzProgress").textContent = `(푼 문제 ${solvedCount}/${PZ.list.length})`;
+}
+
+async function loadPuzzle(idx) {
+  if (idx < 0 || idx >= PZ.list.length) return;
+  PZ.idx = idx; PZ.cat = Math.floor(idx / 25);
+  document.querySelectorAll("#pzCats button").forEach((b) =>
+    b.classList.toggle("active", +b.dataset.cat === PZ.cat));
+  const p = PZ.list[idx];
+  PZ.baseFen = p.fen; PZ.fen = p.fen; PZ.mateIn = p.mateIn; PZ.movesLeft = p.mateIn;
+  PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
+  $("pzPrompt").innerHTML = `#${p.level} — 백이 두어 <b>${p.mateIn}수</b> 만에 체크메이트! (백 차례)`;
+  $("pzFeedback").textContent = ""; $("pzFeedback").className = "status";
+  renderPzGrid();
+  try { PZ.legal = await api("/api/legal_fen", { fen: PZ.fen }); }
+  catch (e) { PZ.legal = { legal: {} }; }
+  renderPzBoard();
+}
+
+function renderPzBoard() {
+  const board = $("pzBoard"); board.innerHTML = "";
+  if (!PZ.fen) return;
+  const map = parseFen(PZ.fen);
+  const files = [..."abcdefgh"], ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  const lf = PZ.lastUci ? PZ.lastUci.slice(0, 2) : null, lt = PZ.lastUci ? PZ.lastUci.slice(2, 4) : null;
+  const legal = (PZ.busy ? {} : (PZ.legal.legal || {}));
+  let kingSq = null;
+  if (PZ.legal.check) { const kc = PZ.legal.turn === "w" ? "K" : "k"; for (const s in map) if (map[s] === kc) kingSq = s; }
+  for (const rank of ranks) {
+    for (const f of files) {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const div = document.createElement("div");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
+      if (sq === lf || sq === lt) div.classList.add("last");
+      if (PZ.sel === sq) div.classList.add("sel");
+      if (PZ.hintSq === sq) div.classList.add("sel");
+      if (sq === kingSq) div.classList.add("check");
+      const p = map[sq];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "pc " + (p === p.toUpperCase() ? "w" : "b");
+        s.textContent = GLYPH[p.toLowerCase()];
+        div.appendChild(s);
+      }
+      if (PZ.sel && legal[PZ.sel] && legal[PZ.sel].includes(sq)) {
+        const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
+        div.appendChild(d);
+      }
+      div.onclick = () => onPzClick(sq);
+      board.appendChild(div);
+    }
+  }
+}
+
+function onPzClick(sq) {
+  if (PZ.busy) return;
+  PZ.hintSq = null;
+  const legal = PZ.legal.legal || {};
+  if (PZ.sel) {
+    if (legal[PZ.sel] && legal[PZ.sel].includes(sq)) { pzUserMove(PZ.sel + sq); return; }
+    if (legal[sq]) { PZ.sel = sq; renderPzBoard(); return; }
+    PZ.sel = null; renderPzBoard(); return;
+  }
+  if (legal[sq]) { PZ.sel = sq; renderPzBoard(); }
+}
+
+async function pzUserMove(uci) {
+  PZ.busy = true; PZ.sel = null; renderPzBoard();
+  let res;
+  try { res = await api("/api/puzzle_move", { fen: PZ.fen, move: uci, mateIn: PZ.movesLeft }); }
+  catch (e) { PZ.busy = false; setStatus("pzFeedback", isOffline(e) ? OFFLINE_MSG : "오류: " + e.message, true); renderPzBoard(); return; }
+
+  if (!res.correct) {
+    PZ.busy = false;
+    setStatus("pzFeedback", "❌ 그 수로는 메이트가 안 됩니다. 다시 시도하세요.", true);
+    renderPzBoard();
+    return;
+  }
+  // show the user's move
+  PZ.fen = res.userFen; PZ.lastUci = uci;
+  renderPzBoard();
+  animateMove($("pzBoard"), uci.slice(0, 2), uci.slice(2, 4), "w");
+
+  if (res.solved) { PZ.busy = false; PZ.legal = { legal: {} }; pzSolved(); return; }
+
+  // defender replies after a short beat
+  await sleep(420);
+  PZ.fen = res.fen; PZ.lastUci = res.replyUci; PZ.movesLeft = res.mateIn;
+  renderPzBoard();
+  if (res.replyUci) animateMove($("pzBoard"), res.replyUci.slice(0, 2), res.replyUci.slice(2, 4), "w");
+  setStatus("pzFeedback", `✅ 좋아요! 메이트까지 ${res.mateIn}수 남았습니다.`, false);
+  $("pzFeedback").style.color = "#7bd88f";
+  try { PZ.legal = await api("/api/legal_fen", { fen: PZ.fen }); } catch (e) { PZ.legal = { legal: {} }; }
+  PZ.busy = false;
+  renderPzBoard();
+}
+
+function pzSolved() {
+  const p = PZ.list[PZ.idx];
+  PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
+  showResult({
+    kind: "win", icon: "🏆", title: "정답!", sub: `퍼즐 #${p.level} · ${p.mateIn}수 메이트 성공!`,
+    actions: [
+      { label: "다음 퍼즐 ▶", primary: true, onClick: () => loadPuzzle(Math.min(PZ.list.length - 1, PZ.idx + 1)) },
+      { label: "이 퍼즐 다시", onClick: () => loadPuzzle(PZ.idx) },
+    ],
+  });
+}
+
+document.querySelectorAll("#pzCats button").forEach((b) => {
+  b.onclick = () => { PZ.cat = +b.dataset.cat; loadPuzzle(PZ.cat * 25); };
+});
+$("pzPrev").onclick = () => loadPuzzle(PZ.idx - 1);
+$("pzNext").onclick = () => loadPuzzle(PZ.idx + 1);
+$("pzReset").onclick = () => loadPuzzle(PZ.idx);
+$("pzHint").onclick = async () => {
+  const p = PZ.list[PZ.idx];
+  if (PZ.fen !== PZ.baseFen) await loadPuzzle(PZ.idx);   // hint from the start
+  PZ.hintSq = (p.solution[0] || "").slice(0, 2);
+  renderPzBoard();
+  setStatus("pzFeedback", "💡 표시된 칸의 기물을 움직여 보세요.", false);
+};
+$("pzSolution").onclick = () => {
+  const p = PZ.list[PZ.idx];
+  setStatus("pzFeedback", "정답: " + (p.solutionSan || []).join(" "), false);
+};
+
 async function aiBoot() {
+  loadPuzzles();
   updateRankBadge();
   $("aiLevelLabel").textContent = `레벨 ${$("aiLevel").value} · ${titleFor(+$("aiLevel").value)}`;
   try { AIG.state = await api("/api/legal", { moves: [] }); renderAiBoard(); updateAiTurn(); }
