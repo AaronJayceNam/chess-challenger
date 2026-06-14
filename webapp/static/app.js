@@ -1073,6 +1073,117 @@ async function aiBoot() {
   catch (e) { /* board stays empty until 새 대국 시작 */ }
 }
 
+// =========================================================================== //
+// LEARN CHESS BASICS — visualize how each piece moves + the rules
+// =========================================================================== //
+function _sq(fx, fy) { return "abcdefgh"[fx] + (fy + 1); }
+function _inb(x, y) { return x >= 0 && x < 8 && y >= 0 && y < 8; }
+function _slide(fx, fy, dirs) {
+  const out = [];
+  for (const [dx, dy] of dirs) {
+    let x = fx + dx, y = fy + dy;
+    while (_inb(x, y)) { out.push(_sq(x, y)); x += dx; y += dy; }
+  }
+  return out;
+}
+function _steps(fx, fy, offs) {
+  return offs.filter(([dx, dy]) => _inb(fx + dx, fy + dy)).map(([dx, dy]) => _sq(fx + dx, fy + dy));
+}
+const _DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+const _ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const _KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+const _ALL8 = [..._DIAG, ..._ORTHO];
+
+function learnTopic(topic) {
+  // d4 = fx 3, fy 3
+  switch (topic) {
+    case "pawn": return {
+      title: "폰 (Pawn) ♟", pieces: { e2: "P", d3: "p", f3: "p" },
+      moves: ["e3", "e4"], captures: ["d3", "f3"],
+      desc: "폰은 <b>앞으로 한 칸</b> 전진합니다. 단, 그 폰의 <b>첫 이동</b>에 한해 두 칸까지 갈 수 있어요(e2→e4).<br>" +
+        "잡을 때는 <b>대각선 앞</b>으로만 잡습니다(빨간 표시). <b>뒤로는 절대 못 가고</b>, 앞이 막히면 못 움직입니다.<br>" +
+        "끝 줄(8랭크)에 도달하면 <b>승격</b>합니다. → '승격' 버튼 참고",
+    };
+    case "knight": return {
+      title: "나이트 (Knight) ♞", pieces: { d4: "N" }, moves: _steps(3, 3, _KNIGHT), captures: [],
+      desc: "나이트는 <b>'ㄴ'(L)자</b>로 움직입니다 — 한 방향 두 칸 + 직각으로 한 칸.<br>" +
+        "체스에서 <b>유일하게 다른 기물을 뛰어넘을 수 있는</b> 기물입니다(앞이 막혀 있어도 OK).",
+    };
+    case "bishop": return {
+      title: "비숍 (Bishop) ♝", pieces: { d4: "B" }, moves: _slide(3, 3, _DIAG), captures: [],
+      desc: "비숍은 <b>대각선</b>으로 막힐 때까지 원하는 만큼 이동합니다.<br>" +
+        "한 비숍은 <b>한 가지 색의 칸</b>에만 머뭅니다(흰칸 비숍/검은칸 비숍).",
+    };
+    case "rook": return {
+      title: "룩 (Rook) ♜", pieces: { d4: "R" }, moves: _slide(3, 3, _ORTHO), captures: [],
+      desc: "룩은 <b>가로·세로</b>로 막힐 때까지 원하는 만큼 이동합니다. 캐슬링에도 쓰입니다.",
+    };
+    case "queen": return {
+      title: "퀸 (Queen) ♛", pieces: { d4: "Q" }, moves: _slide(3, 3, _ALL8), captures: [],
+      desc: "퀸은 <b>가로·세로·대각선 모두</b> 원하는 만큼 이동합니다. <b>가장 강력한</b> 기물(룩+비숍).",
+    };
+    case "king": return {
+      title: "킹 (King) ♚", pieces: { d4: "K" }, moves: _steps(3, 3, _ALL8), captures: [],
+      desc: "킹은 <b>모든 방향으로 한 칸씩</b> 이동합니다. 가장 중요한 기물 — <b>잡히면(체크메이트) 패배</b>.<br>" +
+        "상대가 공격하는 칸으로는 갈 수 없습니다.",
+    };
+    case "castle": return {
+      title: "캐슬링 (Castling)", pieces: { e1: "K", h1: "R", a1: "R" }, moves: ["g1", "f1", "c1", "d1"], captures: [],
+      desc: "킹과 룩을 <b>한 번에</b> 움직이는 특수 수입니다.<br>" +
+        "• 킹사이드: 킹 e1→g1, 룩 h1→f1<br>• 퀸사이드: 킹 e1→c1, 룩 a1→d1<br>" +
+        "조건: 킹과 그 룩이 <b>아직 안 움직였고</b>, 사이가 <b>비어 있고</b>, 킹이 <b>체크가 아니며</b> 지나는 칸도 공격받지 않을 때.",
+    };
+    case "enpassant": return {
+      title: "앙파상 (En passant)", pieces: { e5: "P", d5: "p" }, moves: [], captures: ["d6"],
+      desc: "상대 폰이 <b>두 칸 전진</b>해 내 폰 바로 옆에 나란히 섰을 때(d7→d5), <b>바로 다음 수에 한해</b> " +
+        "마치 한 칸만 온 것처럼 <b>대각선 뒤(d6)로 잡는</b> 특수 규칙입니다. 잡힌 상대 폰(d5)은 사라집니다.",
+    };
+    case "promotion": return {
+      title: "승격 (Promotion)", pieces: { e7: "P" }, moves: ["e8"], captures: [],
+      desc: "폰이 <b>끝 줄(8랭크)</b>에 도달하면 <b>퀸·룩·비숍·나이트</b> 중 하나로 변신합니다.<br>" +
+        "거의 항상 가장 강한 <b>퀸</b>으로 승격합니다(언더프로모션은 특수한 경우).",
+    };
+    default: return learnTopic("pawn");
+  }
+}
+
+function renderLearnBoard(cfg) {
+  const board = $("learnBoard"); board.innerHTML = "";
+  const files = [..."abcdefgh"], ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  const moves = new Set(cfg.moves || []), caps = new Set(cfg.captures || []);
+  for (const rank of ranks) {
+    for (const f of files) {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const div = document.createElement("div");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
+      const p = (cfg.pieces || {})[sq];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "pc " + (p === p.toUpperCase() ? "w" : "b");
+        s.textContent = GLYPH[p.toLowerCase()];
+        div.appendChild(s);
+      }
+      if (moves.has(sq)) { const d = document.createElement("div"); d.className = "lmove"; div.appendChild(d); }
+      if (caps.has(sq)) { const d = document.createElement("div"); d.className = "lcap"; div.appendChild(d); }
+      board.appendChild(div);
+    }
+  }
+}
+
+function showLearn(topic) {
+  const cfg = learnTopic(topic);
+  renderLearnBoard(cfg);
+  $("learnTitle").textContent = cfg.title;
+  $("learnDesc").innerHTML = cfg.desc;
+}
+document.querySelectorAll("#learnSel button").forEach((b) => {
+  b.onclick = () => {
+    document.querySelectorAll("#learnSel button").forEach((x) => x.classList.toggle("active", x === b));
+    showLearn(b.dataset.topic);
+  };
+});
+showLearn("pawn");
+
 // boot
 recInit().catch((e) => setStatus("recStatus", "초기화 오류: " + e.message, true));
 aiBoot();

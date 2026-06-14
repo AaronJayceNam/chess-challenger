@@ -230,6 +230,21 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:12px 0 5
   border-top-color:var(--accent2); border-radius:50%; margin:0 auto 16px; animation:spin .9s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+/* ---------- learn chess ---------- */
+.learn-sel { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; width:440px; }
+.learn-sel button { background:var(--elevated); color:var(--ink); border:1px solid var(--line2);
+  border-radius:9px; padding:8px 11px; font-size:14px; cursor:pointer; }
+.learn-sel button:hover { background:#2a313d; }
+.learn-sel button.active { background:var(--accent); color:#fff; border-color:transparent; font-weight:700; }
+.lmove { position:absolute; width:32%; height:32%; border-radius:50%; background:rgba(63,176,90,.92);
+  box-shadow:0 0 8px rgba(63,176,90,.6); }
+.lcap { position:absolute; inset:7%; border-radius:50%; box-shadow:inset 0 0 0 5px rgba(228,65,63,.9); }
+.legend .lg { display:inline-block; width:13px; height:13px; border-radius:50%; vertical-align:-2px; margin-right:4px; }
+.legend .lg.move { background:rgba(63,176,90,.92); }
+.legend .lg.cap { box-shadow:inset 0 0 0 3px rgba(228,65,63,.9); }
+.learn-rules p { margin:0 0 11px; font-size:14px; line-height:1.65; }
+.learn-rules b { color:var(--ink); }
+
 /* ---------- puzzles ---------- */
 .pz-flash { position:absolute; inset:0; z-index:8; display:flex; align-items:center; justify-content:center;
   font-size:54px; font-weight:900; color:#fff; letter-spacing:2px;

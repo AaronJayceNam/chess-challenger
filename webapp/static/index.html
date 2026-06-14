@@ -18,8 +18,52 @@
   <button data-tab="upload">② 녹화 (경기 파일 삽입)</button>
   <button data-tab="record">③ 친구와의 대국</button>
   <button data-tab="puzzle">④ 체크메이트 퍼즐</button>
-  <button data-tab="review" id="tabReview">⑤ AI 평가 / 리뷰</button>
+  <button data-tab="learn">⑤ 체스 기초 배우기</button>
+  <button data-tab="review" id="tabReview">⑥ AI 평가 / 리뷰</button>
 </div>
+
+<!-- ====================== 체스 기초 배우기 ====================== -->
+<section class="tab" id="tab-learn">
+  <div class="cols">
+    <div>
+      <div class="boardwrap"><div class="boardstack"><div class="cboard" id="learnBoard"></div></div></div>
+      <div class="learn-sel" id="learnSel">
+        <button data-topic="pawn" class="active">♟ 폰</button>
+        <button data-topic="knight">♞ 나이트</button>
+        <button data-topic="bishop">♝ 비숍</button>
+        <button data-topic="rook">♜ 룩</button>
+        <button data-topic="queen">♛ 퀸</button>
+        <button data-topic="king">♚ 킹</button>
+        <button data-topic="castle">캐슬링</button>
+        <button data-topic="enpassant">앙파상</button>
+        <button data-topic="promotion">승격</button>
+      </div>
+      <div class="legend" style="margin-top:10px">
+        <span><span class="lg move"></span> 이동 가능</span>
+        <span><span class="lg cap"></span> 잡기 (상대 기물이 있을 때)</span>
+      </div>
+    </div>
+    <div style="flex:1; min-width:300px; max-width:480px;">
+      <div class="card">
+        <h3 id="learnTitle">폰 (Pawn)</h3>
+        <div id="learnDesc" style="font-size:14.5px; line-height:1.75"></div>
+      </div>
+      <div class="card">
+        <h3>체스의 기본 규칙</h3>
+        <div class="learn-rules">
+          <p><b>🎯 목표</b> — 상대 <b>킹</b>을 빠져나갈 수 없게 가두면(체크메이트) 이깁니다. 킹은 실제로 잡지 않습니다.</p>
+          <p><b>▶ 차례</b> — <b>백이 먼저</b> 두고, 한 수씩 번갈아 둡니다.</p>
+          <p><b>＋ 체크</b> — 킹이 공격받는 상태. 그 수에 <b>반드시</b> 체크를 벗어나야 합니다(막기·피하기·잡기).</p>
+          <p><b>＃ 체크메이트</b> — 체크를 어떤 방법으로도 벗어날 수 없으면 게임 종료(패배).</p>
+          <p><b>＝ 스테일메이트</b> — 둘 수 있는 합법 수가 없는데 <b>체크는 아닌</b> 경우 → <b>무승부</b>.</p>
+          <p><b>🤝 무승부</b> — 스테일메이트, 기물 부족, 같은 자리 3회 반복, 50수 동안 잡기·폰 진행 없음, 합의.</p>
+          <p><b>⚖ 기물 가치(참고)</b> — 폰 1 · 나이트·비숍 3 · 룩 5 · 퀸 9 · 킹 ∞</p>
+          <p style="color:var(--muted)">위 버튼으로 캐슬링·앙파상·승격 같은 특수 규칙도 보드에서 직접 확인하세요.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ====================== AI와 대국 ====================== -->
 <section class="tab active" id="tab-ai">
