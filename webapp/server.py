@@ -56,7 +56,9 @@ _plock = threading.Lock()
 def _quick_engine() -> Engine:
     if _quick["e"] is None:
         cfg = EngineConfig()
-        cfg.threads, cfg.hash_mb, cfg.multipv = 2, 128, 1
+        # respect the small-instance env budget (was hardcoded 128MB, which
+        # OOM'd the 512MB free tier during analysis).
+        cfg.threads, cfg.hash_mb, cfg.multipv = _ETHREADS, _EHASH, 1
         cfg.movetime_ms = cfg.depth = None
         e = Engine(cfg); e.open()
         _quick["e"] = e

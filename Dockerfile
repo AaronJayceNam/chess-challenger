@@ -21,9 +21,9 @@ COPY data ./data
 # Conservative defaults sized for a small (1 vCPU / 512MB) cloud instance.
 # Override any of these in your host's environment for a bigger box.
 ENV PORT=8000 \
-    CC_WORKERS=2 \
+    CC_WORKERS=1 \
     CC_ENGINE_THREADS=1 \
-    CC_ENGINE_HASH_MB=32 \
+    CC_ENGINE_HASH_MB=16 \
     CC_MAX_CONCURRENT=1 \
     PYTHONUNBUFFERED=1
 

@@ -11,12 +11,14 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
+      # Sized to fit the 512MB free tier (0.1 shared CPU). A single small engine
+      # avoids the out-of-memory crash during analysis.
       - key: CC_WORKERS
-        value: "2"
+        value: "1"
       - key: CC_ENGINE_THREADS
         value: "1"
       - key: CC_ENGINE_HASH_MB
-        value: "32"
+        value: "16"
       - key: CC_MAX_CONCURRENT
         value: "1"
     # Render injects PORT automatically; the Docker CMD uses it.
