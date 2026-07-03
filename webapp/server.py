@@ -47,6 +47,36 @@ _WORKERS = int(os.environ.get("CC_WORKERS", max(2, min(6, _TOTAL // 2))))
 _ETHREADS = int(os.environ.get("CC_ENGINE_THREADS", max(1, _TOTAL // max(1, _WORKERS))))
 _EHASH = int(os.environ.get("CC_ENGINE_HASH_MB", 128))
 
+
+def _mem_limit_mb():
+    """Container/host memory limit in MB (None if unknown)."""
+    for p in ("/sys/fs/cgroup/memory.max",
+              "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            v = open(p).read().strip()
+            if v.isdigit():
+                mb = int(v) // (1024 * 1024)
+                if 0 < mb < 1_000_000:      # ignore "max"/absurd values
+                    return mb
+        except Exception:
+            pass
+    try:
+        for line in open("/proc/meminfo"):
+            if line.startswith("MemTotal"):
+                return int(line.split()[1]) // 1024
+    except Exception:
+        pass
+    return None
+
+
+# Auto-cap on small instances (e.g. the 512MB free tier) so analysis can't
+# OOM the box, regardless of env settings.
+_MEM_MB = _mem_limit_mb()
+if _MEM_MB and _MEM_MB <= 700:
+    _WORKERS = 1
+    _ETHREADS = 1
+    _EHASH = min(_EHASH, 16)
+
 _quick = {"e": None}            # single engine for ai_move / puzzle_move
 _qlock = threading.Lock()
 _pool = {"engines": None}       # engine pool for analysis
