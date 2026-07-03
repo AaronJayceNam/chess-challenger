@@ -316,3 +316,40 @@ label.field { display:block; font-size:13px; color:var(--muted); margin:12px 0 5
   box-shadow:0 10px 30px rgba(0,0,0,.55); display:flex; flex-direction:column; overflow:hidden; }
 .promo div { font-size:34px; padding:6px 12px; cursor:pointer; color:#111; transition:background .1s; }
 .promo div:hover { background:#dfe3ee; }
+
+/* ============================================================
+   Responsive / mobile — boards scale to the viewport, tabs
+   scroll, and page scroll-anchoring is disabled to stop the
+   phone from jumping on every re-render.
+   ============================================================ */
+:root {
+  --board: min(440px, 92vw);
+  --rvboard: min(440px, calc(92vw - 34px));   /* leaves room for the eval bar */
+}
+body { overflow-x: hidden; overflow-anchor: none; }
+.cboard, .boardstack { width: var(--board) !important; height: var(--board) !important; }
+.shapes { width: 100% !important; height: 100% !important; }
+.sq { font-size: calc(var(--board) / 11) !important; }
+.svgboard { width: var(--rvboard) !important; height: var(--rvboard) !important; }
+.svgboard svg { width: 100% !important; height: 100% !important; display: block; }
+.evalbar { height: var(--rvboard) !important; }
+.learn-sel { width: var(--board) !important; }
+.tabs {
+  overflow-x: auto; flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 560px) {
+  .tab { padding: 14px 10px; }
+  .tabs { padding: 10px 8px 0; gap: 2px; }
+  header.top { padding: 12px 12px; }
+  header.top h1 { font-size: 17px; }
+  .cols { gap: 12px; }
+  .card { padding: 12px 12px; margin-bottom: 12px; }
+  .cols > div { min-width: 0 !important; max-width: 100% !important; }
+}
+
+.appfoot { text-align:center; font-size:12px; color:var(--faint); padding:18px 12px 26px; line-height:1.8; }
+.appfoot a { color:var(--muted); text-decoration:none; }
+.appfoot a:hover { color:var(--accent2); text-decoration:underline; }

@@ -49,6 +49,18 @@ function overlay(show, msg) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Keep the active move visible by scrolling ONLY the list container — never the
+// page (element.scrollIntoView scrolls the whole window, which on phones makes
+// the screen jump/scroll down on every move).
+function scrollListToActive(list) {
+  if (!list) return;
+  const act = list.querySelector(".mv.active");
+  if (!act) return;
+  const lr = list.getBoundingClientRect(), ar = act.getBoundingClientRect();
+  if (ar.top < lr.top) list.scrollTop -= (lr.top - ar.top) + 6;
+  else if (ar.bottom > lr.bottom) list.scrollTop += (ar.bottom - lr.bottom) + 6;
+}
+
 // --------------------------------------------------------------------------- //
 // tabs
 // --------------------------------------------------------------------------- //
@@ -274,7 +286,7 @@ function renderRecMoves() {
   el.innerHTML = html;
   el.querySelectorAll(".mv").forEach((m) =>
     m.classList.toggle("active", +m.dataset.i === REC.view));
-  const a = el.querySelector(".mv.active"); if (a) a.scrollIntoView({ block: "nearest" });
+  scrollListToActive(el);
 }
 
 function updateTurn() {
@@ -527,8 +539,7 @@ function rvRender() {
   $("rvSlider").max = RV.N; $("rvSlider").value = RV.idx;
   document.querySelectorAll("#rvMoves .mv").forEach((el) =>
     el.classList.toggle("active", +el.dataset.idx === RV.idx));
-  const act = document.querySelector("#rvMoves .mv.active");
-  if (act) act.scrollIntoView({ block: "nearest" });
+  scrollListToActive($("rvMoves"));
   rvDetail(); rvGraph();
 }
 function rvGo(i) { RV.idx = Math.max(0, Math.min(RV.N, i)); rvRender(); }
