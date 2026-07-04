@@ -122,13 +122,13 @@ button.ghost:hover { background:#2a313d; border-color:#3a4350; }
 button.ghost:active { transform:translateY(1px); }
 
 /* ---------- form fields ---------- */
-input[type=text], textarea, select {
+input[type=text], input[type=password], textarea, select {
   background:#0f1318; color:var(--ink);
   border:1px solid var(--line2); border-radius:10px;
   padding:10px 12px; font-size:14px; width:100%; font-family:inherit;
   transition:border-color .15s, box-shadow .15s;
 }
-input[type=text]:focus, textarea:focus, select:focus {
+input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus {
   outline:none; border-color:var(--accent);
   box-shadow:0 0 0 3px rgba(99,102,241,.25);
 }
@@ -426,7 +426,7 @@ button.ghost { border-radius:11px; box-shadow:0 2px 0 rgba(0,0,0,.3); }
 button.ghost:active { transform:translateY(2px); box-shadow:none; }
 
 /* focus ring + slider color follow the new accent */
-input[type=text]:focus, textarea:focus, select:focus {
+input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus {
   border-color:var(--accent); box-shadow:0 0 0 3px rgba(63,157,99,.28);
 }
 .controls input[type=range], #aiLevel { accent-color:var(--accent) !important; }
@@ -504,3 +504,59 @@ input[type=text]:focus, textarea:focus, select:focus {
 .auth-box h2 { margin:0 0 6px; font-size:19px; }
 .auth-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
 .auth-hint { font-size:12.5px; color:var(--muted); line-height:1.6; margin:14px 0 0; }
+
+/* ---------- leaderboard ---------- */
+.lb { font-size:14px; }
+.lb-row { display:grid; grid-template-columns:34px 1fr 64px; gap:8px; align-items:center;
+  padding:8px 6px; border-bottom:1px solid var(--line); }
+.lb-row:last-child { border-bottom:none; }
+.lb-row.me { background:rgba(63,157,99,.12); border-radius:8px; }
+.lb-rank { text-align:center; font-weight:800; color:var(--muted); }
+.lb-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.lb-row.me .lb-name { color:#8fdcab; }
+.lb-rating { text-align:right; color:#f7c94f; font-family:'Consolas','SF Mono',monospace; }
+
+/* ============================================================
+   MOBILE OPTIMIZATION v9 — comfortable one-hand use on phones
+   ============================================================ */
+@media (max-width: 560px) {
+  /* compact header; engine status chip is dev noise on phones */
+  header.top { padding:10px 12px; gap:8px; }
+  header.top h1 { font-size:16px; }
+  header.top h1::before { width:28px; height:28px; font-size:16px; border-radius:9px; }
+  header.top .sf { display:none; }
+  .rating-chip { font-size:12px; padding:5px 10px; }
+  .rating-chip b { font-size:13px; }
+  .user-chip { font-size:12px; padding:5px 9px; }
+
+  /* compact scrollable tab pills */
+  .tabs { padding:10px 10px 10px; gap:6px; }
+  .tabs button { padding:9px 13px 10px; font-size:14px; border-radius:11px; }
+  .tab { padding:12px 10px 28px; }
+
+  /* 16px inputs stop iOS from auto-zooming on focus */
+  input[type=text], input[type=password], select, textarea { font-size:16px; }
+
+  /* bigger touch targets */
+  button.primary { min-height:46px; width:100%; }
+  button.ghost { min-height:40px; padding:9px 13px; }
+  .controls { flex-wrap:wrap; }
+  .auth-actions button.primary { width:auto; flex:1; }
+
+  /* boards & bars fill the phone width */
+  :root { --board: 94vw; --rvboard: calc(94vw - 32px); }
+  .pbar { width:var(--board); padding:7px 10px; gap:8px; }
+  .pv-name { font-size:13px; }
+  .pv-clock { font-size:13.5px; padding:3px 8px; }
+  .pv-caps { font-size:14px; }
+
+  .pz-flash { font-size:38px; }
+  .legend { font-size:11px; gap:8px; }
+  .learn-sel button { padding:8px 10px; font-size:13px; }
+  .card { padding:13px 13px; border-radius:12px; margin-bottom:12px; }
+  .result-box { padding:26px 20px 22px; }
+  .result-icon { font-size:64px; }
+  .result-title { font-size:25px; }
+  .movelist { max-height:200px; }
+  .appfoot { font-size:11px; }
+}

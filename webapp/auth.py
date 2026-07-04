@@ -187,6 +187,23 @@ def register_auth(app: FastAPI) -> None:
             row = _get_user(con, uid)
             return {"ok": True, "id": uid, "progress": json.loads(row[3] or "{}")}
 
+    @app.get("/api/leaderboard")
+    def leaderboard():
+        """Top registered accounts by rating (from their saved progress)."""
+        with _connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT id, progress FROM users")
+            rows = cur.fetchall()
+        entries = []
+        for uid, prog in rows:
+            try:
+                rating = int(json.loads(prog or "{}").get("rating", 0) or 0)
+            except (ValueError, TypeError, json.JSONDecodeError):
+                rating = 0
+            entries.append({"id": uid, "rating": max(0, rating)})
+        entries.sort(key=lambda e: -e["rating"])
+        return {"ok": True, "top": entries[:20], "total": len(entries)}
+
     @app.post("/api/auth/save")
     def auth_save(req: SaveRequest):
         progress = _progress_json(req.progress)

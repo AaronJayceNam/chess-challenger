@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=8">
+<link rel="stylesheet" href="/static/style.css?v=9">
 </head>
 <body>
 
@@ -69,6 +69,11 @@
       <div class="card">
         <h3>기보</h3>
         <div class="movelist" id="ogMoves"><span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
+      </div>
+      <div class="card">
+        <h3>🏆 리더보드 <span id="lbTotal" style="color:var(--muted);font-weight:400"></span></h3>
+        <div class="lb" id="lbList"><div class="hist-empty">불러오는 중…</div></div>
+        <p class="auth-hint" style="margin-top:10px">로그인한 플레이어만 순위에 올라갑니다.</p>
       </div>
       <div class="card">
         <h3>대국 기록</h3>
@@ -298,6 +303,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=8"></script>
+<script src="/static/app.js?v=9"></script>
 </body>
 </html>

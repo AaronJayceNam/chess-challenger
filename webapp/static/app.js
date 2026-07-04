@@ -72,6 +72,7 @@ function switchTab(name) {
     b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) =>
     t.classList.toggle("active", t.id === "tab-" + name));
+  if (name === "online" && typeof loadLeaderboard === "function") loadLeaderboard();
 }
 // empty-state "go analyze" buttons
 document.querySelectorAll("[data-goto]").forEach((b) => {
@@ -1220,6 +1221,7 @@ function ogEnd(result, reason) {
     setMyRating(newRating);
     addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: applied });
     badge = { small: "⚡ 레이팅 변동", text: `${applied >= 0 ? "+" + applied : applied} → ${newRating}` };
+    setTimeout(loadLeaderboard, 1600);   // after the debounced progress push lands
   }
 
   const opts = kind === "win"
@@ -1363,6 +1365,31 @@ $("authRegisterBtn").onclick = () => authSubmit("register");
 $("authCloseBtn").onclick = () => $("authModal").classList.add("hidden");
 $("authPw").addEventListener("keydown", (e) => { if (e.key === "Enter") authSubmit("login"); });
 
+// =========================================================================== //
+// LEADERBOARD — top registered accounts by rating (server-computed)
+// =========================================================================== //
+async function loadLeaderboard() {
+  const el = $("lbList"); if (!el) return;
+  try {
+    const r = await (await fetch("/api/leaderboard")).json();
+    $("lbTotal").textContent = r.total ? `(플레이어 ${r.total}명)` : "";
+    if (!r.top || !r.top.length) {
+      el.innerHTML = '<div class="hist-empty">아직 등록된 플레이어가 없습니다. 첫 주인공이 되어보세요!</div>';
+      return;
+    }
+    const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+    el.innerHTML = r.top.map((e, i) => {
+      const me = AUTH.id && e.id === AUTH.id;
+      return `<div class="lb-row ${me ? "me" : ""}">` +
+        `<span class="lb-rank">${medal(i)}</span>` +
+        `<span class="lb-name">${escapeHtml(e.id)}${me ? " (나)" : ""}</span>` +
+        `<b class="lb-rating">${e.rating}</b></div>`;
+    }).join("");
+  } catch (e) {
+    el.innerHTML = '<div class="hist-empty">리더보드를 불러오지 못했습니다.</div>';
+  }
+}
+
 async function authBoot() {
   renderAuthArea();
   if (!AUTH.token) return;
@@ -1380,3 +1407,4 @@ async function authBoot() {
 // boot
 aiBoot();
 authBoot();
+loadLeaderboard();
