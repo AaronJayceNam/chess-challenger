@@ -945,7 +945,66 @@ const OG = {
   ws: null, started: false, over: false, color: null, opponent: null,
   state: null, moves: [], sel: null, orient: "w", lastUci: null, pingTimer: null,
   oppRating: RATING_START, ratingApplied: false,
+  clock: { w: 600, b: 600 }, clockSyncedAt: 0,
 };
+
+// ---- chess clock (server-authoritative; we only tick the display) ----
+function ogSyncClock(state) {
+  if (typeof state.clockW === "number") OG.clock = { w: state.clockW, b: state.clockB };
+  OG.clockSyncedAt = performance.now();
+}
+function ogClockNow(color) {
+  let v = color === "w" ? OG.clock.w : OG.clock.b;
+  // only the side to move's clock runs
+  if (OG.started && !OG.over && OG.state && OG.state.turn === color) {
+    v -= (performance.now() - OG.clockSyncedAt) / 1000;
+  }
+  return Math.max(0, v);
+}
+function fmtClock(s) {
+  s = Math.max(0, Math.ceil(s));
+  return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}
+
+// ---- captured material from the FEN (points: P1 N3 B3 R5 Q9) ----
+const PIECE_PTS = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+function materialInfo(fen) {
+  const cnt = {};
+  for (const c of "PNBRQpnbrq") cnt[c] = 0;
+  for (const ch of fen.split(" ")[0]) if (cnt[ch] !== undefined) cnt[ch]++;
+  const start = { p: 8, n: 2, b: 2, r: 2, q: 1 };
+  const capByWhite = [], capByBlack = [];
+  let wPts = 0, bPts = 0;
+  for (const t of ["q", "r", "b", "n", "p"]) {
+    for (let i = 0; i < Math.max(0, start[t] - cnt[t]); i++) { capByWhite.push(t); wPts += PIECE_PTS[t]; }
+    for (let i = 0; i < Math.max(0, start[t] - cnt[t.toUpperCase()]); i++) { capByBlack.push(t); bPts += PIECE_PTS[t]; }
+  }
+  return { capByWhite, capByBlack, wLead: wPts - bPts };
+}
+
+// ---- player bars: [profile] [name + timer side by side] ... [captured +pts] ----
+function renderPbars() {
+  const top = $("ogTopBar"), bottom = $("ogBottomBar");
+  if (!OG.started || !OG.state) { top.classList.add("hidden"); bottom.classList.add("hidden"); return; }
+  top.classList.remove("hidden"); bottom.classList.remove("hidden");
+  const mat = materialInfo(OG.state.fen);
+  const mine = OG.color, theirs = mine === "w" ? "b" : "w";
+  const bar = (el, color, name, isMe) => {
+    const caps = color === "w" ? mat.capByWhite : mat.capByBlack;
+    const lead = color === "w" ? mat.wLead : -mat.wLead;
+    const active = OG.started && !OG.over && OG.state.turn === color;
+    const t = ogClockNow(color);
+    el.innerHTML =
+      `<span class="pv-ava ${isMe ? "me" : ""}">${escapeHtml((name || "?").charAt(0).toUpperCase())}</span>` +
+      `<span class="pv-name">${escapeHtml(name || "")}</span>` +
+      `<span class="pv-clock ${active ? "active" : ""} ${t < 60 ? "low" : ""}">⏱ ${fmtClock(t)}</span>` +
+      `<span class="pv-caps">${caps.map((c) => GLYPH[c]).join("")}` +
+      `${lead > 0 ? `<b class="pv-lead">+${lead}</b>` : ""}</span>`;
+  };
+  bar(top, theirs, OG.opponent || "상대", false);
+  bar(bottom, mine, ogName(), true);
+}
+setInterval(() => { if (OG.started) renderPbars(); }, 250);
 
 function ogSend(payload) {
   if (OG.ws && OG.ws.readyState === WebSocket.OPEN) OG.ws.send(JSON.stringify(payload));
@@ -1010,6 +1069,7 @@ function ogHandle(msg) {
       OG.color = msg.color; OG.orient = msg.color;
       OG.opponent = msg.opponent || "상대";
       OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null; OG.lastUci = null;
+      ogSyncClock(msg.state);
       $("ogSetup").classList.add("hidden");
       $("ogGameInfo").classList.remove("hidden");
       $("ogCancel").classList.add("hidden"); $("ogCodeBox").classList.add("hidden");
@@ -1017,12 +1077,13 @@ function ogHandle(msg) {
       $("ogColorInfo").textContent = `당신은 ${OG.color === "w" ? "백(선공)" : "흑(후공)"}입니다.`;
       setStatus("ogStatus", "대국 시작! 행운을 빕니다 🍀");
       setStatus("ogSetupStatus", "");
-      renderOgBoard(); renderOgMoves(); updateOgTurn();
+      renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
       break;
     case "state":
       OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null;
       OG.lastUci = msg.lastUci || null;
-      renderOgBoard(); renderOgMoves(); updateOgTurn();
+      ogSyncClock(msg.state);
+      renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
       if (OG.lastUci) animateMove($("ogBoard"), OG.lastUci.slice(0, 2), OG.lastUci.slice(2, 4), OG.orient);
       break;
     case "end":
@@ -1119,7 +1180,7 @@ function ogEnd(result, reason) {
   let kind = "draw";
   if (result === "1-0") kind = OG.color === "w" ? "win" : "loss";
   else if (result === "0-1") kind = OG.color === "b" ? "win" : "loss";
-  const reasonTxt = { checkmate: "체크메이트", resign: "기권", forfeit: "상대가 나갔습니다", draw: "무승부" }[reason] || "";
+  const reasonTxt = { checkmate: "체크메이트", resign: "기권", forfeit: "상대가 나갔습니다", timeout: "시간 초과", draw: "무승부" }[reason] || "";
   const me = ogName();
   const white = OG.color === "w" ? me : (OG.opponent || "상대");
   const black = OG.color === "b" ? me : (OG.opponent || "상대");
@@ -1159,6 +1220,8 @@ function ogReset() {
   $("ogGameInfo").classList.add("hidden");
   $("ogCodeBox").classList.add("hidden");
   $("ogCancel").classList.add("hidden");
+  $("ogTopBar").classList.add("hidden");
+  $("ogBottomBar").classList.add("hidden");
   setStatus("ogStatus", ""); setStatus("ogSetupStatus", "");
   renderOgBoard(); renderOgMoves(); updateOgTurn();
   switchTab("online");

@@ -30,13 +30,18 @@ Wire protocol (JSON messages):
 from __future__ import annotations
 
 import asyncio
+import os
 import secrets
+import time
 
 import chess
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 # no 0/O/1/I to keep codes easy to read aloud
 _CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+# 10 minutes per player; env-overridable so tests can use a tiny clock.
+CLOCK_START = float(os.environ.get("CC_CLOCK_SECS", "600"))
 
 
 def _new_code(taken) -> str:
@@ -62,6 +67,21 @@ class Game:
         self.ws = {chess.WHITE: w_ws, chess.BLACK: b_ws}
         self.names = {chess.WHITE: w_name, chess.BLACK: b_name}
         self.over = False
+        # chess clock: each side gets CLOCK_START seconds; only the side to
+        # move's clock runs. turn_started marks when the current turn began.
+        self.clock = {chess.WHITE: CLOCK_START, chess.BLACK: CLOCK_START}
+        self.turn_started = time.monotonic()
+
+    def remaining(self) -> tuple[float, float]:
+        """(white, black) seconds left, including the running turn's elapsed."""
+        rw, rb = self.clock[chess.WHITE], self.clock[chess.BLACK]
+        if not self.over:
+            elapsed = time.monotonic() - self.turn_started
+            if self.board.turn == chess.WHITE:
+                rw -= elapsed
+            else:
+                rb -= elapsed
+        return max(0.0, rw), max(0.0, rb)
 
     def color_of(self, ws: WebSocket):
         if self.ws[chess.WHITE] is ws:
@@ -82,12 +102,16 @@ class Lobby:
         self.queue: list[tuple[WebSocket, str, int]] = []
         self.rooms: dict[str, tuple[WebSocket, str, int]] = {}
         self.games: dict[WebSocket, Game] = {}
+        self._sweeper: asyncio.Task | None = None
 
     # ------------------------------------------------------------------ #
     def _state(self, game: Game) -> dict:
         st = self._legal_state(game.board)
         st["san"] = list(game.san)
         st["moves"] = list(game.moves)
+        rw, rb = game.remaining()
+        st["clockW"] = round(rw, 1)
+        st["clockB"] = round(rb, 1)
         return st
 
     async def _start_game(self, a, b) -> None:
@@ -97,6 +121,9 @@ class Lobby:
         game = Game(a[0], a[1], b[0], b[1])
         self.games[a[0]] = game
         self.games[b[0]] = game
+        game.turn_started = time.monotonic()
+        if self._sweeper is None or self._sweeper.done():
+            self._sweeper = asyncio.create_task(self._sweep_clocks())
         st = self._state(game)
         await _send(a[0], {"type": "start", "color": "w", "opponent": b[1],
                            "opponentRating": b[2], "state": st})
@@ -166,6 +193,21 @@ class Lobby:
                 return await _send(ws, {"type": "error", "message": "잘못된 수 표기입니다."})
             if mv not in game.board.legal_moves:
                 return await _send(ws, {"type": "error", "message": "둘 수 없는 수입니다."})
+            # clock: charge the mover for their thinking time; a move that
+            # arrives after the flag fell loses on time instead of counting.
+            now = time.monotonic()
+            left = game.clock[color] - (now - game.turn_started)
+            if left <= 0:
+                game.clock[color] = 0.0
+                game.over = True
+                self._cleanup_game(game)
+                result = "0-1" if color == chess.WHITE else "1-0"
+                end = {"type": "end", "result": result, "reason": "timeout"}
+                for c in (chess.WHITE, chess.BLACK):
+                    await _send(game.ws[c], end)
+                return
+            game.clock[color] = left
+            game.turn_started = now
             game.san.append(game.board.san(mv))
             game.board.push(mv)
             game.moves.append(uci)
@@ -195,6 +237,33 @@ class Lobby:
         end = {"type": "end", "result": result, "reason": "resign"}
         for c in (chess.WHITE, chess.BLACK):
             await _send(game.ws[c], end)
+
+    async def _sweep_clocks(self) -> None:
+        """End games on the clock: if the side to move runs out of time and
+        never moves, they lose. Runs once per second while games exist."""
+        while True:
+            await asyncio.sleep(1.0)
+            ended: list[tuple[Game, str]] = []
+            async with self.lock:
+                for game in set(self.games.values()):
+                    if game.over:
+                        continue
+                    rw, rb = game.remaining()
+                    loser = None
+                    if game.board.turn == chess.WHITE and rw <= 0:
+                        loser = chess.WHITE
+                    elif game.board.turn == chess.BLACK and rb <= 0:
+                        loser = chess.BLACK
+                    if loser is not None:
+                        game.over = True
+                        self._cleanup_game(game)
+                        ended.append((game, "0-1" if loser == chess.WHITE else "1-0"))
+                if not self.games and not ended:
+                    break                      # idle — stop; restarted on next game
+            for game, result in ended:
+                end = {"type": "end", "result": result, "reason": "timeout"}
+                for c in (chess.WHITE, chess.BLACK):
+                    await _send(game.ws[c], end)
 
     async def disconnect(self, ws: WebSocket) -> None:
         other = None

@@ -471,3 +471,24 @@ input[type=text]:focus, textarea:focus, select:focus {
 
 /* board frame polish */
 .boardstack, .svgboard { border-radius:14px; box-shadow:0 2px 0 rgba(0,0,0,.4), 0 14px 30px -14px rgba(0,0,0,.7); }
+
+/* ---------- online player bars: profile | name+clock ... captured +pts ---------- */
+.pbar { display:flex; align-items:center; gap:10px; width:var(--board);
+  background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
+  border-radius:12px; padding:8px 12px; margin:8px 0; box-shadow:var(--shadow-sm); }
+.pv-ava { display:inline-grid; place-items:center; width:30px; height:30px; border-radius:9px;
+  background:var(--elevated); color:var(--ink); font-weight:800; font-size:14px; flex:0 0 auto; }
+.pv-ava.me { background:linear-gradient(145deg,var(--accent2),var(--accent-deep)); color:#fff; }
+.pv-name { font-weight:700; font-size:14.5px; max-width:32%; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.pv-clock { font-family:'Consolas','SF Mono',monospace; font-size:15px; font-weight:700;
+  padding:3px 10px; border-radius:8px; background:#12151a; color:var(--muted);
+  border:1px solid var(--line2); }
+.pv-clock.active { background:linear-gradient(180deg,var(--accent2),var(--accent)); color:#fff;
+  border-color:transparent; box-shadow:0 2px 0 var(--accent-deep); }
+.pv-clock.active.low { background:linear-gradient(180deg,#f0584f,#c62828); box-shadow:0 2px 0 #8e1e1e;
+  animation:lowtime 1s steps(2) infinite; }
+@keyframes lowtime { 50% { filter:brightness(1.35); } }
+.pv-caps { margin-left:auto; display:flex; align-items:center; gap:2px; font-size:16px;
+  color:#c9d2dd; letter-spacing:-1px; }
+.pv-lead { margin-left:6px; font-size:13.5px; color:#5fc287; letter-spacing:0; }
