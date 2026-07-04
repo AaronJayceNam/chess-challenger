@@ -451,6 +451,10 @@ def study_html(req: StudyRequest):
     return PlainTextResponse(html, media_type="text/html; charset=utf-8")
 
 
+# Online multiplayer (WebSocket matchmaking + move relay) — /ws
+from webapp.online import register_online  # noqa: E402
+register_online(app, _legal_state)
+
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 

@@ -656,21 +656,15 @@ $("rvShare").onclick = async () => {
 // =========================================================================== //
 const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false };
 
-// Level titles. Beating a level grants its title; the player's rank is the title
-// of the highest level they have beaten (persisted in localStorage).
-function titleFor(level) {
-  if (level >= 15) return "마스터";
-  if (level >= 11) return `고수 ${level - 10}`;   // 11..14 -> 1..4
-  if (level >= 6) return `중수 ${level - 5}`;      // 6..10  -> 1..5
-  return `초보자 ${level}`;                         // 1..5
-}
+// Progress: the highest level beaten (persisted in localStorage). Shown as a
+// plain level number — no titles.
 function bestLevel() { return +(localStorage.getItem("cc_best_level") || 0); }
 function setBestLevel(n) { localStorage.setItem("cc_best_level", String(n)); }
 function updateRankBadge() {
   const b = bestLevel(), el = $("aiRank");
   if (!el) return;
-  if (b > 0) { el.textContent = "내 호칭: " + titleFor(b); el.classList.toggle("master", b >= 15); }
-  else { el.textContent = "내 호칭: 무관 (아직 호칭 없음)"; el.classList.remove("master"); }
+  if (b > 0) { el.textContent = `내 최고 기록: 레벨 ${b} 클리어`; el.classList.toggle("master", b >= 15); }
+  else { el.textContent = "아직 클리어한 레벨이 없습니다"; el.classList.remove("master"); }
 }
 
 // ---- big win/loss/draw result screen ----
@@ -684,7 +678,7 @@ function showResult(o) {
   if (o.badge) {
     badge.classList.remove("hidden");
     badge.classList.toggle("master", !!o.badge.master);
-    badge.innerHTML = `<span class="small">🎉 새 호칭 획득</span>${o.badge.text}`;
+    badge.innerHTML = `<span class="small">🎉 새 기록 달성</span>${o.badge.text}`;
   } else { badge.classList.add("hidden"); }
   const act = $("resultActions"); act.innerHTML = "";
   (o.actions || []).forEach((a) => {
@@ -837,7 +831,7 @@ function aiEndGame() {
   let badge = null;
   if (kind === "win" && lv > bestLevel()) {
     setBestLevel(lv); updateRankBadge();
-    badge = { text: titleFor(lv), master: lv >= 15 };
+    badge = { text: `레벨 ${lv} 클리어!`, master: lv >= 15 };
   }
   setStatus("aiStatus", `대국 종료 (${r}).`);
   $("aiAnalyze").classList.remove("hidden");
@@ -849,10 +843,10 @@ function aiEndGame() {
     { label: "🔄 새 대국", onClick: () => switchTab("ai") },
   ];
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: "승리!", sub: `레벨 ${lv} (${titleFor(lv)}) AI를 이겼습니다`, badge, actions }
+    ? { kind, icon: "🏆", title: "승리!", sub: `레벨 ${lv} AI를 이겼습니다`, badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: "패배", sub: `레벨 ${lv} (${titleFor(lv)}) AI에게 졌습니다. 다시 도전!`, actions }
-      : { kind, icon: "🤝", title: "무승부", sub: `레벨 ${lv} (${titleFor(lv)}) AI와 비겼습니다`, actions };
+      ? { kind, icon: "😢", title: "패배", sub: `레벨 ${lv} AI에게 졌습니다. 다시 도전!`, actions }
+      : { kind, icon: "🤝", title: "무승부", sub: `레벨 ${lv} AI와 비겼습니다`, actions };
   setTimeout(() => showResult(opts), 500);   // let the final move finish sliding
 }
 
@@ -871,7 +865,7 @@ async function aiStart() {
 
 $("aiLevel").oninput = (e) => {
   const n = +e.target.value;
-  $("aiLevelLabel").textContent = `레벨 ${n} · ${titleFor(n)}`;
+  $("aiLevelLabel").textContent = `레벨 ${n}`;
 };
 $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
@@ -1079,7 +1073,7 @@ $("pzSolution").onclick = () => {
 async function aiBoot() {
   loadPuzzles();
   updateRankBadge();
-  $("aiLevelLabel").textContent = `레벨 ${$("aiLevel").value} · ${titleFor(+$("aiLevel").value)}`;
+  $("aiLevelLabel").textContent = `레벨 ${$("aiLevel").value}`;
   try { AIG.state = await api("/api/legal", { moves: [] }); renderAiBoard(); updateAiTurn(); }
   catch (e) { /* board stays empty until 새 대국 시작 */ }
 }
@@ -1194,6 +1188,239 @@ document.querySelectorAll("#learnSel button").forEach((b) => {
   };
 });
 showLearn("pawn");
+
+// =========================================================================== //
+// ONLINE MULTIPLAYER — WebSocket matchmaking + play. The server validates all
+// moves and broadcasts state; this client only renders and sends intents.
+// =========================================================================== //
+const OG = {
+  ws: null, started: false, over: false, color: null, opponent: null,
+  state: null, moves: [], sel: null, orient: "w", lastUci: null, pingTimer: null,
+};
+
+function ogSend(payload) {
+  if (OG.ws && OG.ws.readyState === WebSocket.OPEN) OG.ws.send(JSON.stringify(payload));
+}
+
+function ogConnect(then) {
+  if (OG.ws && OG.ws.readyState === WebSocket.OPEN) { then && then(); return; }
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  OG.ws = ws;
+  ws.onopen = () => {
+    if (OG.pingTimer) clearInterval(OG.pingTimer);
+    OG.pingTimer = setInterval(() => ogSend({ type: "ping" }), 25000); // keep proxies from closing us
+    then && then();
+  };
+  ws.onmessage = (e) => { try { ogHandle(JSON.parse(e.data)); } catch (err) {} };
+  ws.onclose = () => {
+    if (OG.pingTimer) { clearInterval(OG.pingTimer); OG.pingTimer = null; }
+    if (OG.started && !OG.over) {
+      OG.over = true; updateOgTurn();
+      setStatus("ogStatus", "서버와 연결이 끊어졌습니다. 새로고침 후 다시 매치를 시작하세요.", true);
+    }
+    OG.ws = null;
+  };
+  ws.onerror = () => { setStatus("ogSetupStatus", "연결 오류 — 잠시 후 다시 시도하세요.", true); };
+}
+
+function ogName() { return ($("ogName").value || "플레이어").trim().slice(0, 20) || "플레이어"; }
+
+// Matchmaking always starts on a FRESH socket: closing the old one makes the
+// server clean up any stale queue/room/game state for us, so the user can
+// never get stuck in "이미 대국 중입니다".
+function ogFresh(then) {
+  if (OG.ws) {
+    try { OG.ws.onclose = null; OG.ws.close(); } catch (e) {}
+    OG.ws = null;
+  }
+  OG.started = false; OG.over = false;
+  ogConnect(then);
+}
+
+function ogHandle(msg) {
+  switch (msg.type) {
+    case "waiting":
+      setStatus("ogSetupStatus", "상대를 찾는 중… 다른 사람이 '빠른 매치'를 누르면 연결됩니다.");
+      $("ogCancel").classList.remove("hidden");
+      break;
+    case "room":
+      $("ogCodeBox").classList.remove("hidden");
+      $("ogCode").textContent = msg.code;
+      setStatus("ogSetupStatus", "친구가 코드를 입력하면 대국이 시작됩니다.");
+      $("ogCancel").classList.remove("hidden");
+      break;
+    case "cancelled":
+      setStatus("ogSetupStatus", "매칭을 취소했습니다.");
+      $("ogCancel").classList.add("hidden");
+      $("ogCodeBox").classList.add("hidden");
+      break;
+    case "start":
+      OG.started = true; OG.over = false;
+      OG.color = msg.color; OG.orient = msg.color;
+      OG.opponent = msg.opponent || "상대";
+      OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null; OG.lastUci = null;
+      $("ogSetup").classList.add("hidden");
+      $("ogGameInfo").classList.remove("hidden");
+      $("ogCancel").classList.add("hidden"); $("ogCodeBox").classList.add("hidden");
+      $("ogVs").textContent = `${ogName()} vs ${OG.opponent}`;
+      $("ogColorInfo").textContent = `당신은 ${OG.color === "w" ? "백(선공)" : "흑(후공)"}입니다.`;
+      setStatus("ogStatus", "대국 시작! 행운을 빕니다 🍀");
+      setStatus("ogSetupStatus", "");
+      renderOgBoard(); renderOgMoves(); updateOgTurn();
+      break;
+    case "state":
+      OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null;
+      OG.lastUci = msg.lastUci || null;
+      renderOgBoard(); renderOgMoves(); updateOgTurn();
+      if (OG.lastUci) animateMove($("ogBoard"), OG.lastUci.slice(0, 2), OG.lastUci.slice(2, 4), OG.orient);
+      break;
+    case "end":
+      ogEnd(msg.result, msg.reason);
+      break;
+    case "error":
+      setStatus(OG.started ? "ogStatus" : "ogSetupStatus", msg.message || "오류", true);
+      break;
+  }
+}
+
+function renderOgBoard() {
+  const board = $("ogBoard"); board.innerHTML = "";
+  const st = OG.state; if (!st) return;
+  const map = parseFen(st.fen);
+  const files = OG.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"];
+  const ranks = OG.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const lf = OG.lastUci ? OG.lastUci.slice(0, 2) : null, lt = OG.lastUci ? OG.lastUci.slice(2, 4) : null;
+  const myTurn = OG.started && !OG.over && st.turn === OG.color;
+  const legal = myTurn ? (st.legal || {}) : {};
+  let kingSq = null;
+  if (st.check) { const kc = st.turn === "w" ? "K" : "k"; for (const s in map) if (map[s] === kc) kingSq = s; }
+  for (const rank of ranks) {
+    for (const f of files) {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const div = document.createElement("div");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
+      if (sq === lf || sq === lt) div.classList.add("last");
+      if (OG.sel === sq) div.classList.add("sel");
+      if (sq === kingSq) div.classList.add("check");
+      const p = map[sq];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "pc " + (p === p.toUpperCase() ? "w" : "b");
+        s.textContent = GLYPH[p.toLowerCase()];
+        div.appendChild(s);
+      }
+      if (OG.sel && legal[OG.sel] && legal[OG.sel].includes(sq)) {
+        const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
+        div.appendChild(d);
+      }
+      div.onclick = () => onOgClick(sq);
+      board.appendChild(div);
+    }
+  }
+}
+
+function onOgClick(sq) {
+  const st = OG.state;
+  if (!OG.started || OG.over || !st || st.turn !== OG.color) return;
+  const map = parseFen(st.fen), legal = st.legal || {};
+  if (OG.sel) {
+    if (legal[OG.sel] && legal[OG.sel].includes(sq)) {
+      const from = OG.sel, piece = map[from], r = +sq[1];
+      OG.sel = null;
+      if (piece && piece.toLowerCase() === "p" && (r === 8 || r === 1)) {
+        promoChooser($("ogBoard"), piece === "P", (pp) => ogSend({ type: "move", uci: from + sq + pp }));
+      } else {
+        ogSend({ type: "move", uci: from + sq });
+      }
+      renderOgBoard();
+      return;
+    }
+    if (legal[sq]) { OG.sel = sq; renderOgBoard(); return; }
+    OG.sel = null; renderOgBoard(); return;
+  }
+  if (legal[sq]) { OG.sel = sq; renderOgBoard(); }
+}
+
+function renderOgMoves() {
+  const el = $("ogMoves");
+  const san = (OG.state && OG.state.san) ? OG.state.san : [];
+  if (!san.length) { el.innerHTML = '<span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span>'; return; }
+  let html = "";
+  san.forEach((s, i) => {
+    if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
+    html += `<span class="mv" style="cursor:default">${s}</span> `;
+  });
+  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+}
+
+function updateOgTurn() {
+  const t = $("ogTurn"), st = OG.state;
+  if (!OG.started || !st) { t.innerHTML = '<span class="pill"></span>매치를 시작하면 보드가 열립니다.'; return; }
+  if (OG.over) { t.innerHTML = "<b>대국 종료</b>"; return; }
+  const w = st.turn === "w", mine = st.turn === OG.color;
+  t.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? "백" : "흑"} 차례` +
+    (mine ? " (당신)" : ` (${OG.opponent || "상대"})`) +
+    (st.check ? " · <b style='color:#ff8a80'>체크!</b>" : "");
+}
+
+function ogEnd(result, reason) {
+  OG.over = true; renderOgBoard(); updateOgTurn();
+  let kind = "draw";
+  if (result === "1-0") kind = OG.color === "w" ? "win" : "loss";
+  else if (result === "0-1") kind = OG.color === "b" ? "win" : "loss";
+  const reasonTxt = { checkmate: "체크메이트", resign: "기권", forfeit: "상대가 나갔습니다", draw: "무승부" }[reason] || "";
+  const me = ogName();
+  const white = OG.color === "w" ? me : (OG.opponent || "상대");
+  const black = OG.color === "b" ? me : (OG.opponent || "상대");
+  const movesCopy = [...OG.moves];
+  const actions = [];
+  if (movesCopy.length) {
+    actions.push({ label: "🤖 AI 평가 보기", primary: true,
+      onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 350 }) });
+  }
+  actions.push({ label: "🔄 새 매치", onClick: ogReset });
+  const opts = kind === "win"
+    ? { kind, icon: "🏆", title: "승리!", sub: `${OG.opponent}님을 이겼습니다 (${reasonTxt})`, actions }
+    : kind === "loss"
+      ? { kind, icon: "😢", title: "패배", sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, actions }
+      : { kind, icon: "🤝", title: "무승부", sub: `${OG.opponent}님과 비겼습니다`, actions };
+  setStatus("ogStatus", `대국 종료 (${result}) — ${reasonTxt}`);
+  setTimeout(() => showResult(opts), 450);
+}
+
+function ogReset() {
+  OG.started = false; OG.over = false; OG.color = null; OG.opponent = null;
+  OG.state = null; OG.moves = []; OG.sel = null; OG.lastUci = null;
+  $("ogSetup").classList.remove("hidden");
+  $("ogGameInfo").classList.add("hidden");
+  $("ogCodeBox").classList.add("hidden");
+  $("ogCancel").classList.add("hidden");
+  setStatus("ogStatus", ""); setStatus("ogSetupStatus", "");
+  renderOgBoard(); renderOgMoves(); updateOgTurn();
+  switchTab("online");
+}
+
+$("ogQuick").onclick = () => {
+  setStatus("ogSetupStatus", "서버에 연결 중…");
+  ogFresh(() => ogSend({ type: "quick", name: ogName() }));
+};
+$("ogCreate").onclick = () => {
+  setStatus("ogSetupStatus", "서버에 연결 중…");
+  ogFresh(() => ogSend({ type: "create", name: ogName() }));
+};
+$("ogJoin").onclick = () => {
+  const code = ($("ogJoinCode").value || "").trim().toUpperCase();
+  if (code.length !== 4) { setStatus("ogSetupStatus", "4글자 코드를 입력하세요.", true); return; }
+  setStatus("ogSetupStatus", "방에 참가하는 중…");
+  ogFresh(() => ogSend({ type: "join", code, name: ogName() }));
+};
+$("ogCancel").onclick = () => ogSend({ type: "cancel" });
+$("ogResign").onclick = () => {
+  if (!OG.started || OG.over) { setStatus("ogStatus", "진행 중인 대국이 없습니다.", true); return; }
+  ogSend({ type: "resign" });
+};
+$("ogFlip").onclick = () => { OG.orient = OG.orient === "w" ? "b" : "w"; renderOgBoard(); };
 
 // boot
 recInit().catch((e) => setStatus("recStatus", "초기화 오류: " + e.message, true));

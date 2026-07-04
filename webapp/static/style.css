@@ -353,3 +353,9 @@ body { overflow-x: hidden; overflow-anchor: none; }
 .appfoot { text-align:center; font-size:12px; color:var(--faint); padding:18px 12px 26px; line-height:1.8; }
 .appfoot a { color:var(--muted); text-decoration:none; }
 .appfoot a:hover { color:var(--accent2); text-decoration:underline; }
+
+/* ---------- online match ---------- */
+.og-code { margin:12px 0 4px; padding:12px 14px; border-radius:10px; font-size:16px;
+  background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.3); }
+.og-code b { font-size:22px; letter-spacing:4px; color:#c7cbff; }
+.og-code .small { display:block; font-size:12px; color:var(--muted); margin-top:4px; letter-spacing:0; }

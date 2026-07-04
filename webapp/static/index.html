@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=2">
+<link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
 
@@ -15,12 +15,60 @@
 
 <div class="tabs">
   <button data-tab="ai" class="active">① AI와 대국</button>
-  <button data-tab="upload">② 녹화 (경기 파일 삽입)</button>
-  <button data-tab="record">③ 친구와의 대국</button>
-  <button data-tab="puzzle">④ 체크메이트 퍼즐</button>
-  <button data-tab="learn">⑤ 체스 기초 배우기</button>
-  <button data-tab="review" id="tabReview">⑥ AI 평가 / 리뷰</button>
+  <button data-tab="online">② 온라인 대국</button>
+  <button data-tab="upload">③ 녹화 (경기 파일 삽입)</button>
+  <button data-tab="record">④ 친구와의 대국</button>
+  <button data-tab="puzzle">⑤ 체크메이트 퍼즐</button>
+  <button data-tab="learn">⑥ 체스 기초 배우기</button>
+  <button data-tab="review" id="tabReview">⑦ AI 평가 / 리뷰</button>
 </div>
+
+<!-- ====================== 온라인 대국 ====================== -->
+<section class="tab" id="tab-online">
+  <div class="cols">
+    <div>
+      <div class="boardwrap"><div class="boardstack"><div class="cboard" id="ogBoard"></div></div></div>
+      <div class="turn" id="ogTurn"><span class="pill"></span>매치를 시작하면 보드가 열립니다.</div>
+      <div class="controls">
+        <button class="ghost" id="ogResign">🏳️ 기권</button>
+        <button class="ghost" id="ogFlip">⇅ 보드 뒤집기</button>
+      </div>
+      <div class="status" id="ogStatus"></div>
+    </div>
+    <div style="flex:1; min-width:300px; max-width:430px;">
+      <div class="card" id="ogSetup">
+        <h3>온라인 매치</h3>
+        <label class="field">닉네임</label>
+        <input type="text" id="ogName" value="플레이어" maxlength="20">
+        <div style="margin-top:14px;">
+          <button class="primary" id="ogQuick">⚡ 빠른 매치 찾기</button>
+          <button class="ghost hidden" id="ogCancel">매칭 취소</button>
+        </div>
+        <div class="status" id="ogSetupStatus"></div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+        <h3>친구와 하기 (초대 코드)</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="ghost" id="ogCreate">🔗 초대 코드 만들기</button>
+        </div>
+        <div class="og-code hidden" id="ogCodeBox">코드: <b id="ogCode"></b> <span class="small">— 친구에게 알려주세요</span></div>
+        <label class="field">친구가 준 코드 입력</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="ogJoinCode" placeholder="예: AB3C" maxlength="4" style="text-transform:uppercase; flex:1">
+          <button class="ghost" id="ogJoin">참가</button>
+        </div>
+      </div>
+      <div class="card hidden" id="ogGameInfo">
+        <h3>대국 정보</h3>
+        <div id="ogVs" style="font-size:15px; font-weight:700"></div>
+        <div class="status" id="ogColorInfo"></div>
+      </div>
+      <div class="card">
+        <h3>기보</h3>
+        <div class="movelist" id="ogMoves"><span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ====================== 체스 기초 배우기 ====================== -->
 <section class="tab" id="tab-learn">
@@ -81,10 +129,10 @@
     <div style="flex:1; min-width:300px; max-width:420px;">
       <div class="card">
         <h3>새 대국 설정</h3>
-        <div class="rankbadge" id="aiRank">내 호칭: 무관</div>
-        <label class="field">난이도 — 1(초보자1) ~ 15(마스터)</label>
+        <div class="rankbadge" id="aiRank">내 최고 기록: -</div>
+        <label class="field">난이도 — 1(가장 쉬움) ~ 15(가장 어려움)</label>
         <input type="range" id="aiLevel" min="1" max="15" value="3" step="1" style="accent-color:var(--accent)">
-        <div id="aiLevelLabel" class="status" style="font-size:14px">레벨 3 · 초보자 3</div>
+        <div id="aiLevelLabel" class="status" style="font-size:14px">레벨 3</div>
         <label class="field">내 색</label>
         <select id="aiColor">
           <option value="w">백 (내가 선공)</option>
@@ -317,6 +365,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=2"></script>
+<script src="/static/app.js?v=3"></script>
 </body>
 </html>
