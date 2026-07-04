@@ -268,10 +268,12 @@ def index():
 @app.get("/api/health")
 def health():
     cfg = EngineConfig()
+    import webapp.auth as _auth
     return {
         "stockfish": bool(cfg.path),
         "stockfishPath": cfg.path,
         "coaching": coach_mod.coaching_available(),
+        "db": "postgres" if _auth._IS_PG else "sqlite",   # durable? (diagnostic)
     }
 
 
