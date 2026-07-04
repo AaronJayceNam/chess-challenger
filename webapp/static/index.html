@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=6">
+<link rel="stylesheet" href="/static/style.css?v=7">
 </head>
 <body>
 
 <header class="top">
   <h1>Chess Challenger</h1>
-  <div class="rating-chip" id="ratingChip">⚡ 레이팅 <b>0</b></div>
+  <div class="rating-chip" id="ratingChip">⚡ 레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
 </header>
 
@@ -39,8 +39,8 @@
     <div style="flex:1; min-width:300px; max-width:430px;">
       <div class="card" id="ogSetup">
         <h3>온라인 매치</h3>
-        <div class="og-rating">내 레이팅 <b id="ogRating">0</b>
-          <span class="small">0에서 시작 · 2000점 ≈ 프로 수준 · 온라인 대국 승패로만 변동 (높을수록 오르기 어렵습니다)</span></div>
+        <div class="og-rating">내 레이팅 <b id="ogRating">400</b>
+          <span class="small">400에서 시작(0 밑으로는 안 내려감) · 2000점 ≈ 프로 · 상대 레이팅에 따라 변동 폭이 달라집니다</span></div>
         <label class="field">닉네임</label>
         <input type="text" id="ogName" value="플레이어" maxlength="20">
         <div style="margin-top:14px;">
@@ -278,6 +278,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=6"></script>
+<script src="/static/app.js?v=7"></script>
 </body>
 </html>

@@ -152,21 +152,24 @@ const OFFLINE_MSG = "서버에 연결할 수 없습니다. 바탕화면의 'Ches
 // The rating changes ONLY through online matches; AI games are logged in the
 // history but never move the rating.
 //
-// Scale: starts at 0; 2000 ≈ pro. The higher you are, the LESS a win gives and
-// the MORE a loss costs (asymmetric, rating-dependent K over the standard Elo
-// expected score, so the opponent's rating still matters):
-//   K_win(r)  = 80 at 0  → 20 at 2000 (floor 16)   → equal-opponent win:
-//               +40 at 0, +25 at 1000, +10 at 2000
-//   K_loss(r) = 10 at 0  → 50 at 2000 (cap 60)     → equal-opponent loss:
-//               -5 at 0, -15 at 1000, -25 at 2000
+// Scale: starts at 400, can never drop below 0; 2000 ≈ pro. The higher you
+// are, the LESS a win gives and the MORE a loss costs. Gains/losses also depend
+// on the OPPONENT's rating (standard Elo expected score: beating someone
+// stronger pays more, losing to someone weaker costs more). Equal-opponent
+// amounts:
+//   win : +68 at 400, +50 at 1000, +20 at 2000 (floor +16)
+//   loss: -18 at 400, -30 at 1000, -50 at 2000 (cap -60)
 // =========================================================================== //
-const RATING_START = 0;
+const RATING_START = 400;
 
-// New storage key: values from the old 1200-based scale would be wrong here.
-function myRating() { return +(localStorage.getItem("cc_rating2") || RATING_START); }
-function setMyRating(r) { localStorage.setItem("cc_rating2", String(Math.max(0, Math.round(r)))); updateRatingChip(); }
-function kWin(r) { return Math.max(16, 80 - r * 0.03); }
-function kLoss(r) { return Math.min(60, 10 + r * 0.02); }
+// New storage key: values from earlier scales would be wrong here.
+function myRating() {
+  const v = localStorage.getItem("cc_rating3");
+  return v === null ? RATING_START : Math.max(0, +v);
+}
+function setMyRating(r) { localStorage.setItem("cc_rating3", String(Math.max(0, Math.round(r)))); updateRatingChip(); }
+function kWin(r) { return Math.max(32, 160 - r * 0.06); }
+function kLoss(r) { return Math.min(120, 20 + r * 0.04); }
 function eloDelta(mine, opp, score) {
   const expected = 1 / (1 + Math.pow(10, (opp - mine) / 400));
   const raw = score - expected;
@@ -1209,12 +1212,13 @@ function ogEnd(result, reason) {
   let badge = null;
   if (!OG.ratingApplied) {
     OG.ratingApplied = true;
+    const before = myRating();
     const score = kind === "win" ? 1 : kind === "loss" ? 0 : 0.5;
-    const delta = eloDelta(myRating(), OG.oppRating, score);
-    const newRating = Math.max(0, myRating() + delta);
+    const newRating = Math.max(0, before + eloDelta(before, OG.oppRating, score));
+    const applied = newRating - before;   // what actually changed (0-floor aware)
     setMyRating(newRating);
-    addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: delta });
-    badge = { small: "⚡ 레이팅 변동", text: `${delta >= 0 ? "+" + delta : delta} → ${newRating}` };
+    addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: applied });
+    badge = { small: "⚡ 레이팅 변동", text: `${applied >= 0 ? "+" + applied : applied} → ${newRating}` };
   }
 
   const opts = kind === "win"

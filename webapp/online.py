@@ -298,9 +298,9 @@ def register_online(app: FastAPI, legal_state) -> Lobby:
                 t = msg.get("type")
                 name = str(msg.get("name") or "플레이어")[:20].strip() or "플레이어"
                 try:
-                    rating = max(0, min(4000, int(msg.get("rating") or 0)))
+                    rating = max(0, min(4000, int(msg.get("rating") or 400)))
                 except (TypeError, ValueError):
-                    rating = 0
+                    rating = 400
                 if t == "ping":
                     await _send(ws, {"type": "pong"})
                 elif t == "quick":
