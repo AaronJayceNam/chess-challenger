@@ -262,7 +262,8 @@ def index():
     # ETag). Without this, heuristic caching kept serving a stale page after
     # updates. Static assets are versioned (?v=N) so they stay cacheable.
     return FileResponse(os.path.join(STATIC, "index.html"),
-                        headers={"Cache-Control": "no-cache"})
+                        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                                 "Pragma": "no-cache", "Expires": "0"})
 
 
 @app.get("/api/health")
