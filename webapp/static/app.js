@@ -148,17 +148,30 @@ function isOffline(e) {
 const OFFLINE_MSG = "서버에 연결할 수 없습니다. 바탕화면의 'Chess Challenger' 아이콘을 다시 한 번 실행한 뒤, 이 페이지를 새로고침(F5)하세요.";
 
 // =========================================================================== //
-// RATING (Elo) + GAME HISTORY — per device (localStorage).
+// RATING + GAME HISTORY — per device (localStorage).
 // The rating changes ONLY through online matches; AI games are logged in the
 // history but never move the rating.
+//
+// Scale: starts at 0; 2000 ≈ pro. The higher you are, the LESS a win gives and
+// the MORE a loss costs (asymmetric, rating-dependent K over the standard Elo
+// expected score, so the opponent's rating still matters):
+//   K_win(r)  = 80 at 0  → 20 at 2000 (floor 16)   → equal-opponent win:
+//               +40 at 0, +25 at 1000, +10 at 2000
+//   K_loss(r) = 10 at 0  → 50 at 2000 (cap 60)     → equal-opponent loss:
+//               -5 at 0, -15 at 1000, -25 at 2000
 // =========================================================================== //
-const RATING_START = 1200, ELO_K = 32;
+const RATING_START = 0;
 
-function myRating() { return +(localStorage.getItem("cc_rating") || RATING_START); }
-function setMyRating(r) { localStorage.setItem("cc_rating", String(Math.round(r))); updateRatingChip(); }
+// New storage key: values from the old 1200-based scale would be wrong here.
+function myRating() { return +(localStorage.getItem("cc_rating2") || RATING_START); }
+function setMyRating(r) { localStorage.setItem("cc_rating2", String(Math.max(0, Math.round(r)))); updateRatingChip(); }
+function kWin(r) { return Math.max(16, 80 - r * 0.03); }
+function kLoss(r) { return Math.min(60, 10 + r * 0.02); }
 function eloDelta(mine, opp, score) {
   const expected = 1 / (1 + Math.pow(10, (opp - mine) / 400));
-  return Math.round(ELO_K * (score - expected));
+  const raw = score - expected;
+  const k = raw >= 0 ? kWin(mine) : kLoss(mine);
+  return Math.round(k * raw);
 }
 function updateRatingChip() {
   const el = $("ratingChip"); if (!el) return;
