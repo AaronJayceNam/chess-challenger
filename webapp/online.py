@@ -78,8 +78,9 @@ class Lobby:
     def __init__(self, legal_state):
         self._legal_state = legal_state   # server.py's board -> state dict
         self.lock = asyncio.Lock()
-        self.queue: list[tuple[WebSocket, str]] = []
-        self.rooms: dict[str, tuple[WebSocket, str]] = {}
+        # queue entries / rooms values are (ws, name, rating)
+        self.queue: list[tuple[WebSocket, str, int]] = []
+        self.rooms: dict[str, tuple[WebSocket, str, int]] = {}
         self.games: dict[WebSocket, Game] = {}
 
     # ------------------------------------------------------------------ #
@@ -90,19 +91,21 @@ class Lobby:
         return st
 
     async def _start_game(self, a, b) -> None:
-        """a/b are (ws, name); colors are assigned randomly."""
+        """a/b are (ws, name, rating); colors are assigned randomly."""
         if secrets.randbelow(2):
             a, b = b, a
         game = Game(a[0], a[1], b[0], b[1])
         self.games[a[0]] = game
         self.games[b[0]] = game
         st = self._state(game)
-        await _send(a[0], {"type": "start", "color": "w", "opponent": b[1], "state": st})
-        await _send(b[0], {"type": "start", "color": "b", "opponent": a[1], "state": st})
+        await _send(a[0], {"type": "start", "color": "w", "opponent": b[1],
+                           "opponentRating": b[2], "state": st})
+        await _send(b[0], {"type": "start", "color": "b", "opponent": a[1],
+                           "opponentRating": a[2], "state": st})
 
     def _drop_from_lobby(self, ws: WebSocket) -> None:
-        self.queue = [(w, n) for (w, n) in self.queue if w is not ws]
-        self.rooms = {c: (w, n) for c, (w, n) in self.rooms.items() if w is not ws}
+        self.queue = [e for e in self.queue if e[0] is not ws]
+        self.rooms = {c: e for c, e in self.rooms.items() if e[0] is not ws}
 
     def _cleanup_game(self, game: Game) -> None:
         for w in (game.ws[chess.WHITE], game.ws[chess.BLACK]):
@@ -110,27 +113,27 @@ class Lobby:
                 self.games.pop(w, None)
 
     # ------------------------------------------------------------------ #
-    async def quick(self, ws: WebSocket, name: str) -> None:
+    async def quick(self, ws: WebSocket, name: str, rating: int) -> None:
         async with self.lock:
             if ws in self.games:
                 return await _send(ws, {"type": "error", "message": "이미 대국 중입니다."})
             self._drop_from_lobby(ws)          # re-queue cleanly
             if self.queue:
                 other = self.queue.pop(0)
-                return await self._start_game(other, (ws, name))
-            self.queue.append((ws, name))
+                return await self._start_game(other, (ws, name, rating))
+            self.queue.append((ws, name, rating))
         await _send(ws, {"type": "waiting"})
 
-    async def create(self, ws: WebSocket, name: str) -> None:
+    async def create(self, ws: WebSocket, name: str, rating: int) -> None:
         async with self.lock:
             if ws in self.games:
                 return await _send(ws, {"type": "error", "message": "이미 대국 중입니다."})
             self._drop_from_lobby(ws)
             code = _new_code(self.rooms)
-            self.rooms[code] = (ws, name)
+            self.rooms[code] = (ws, name, rating)
         await _send(ws, {"type": "room", "code": code})
 
-    async def join(self, ws: WebSocket, code: str, name: str) -> None:
+    async def join(self, ws: WebSocket, code: str, name: str, rating: int) -> None:
         async with self.lock:
             if ws in self.games:
                 return await _send(ws, {"type": "error", "message": "이미 대국 중입니다."})
@@ -141,7 +144,7 @@ class Lobby:
                 self.rooms[code] = owner       # can't join your own room
                 return await _send(ws, {"type": "error", "message": "자기 방에는 참가할 수 없습니다."})
             self._drop_from_lobby(ws)
-            await self._start_game(owner, (ws, name))
+            await self._start_game(owner, (ws, name, rating))
 
     async def cancel(self, ws: WebSocket) -> None:
         async with self.lock:
@@ -225,14 +228,18 @@ def register_online(app: FastAPI, legal_state) -> Lobby:
                     continue               # malformed frame — ignore
                 t = msg.get("type")
                 name = str(msg.get("name") or "플레이어")[:20].strip() or "플레이어"
+                try:
+                    rating = max(0, min(4000, int(msg.get("rating") or 1200)))
+                except (TypeError, ValueError):
+                    rating = 1200
                 if t == "ping":
                     await _send(ws, {"type": "pong"})
                 elif t == "quick":
-                    await lobby.quick(ws, name)
+                    await lobby.quick(ws, name, rating)
                 elif t == "create":
-                    await lobby.create(ws, name)
+                    await lobby.create(ws, name, rating)
                 elif t == "join":
-                    await lobby.join(ws, str(msg.get("code") or "").strip().upper(), name)
+                    await lobby.join(ws, str(msg.get("code") or "").strip().upper(), name, rating)
                 elif t == "cancel":
                     await lobby.cancel(ws)
                 elif t == "move":

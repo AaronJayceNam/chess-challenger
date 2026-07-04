@@ -359,3 +359,115 @@ body { overflow-x: hidden; overflow-anchor: none; }
   background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.3); }
 .og-code b { font-size:22px; letter-spacing:4px; color:#c7cbff; }
 .og-code .small { display:block; font-size:12px; color:var(--muted); margin-top:4px; letter-spacing:0; }
+
+/* ============================================================
+   REDESIGN v4 — best-of synthesis from top chess apps:
+   Chess.com-style polish (3D-press buttons, prominent rating,
+   playful mode pills) + Lichess-style minimal, content-first
+   chrome. Own palette: charcoal / jade green / gold.
+   ============================================================ */
+:root {
+  --bg:#15181d;
+  --bg2:#191d23;
+  --panel:#1e2228;
+  --panel2:#242932;
+  --elevated:#2b323c;
+  --line:rgba(255,255,255,.06);
+  --line2:rgba(255,255,255,.11);
+  --accent:#3f9d63;          /* jade green */
+  --accent2:#57b97c;
+  --accent-deep:#2c7448;     /* 3D button base */
+  --gold:#f0b32e;
+  --gold-deep:#c4881a;
+}
+body {
+  background:radial-gradient(1100px 560px at 85% -12%, #1d2530 0%, var(--bg) 55%) fixed, var(--bg);
+}
+
+/* header: bigger brand + gold rating chip */
+header.top { padding:14px 22px; gap:12px; }
+header.top h1::before {
+  background:linear-gradient(145deg,var(--accent2),var(--accent-deep));
+  border-radius:11px;
+}
+.rating-chip {
+  padding:7px 14px; border-radius:999px; font-size:13.5px; font-weight:700; color:#1b1405;
+  background:linear-gradient(180deg,#f7c94f,var(--gold));
+  box-shadow:0 3px 0 var(--gold-deep), 0 6px 14px -6px rgba(240,179,46,.55);
+}
+.rating-chip b { font-size:15px; }
+
+/* tabs -> icon mode pills (no underline, no numbers) */
+.tabs { gap:8px; padding:14px 22px 12px; border-bottom:1px solid var(--line); }
+.tabs button {
+  background:var(--panel); border:1px solid var(--line2); border-radius:12px;
+  padding:10px 16px 11px; color:var(--muted);
+  box-shadow:0 2px 0 rgba(0,0,0,.35);
+}
+.tabs button:hover { background:var(--elevated); color:var(--ink); }
+.tabs button.active {
+  background:linear-gradient(180deg,var(--accent2),var(--accent)); color:#fff;
+  border-color:transparent;
+  box-shadow:0 3px 0 var(--accent-deep), 0 8px 18px -8px var(--accent);
+}
+.tabs button.active::after { display:none; }
+.tabs button .ti { margin-right:7px; }
+
+/* 3D-press primary buttons (our own take on the arcade press) */
+button.primary {
+  background:linear-gradient(180deg,var(--accent2),var(--accent));
+  border-radius:12px;
+  box-shadow:0 4px 0 var(--accent-deep), 0 10px 18px -10px var(--accent);
+  transition:transform .06s, box-shadow .06s, filter .15s;
+}
+button.primary:hover { filter:brightness(1.06); }
+button.primary:active { transform:translateY(3px); box-shadow:0 1px 0 var(--accent-deep); }
+button.ghost { border-radius:11px; box-shadow:0 2px 0 rgba(0,0,0,.3); }
+button.ghost:active { transform:translateY(2px); box-shadow:none; }
+
+/* focus ring + slider color follow the new accent */
+input[type=text]:focus, textarea:focus, select:focus {
+  border-color:var(--accent); box-shadow:0 0 0 3px rgba(63,157,99,.28);
+}
+.controls input[type=range], #aiLevel { accent-color:var(--accent) !important; }
+
+/* movelist active + AI explanation callout in green */
+.movelist .mv.active { background:var(--accent); box-shadow:0 2px 8px -2px var(--accent); }
+.aiexplain {
+  background:linear-gradient(180deg, rgba(63,157,99,.12), rgba(63,157,99,.05));
+  border:1px solid rgba(63,157,99,.28); border-left:3px solid var(--accent);
+  color:#e9f5ee;
+}
+
+/* rank / result badges: green + gold instead of purple */
+.rankbadge { background:linear-gradient(135deg,var(--accent2),var(--accent-deep));
+  box-shadow:0 3px 0 rgba(0,0,0,.3); }
+.rankbadge.master { background:linear-gradient(135deg,#f7c94f,var(--gold-deep)); }
+.result-badge { background:linear-gradient(135deg,var(--accent2),var(--accent-deep));
+  box-shadow:0 8px 20px -6px rgba(63,157,99,.8); }
+.result-badge.master { background:linear-gradient(135deg,#f7c94f,var(--gold-deep)); }
+
+/* online: rating panel + invite code in the new palette */
+.og-rating { margin:2px 0 10px; padding:12px 14px; border-radius:12px;
+  background:linear-gradient(180deg, rgba(240,179,46,.14), rgba(240,179,46,.05));
+  border:1px solid rgba(240,179,46,.3); font-size:14px; }
+.og-rating b { font-size:24px; color:#f7c94f; margin-left:6px; }
+.og-rating .small { display:block; font-size:12px; color:var(--muted); margin-top:3px; }
+.og-code { background:rgba(63,157,99,.12); border:1px solid rgba(63,157,99,.3); }
+.og-code b { color:#8fdcab; }
+
+/* history list */
+.hist { font-size:13.5px; }
+.hist-row { display:grid; grid-template-columns:44px 1fr 26px 44px; gap:8px;
+  align-items:center; padding:7px 4px; border-bottom:1px solid var(--line); }
+.hist-row:last-child { border-bottom:none; }
+.hist-row .dim { color:var(--faint); }
+.hist-row .w { color:#5fc287; } .hist-row .l { color:#f0584f; } .hist-row .d { color:#c9d2dd; }
+.hist-row .up { color:#5fc287; font-weight:700; } .hist-row .down { color:#f0584f; font-weight:700; }
+.hist-empty { color:var(--muted); font-size:13px; padding:6px 2px; }
+
+/* puzzle grid + learn pills pick up the accent automatically via var(--accent) */
+.pz-cats button.active { background:var(--accent); }
+
+/* board frame polish */
+.boardstack, .svgboard { border-radius:14px; box-shadow:0 2px 0 rgba(0,0,0,.4), 0 14px 30px -14px rgba(0,0,0,.7); }
