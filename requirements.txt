@@ -8,3 +8,5 @@ uvicorn[standard]>=0.29.0
 # Test + tooling
 pytest>=8.0.0
 python-dotenv>=1.0.0
+# Optional: Postgres for durable account storage in the cloud (DATABASE_URL)
+psycopg[binary]>=3.1

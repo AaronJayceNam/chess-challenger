@@ -20,3 +20,4 @@ Thumbs.db
 # Analysis output dumps
 /out/
 *.report.json
+data/users.db

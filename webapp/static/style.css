@@ -492,3 +492,15 @@ input[type=text]:focus, textarea:focus, select:focus {
 .pv-caps { margin-left:auto; display:flex; align-items:center; gap:2px; font-size:16px;
   color:#c9d2dd; letter-spacing:-1px; }
 .pv-lead { margin-left:6px; font-size:13.5px; color:#5fc287; letter-spacing:0; }
+
+/* ---------- accounts ---------- */
+.auth-area { display:flex; align-items:center; gap:8px; margin-left:auto; }
+.user-chip { padding:6px 12px; border-radius:999px; font-size:13px; color:var(--ink);
+  background:var(--panel); border:1px solid var(--line2); }
+.user-chip b { color:#8fdcab; }
+.auth-box { width:min(360px,92vw); background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:1px solid var(--line2); border-radius:18px; padding:24px 24px 18px;
+  box-shadow:0 24px 60px -12px rgba(0,0,0,.7); animation:pop .3s cubic-bezier(.2,1.2,.3,1); }
+.auth-box h2 { margin:0 0 6px; font-size:19px; }
+.auth-actions { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.auth-hint { font-size:12.5px; color:var(--muted); line-height:1.6; margin:14px 0 0; }

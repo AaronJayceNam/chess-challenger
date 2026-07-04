@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=7">
+<link rel="stylesheet" href="/static/style.css?v=8">
 </head>
 <body>
 
@@ -12,6 +12,7 @@
   <h1>Chess Challenger</h1>
   <div class="rating-chip" id="ratingChip">⚡ 레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
+  <div class="auth-area" id="authArea"></div>
 </header>
 
 <div class="tabs">
@@ -259,6 +260,25 @@
   <div class="box"><div class="spin"></div><div id="overlayMsg">엔진이 분석 중입니다…</div></div>
 </div>
 
+<!-- login / register modal -->
+<div class="overlay hidden" id="authModal">
+  <div class="auth-box">
+    <h2>👤 로그인 / 회원가입</h2>
+    <label class="field">아이디 (2~20자, 한글/영문/숫자)</label>
+    <input type="text" id="authId" maxlength="20" autocomplete="username">
+    <label class="field">비밀번호 (4자 이상)</label>
+    <input type="password" id="authPw" maxlength="64" autocomplete="current-password">
+    <div class="status" id="authStatus"></div>
+    <div class="auth-actions">
+      <button class="primary" id="authLoginBtn">로그인</button>
+      <button class="ghost" id="authRegisterBtn">회원가입</button>
+      <button class="ghost" id="authCloseBtn">닫기</button>
+    </div>
+    <p class="auth-hint">회원가입하면 지금까지의 진행상황(레이팅·대국 기록·퍼즐)이 계정에 저장되고,
+      다른 기기에서 로그인해도 이어집니다.</p>
+  </div>
+</div>
+
 <!-- big win / loss / draw result screen -->
 <div class="result-overlay hidden" id="resultOverlay">
   <div class="result-box" id="resultBox">
@@ -278,6 +298,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=7"></script>
+<script src="/static/app.js?v=8"></script>
 </body>
 </html>

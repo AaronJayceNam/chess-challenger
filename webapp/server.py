@@ -459,6 +459,10 @@ def study_html(req: StudyRequest):
 from webapp.online import register_online  # noqa: E402
 register_online(app, _legal_state)
 
+# Accounts (register/login + server-saved progress) — /api/auth/*
+from webapp.auth import register_auth  # noqa: E402
+register_auth(app)
+
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 

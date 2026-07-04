@@ -167,7 +167,7 @@ function myRating() {
   const v = localStorage.getItem("cc_rating3");
   return v === null ? RATING_START : Math.max(0, +v);
 }
-function setMyRating(r) { localStorage.setItem("cc_rating3", String(Math.max(0, Math.round(r)))); updateRatingChip(); }
+function setMyRating(r) { localStorage.setItem("cc_rating3", String(Math.max(0, Math.round(r)))); updateRatingChip(); authSchedulePush(); }
 function kWin(r) { return Math.max(32, 160 - r * 0.06); }
 function kLoss(r) { return Math.min(120, 20 + r * 0.04); }
 function eloDelta(mine, opp, score) {
@@ -191,6 +191,7 @@ function addHistory(entry) {
   h.unshift({ ...entry, date: new Date().toISOString().slice(0, 10) });
   localStorage.setItem("cc_history", JSON.stringify(h.slice(0, 50)));
   renderHistory();
+  authSchedulePush();
 }
 function renderHistory() {
   const el = $("ogHistory"); if (!el) return;
@@ -419,7 +420,7 @@ const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "
 // Progress: the highest level beaten (persisted in localStorage). Shown as a
 // plain level number — no titles.
 function bestLevel() { return +(localStorage.getItem("cc_best_level") || 0); }
-function setBestLevel(n) { localStorage.setItem("cc_best_level", String(n)); }
+function setBestLevel(n) { localStorage.setItem("cc_best_level", String(n)); authSchedulePush(); }
 function updateRankBadge() {
   const b = bestLevel(), el = $("aiRank");
   if (!el) return;
@@ -655,7 +656,7 @@ function pzLoadSolved() {
   try { return new Set(JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]")); }
   catch (e) { return new Set(); }
 }
-function pzSaveSolved() { localStorage.setItem("cc_puzzles_solved", JSON.stringify([...PZ.solved])); }
+function pzSaveSolved() { localStorage.setItem("cc_puzzles_solved", JSON.stringify([...PZ.solved])); authSchedulePush(); }
 
 async function loadPuzzles() {
   try { PZ.list = await (await fetch("/static/puzzles.json")).json(); }
@@ -1265,5 +1266,117 @@ $("ogResign").onclick = () => {
 };
 $("ogFlip").onclick = () => { OG.orient = OG.orient === "w" ? "b" : "w"; renderOgBoard(); };
 
+// =========================================================================== //
+// ACCOUNTS — register/login with id+password; progress lives on the server.
+// Register uploads this device's current progress; login pulls the account's
+// progress down (overwriting local); while logged in every change is pushed
+// (debounced) via authSchedulePush() calls in the setters above.
+// =========================================================================== //
+const AUTH = {
+  token: localStorage.getItem("cc_token") || null,
+  id: localStorage.getItem("cc_uid") || null,
+  pushTimer: null,
+};
+
+function collectProgress() {
+  return {
+    rating: myRating(),
+    history: gameHistory(),
+    bestLevel: bestLevel(),
+    puzzles: [...PZ.solved],
+  };
+}
+
+function applyProgress(p) {
+  p = p || {};
+  if (typeof p.rating === "number") localStorage.setItem("cc_rating3", String(Math.max(0, Math.round(p.rating))));
+  if (Array.isArray(p.history)) localStorage.setItem("cc_history", JSON.stringify(p.history));
+  if (typeof p.bestLevel === "number") localStorage.setItem("cc_best_level", String(p.bestLevel));
+  if (Array.isArray(p.puzzles)) {
+    localStorage.setItem("cc_puzzles_solved", JSON.stringify(p.puzzles));
+    PZ.solved = new Set(p.puzzles);
+  }
+  updateRatingChip(); renderHistory(); updateRankBadge();
+  if (PZ.list.length) renderPzGrid();
+}
+
+function authSchedulePush() {
+  if (!AUTH.token) return;
+  clearTimeout(AUTH.pushTimer);
+  AUTH.pushTimer = setTimeout(async () => {
+    try { await api("/api/auth/save", { token: AUTH.token, progress: collectProgress() }); }
+    catch (e) { if (/세션/.test(e.message || "")) authClearSession(); }
+  }, 800);
+}
+
+function authClearSession() {
+  AUTH.token = null; AUTH.id = null;
+  localStorage.removeItem("cc_token"); localStorage.removeItem("cc_uid");
+  renderAuthArea();
+}
+
+function authSetSession(id, token, progress) {
+  AUTH.id = id; AUTH.token = token;
+  localStorage.setItem("cc_token", token); localStorage.setItem("cc_uid", id);
+  applyProgress(progress);
+  const nick = $("ogName"); if (nick) nick.value = id;   // nickname = account id
+  renderAuthArea();
+}
+
+function renderAuthArea() {
+  const el = $("authArea"); if (!el) return;
+  if (AUTH.token) {
+    el.innerHTML = `<span class="user-chip">👤 <b>${escapeHtml(AUTH.id || "")}</b></span>` +
+      `<button class="ghost" id="authLogout">로그아웃</button>`;
+    $("authLogout").onclick = async () => {
+      try { await api("/api/auth/logout", { token: AUTH.token }); } catch (e) {}
+      authClearSession();
+    };
+  } else {
+    el.innerHTML = `<button class="ghost" id="authOpen">👤 로그인</button>`;
+    $("authOpen").onclick = () => {
+      $("authModal").classList.remove("hidden");
+      setStatus("authStatus", "");
+      $("authId").focus();
+    };
+  }
+}
+
+async function authSubmit(mode) {
+  const id = ($("authId").value || "").trim();
+  const pw = $("authPw").value || "";
+  if (!id || !pw) { setStatus("authStatus", "아이디와 비밀번호를 입력하세요.", true); return; }
+  setStatus("authStatus", mode === "register" ? "계정을 만드는 중…" : "로그인 중…");
+  try {
+    const body = mode === "register" ? { id, pw, progress: collectProgress() } : { id, pw };
+    const r = await api("/api/auth/" + mode, body);
+    authSetSession(r.id, r.token, r.progress);
+    $("authModal").classList.add("hidden");
+    $("authPw").value = "";
+  } catch (e) {
+    setStatus("authStatus", isOffline(e) ? OFFLINE_MSG : e.message, true);
+  }
+}
+
+$("authLoginBtn").onclick = () => authSubmit("login");
+$("authRegisterBtn").onclick = () => authSubmit("register");
+$("authCloseBtn").onclick = () => $("authModal").classList.add("hidden");
+$("authPw").addEventListener("keydown", (e) => { if (e.key === "Enter") authSubmit("login"); });
+
+async function authBoot() {
+  renderAuthArea();
+  if (!AUTH.token) return;
+  try {
+    const r = await api("/api/auth/load", { token: AUTH.token });
+    AUTH.id = r.id; localStorage.setItem("cc_uid", r.id);
+    applyProgress(r.progress);
+    const nick = $("ogName"); if (nick) nick.value = r.id;
+    renderAuthArea();
+  } catch (e) {
+    if (!isOffline(e)) authClearSession();   // expired session; keep it if just offline
+  }
+}
+
 // boot
 aiBoot();
+authBoot();
