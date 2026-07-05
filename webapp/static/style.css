@@ -560,3 +560,40 @@ input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus
   .movelist { max-height:200px; }
   .appfoot { font-size:11px; }
 }
+
+/* ---------- rating tier symbols ---------- */
+.tier { font-weight:900; margin-right:3px; }
+.tier.t-pawn   { color:#9aa4b2; }   /* 폰   0–699   */
+.tier.t-knight { color:#5fc287; }   /* 나이트 700–1099 */
+.tier.t-bishop { color:#3fb6c9; }   /* 비숍 1100–1499 */
+.tier.t-rook   { color:#6d8bff; }   /* 룩   1500–1899 */
+.tier.t-queen  { color:#b98cff; }   /* 퀸   1900–2299 */
+.tier.t-king   { color:#f7c94f; text-shadow:0 0 8px rgba(247,201,79,.5); } /* 마스터 2300+ */
+.rating-chip .tier, .og-rating .tier { color:#3a2e05; }  /* on gold/amber backgrounds */
+.rating-chip .tier.t-king { color:#5a3d00; }
+
+/* ============================================================
+   STRUCTURE v10 — mobile bottom navigation (top chess-app pattern)
+   Desktop keeps the top tab pills; phones get a fixed bottom bar.
+   ============================================================ */
+.bottomnav { display:none; }
+@media (max-width: 760px) {
+  .tabs { display:none; }                 /* replaced by the bottom bar */
+  body { padding-bottom:66px; }           /* room for the fixed nav */
+  .bottomnav {
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:40;
+    background:rgba(20,24,30,.96); backdrop-filter:blur(10px);
+    border-top:1px solid var(--line2);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    box-shadow:0 -6px 20px -8px rgba(0,0,0,.6);
+  }
+  .bottomnav button {
+    flex:1; background:none; border:none; cursor:pointer; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:6px 2px; font-size:11px; font-weight:700; border-radius:12px;
+  }
+  .bottomnav button .bi { font-size:21px; line-height:1; filter:grayscale(.4) opacity(.8); transition:.15s; }
+  .bottomnav button.active { color:var(--accent2); }
+  .bottomnav button.active .bi { filter:none; transform:translateY(-1px); }
+  .bottomnav button.active .bl { color:var(--accent2); }
+}

@@ -64,14 +64,16 @@ function scrollListToActive(list) {
 // --------------------------------------------------------------------------- //
 // tabs
 // --------------------------------------------------------------------------- //
-document.querySelectorAll(".tabs button[data-tab]").forEach((b) => {
+// Both the desktop top-tabs and the mobile bottom-nav use [data-tab] buttons.
+document.querySelectorAll("[data-tab]").forEach((b) => {
   b.onclick = () => switchTab(b.dataset.tab);
 });
 function switchTab(name) {
-  document.querySelectorAll(".tabs button[data-tab]").forEach((b) =>
+  document.querySelectorAll("[data-tab]").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) =>
     t.classList.toggle("active", t.id === "tab-" + name));
+  window.scrollTo(0, 0);
   if (name === "online" && typeof loadLeaderboard === "function") loadLeaderboard();
 }
 // empty-state "go analyze" buttons
@@ -177,10 +179,28 @@ function eloDelta(mine, opp, score) {
   const k = raw >= 0 ? kWin(mine) : kLoss(mine);
   return Math.round(k * raw);
 }
+// Rating tiers — a chess-piece symbol next to the number, ascending by piece
+// value as the rating climbs. Same brackets everywhere the rating shows.
+function ratingTier(r) {
+  if (r >= 2300) return { sym: "♔", name: "마스터", cls: "t-king" };
+  if (r >= 1900) return { sym: "♕", name: "퀸", cls: "t-queen" };
+  if (r >= 1500) return { sym: "♖", name: "룩", cls: "t-rook" };
+  if (r >= 1100) return { sym: "♗", name: "비숍", cls: "t-bishop" };
+  if (r >= 700) return { sym: "♘", name: "나이트", cls: "t-knight" };
+  return { sym: "♙", name: "폰", cls: "t-pawn" };
+}
+// HTML: colored tier symbol + number (e.g. for chips/badges/leaderboard)
+function ratingHTML(r) {
+  const t = ratingTier(r);
+  return `<span class="tier ${t.cls}" title="${t.name}">${t.sym}</span>${r}`;
+}
+// plain text: symbol + number (for textContent contexts)
+function ratingText(r) { return `${ratingTier(r).sym} ${r}`; }
+
 function updateRatingChip() {
   const el = $("ratingChip"); if (!el) return;
-  el.innerHTML = `⚡ 레이팅 <b>${myRating()}</b>`;
-  const og = $("ogRating"); if (og) og.textContent = myRating();
+  el.innerHTML = `레이팅 <b>${ratingHTML(myRating())}</b>`;
+  const og = $("ogRating"); if (og) og.innerHTML = ratingHTML(myRating());
 }
 
 function gameHistory() {
@@ -1091,7 +1111,7 @@ function ogHandle(msg) {
       $("ogSetup").classList.add("hidden");
       $("ogGameInfo").classList.remove("hidden");
       $("ogCancel").classList.add("hidden"); $("ogCodeBox").classList.add("hidden");
-      $("ogVs").textContent = `${ogName()} (${myRating()}) vs ${OG.opponent} (${OG.oppRating})`;
+      $("ogVs").innerHTML = `${escapeHtml(ogName())} (${ratingHTML(myRating())}) vs ${escapeHtml(OG.opponent)} (${ratingHTML(OG.oppRating)})`;
       $("ogColorInfo").textContent = `당신은 ${OG.color === "w" ? "백(선공)" : "흑(후공)"}입니다.`;
       setStatus("ogStatus", "대국 시작! 행운을 빕니다 🍀");
       setStatus("ogSetupStatus", "");
@@ -1220,7 +1240,7 @@ function ogEnd(result, reason) {
     const applied = newRating - before;   // what actually changed (0-floor aware)
     setMyRating(newRating);
     addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: applied });
-    badge = { small: "⚡ 레이팅 변동", text: `${applied >= 0 ? "+" + applied : applied} → ${newRating}` };
+    badge = { small: "⚡ 레이팅 변동", text: `${applied >= 0 ? "+" + applied : applied} → ${ratingHTML(newRating)}` };
     setTimeout(loadLeaderboard, 1600);   // after the debounced progress push lands
   }
 
@@ -1383,7 +1403,7 @@ async function loadLeaderboard() {
       return `<div class="lb-row ${me ? "me" : ""}">` +
         `<span class="lb-rank">${medal(i)}</span>` +
         `<span class="lb-name">${escapeHtml(e.id)}${me ? " (나)" : ""}</span>` +
-        `<b class="lb-rating">${e.rating}</b></div>`;
+        `<b class="lb-rating">${ratingHTML(e.rating)}</b></div>`;
     }).join("");
   } catch (e) {
     el.innerHTML = '<div class="hist-empty">리더보드를 불러오지 못했습니다.</div>';

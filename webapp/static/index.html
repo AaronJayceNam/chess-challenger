@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=9">
+<link rel="stylesheet" href="/static/style.css?v=10">
 </head>
 <body>
 
 <header class="top">
   <h1>Chess Challenger</h1>
-  <div class="rating-chip" id="ratingChip">⚡ 레이팅 <b>400</b></div>
+  <div class="rating-chip" id="ratingChip">레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
   <div class="auth-area" id="authArea"></div>
 </header>
@@ -22,6 +22,15 @@
   <button data-tab="learn"><span class="ti">📖</span>체스 배우기</button>
   <button data-tab="review" id="tabReview"><span class="ti">📊</span>리뷰</button>
 </div>
+
+<!-- mobile bottom navigation (top chess-app pattern) -->
+<nav class="bottomnav">
+  <button data-tab="ai" class="active"><span class="bi">🤖</span><span class="bl">AI</span></button>
+  <button data-tab="online"><span class="bi">🌐</span><span class="bl">온라인</span></button>
+  <button data-tab="puzzle"><span class="bi">🧩</span><span class="bl">퍼즐</span></button>
+  <button data-tab="learn"><span class="bi">📖</span><span class="bl">배우기</span></button>
+  <button data-tab="review"><span class="bi">📊</span><span class="bl">리뷰</span></button>
+</nav>
 
 <!-- ====================== 온라인 대국 ====================== -->
 <section class="tab" id="tab-online">
@@ -303,6 +312,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=9"></script>
+<script src="/static/app.js?v=10"></script>
 </body>
 </html>
