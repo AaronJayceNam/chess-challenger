@@ -50,6 +50,13 @@ function overlay(show, msg) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --------------------------------------------------------------------------- //
+// user settings (persisted)
+// --------------------------------------------------------------------------- //
+const SETTINGS = {
+  showDots: localStorage.getItem("cc_showdots") !== "0",   // legal-move grey circles
+};
+
+// --------------------------------------------------------------------------- //
 // drag-to-move (works alongside click-to-move on every game board)
 // --------------------------------------------------------------------------- //
 let _dragJustMoved = false;   // suppress the click that follows a drag-drop
@@ -86,8 +93,8 @@ function enableBoardDrag(boardEl, cfg) {
         `pointer-events:none;z-index:70;`;
       document.body.appendChild(c);
       d.clone = c;
-      d.pc.style.opacity = "0.25";
-      d.legal[d.from].forEach((t) => { const el = boardEl.querySelector(`.sq[data-sq="${t}"]`); if (el) el.classList.add("dnd-target"); });
+      d.pc.style.opacity = "0";   // hide the original so the piece itself appears to move
+      if (SETTINGS.showDots) d.legal[d.from].forEach((t) => { const el = boardEl.querySelector(`.sq[data-sq="${t}"]`); if (el) el.classList.add("dnd-target"); });
     }
     d.clone.style.left = (e.clientX - d.cell / 2) + "px";
     d.clone.style.top = (e.clientY - d.cell / 2) + "px";
@@ -577,7 +584,7 @@ function renderAiBoard() {
         s.textContent = GLYPH[p.toLowerCase()];
         div.appendChild(s);
       }
-      if (AIG.sel && legal[AIG.sel] && legal[AIG.sel].includes(sq)) {
+      if (SETTINGS.showDots && AIG.sel && legal[AIG.sel] && legal[AIG.sel].includes(sq)) {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
@@ -823,7 +830,7 @@ function renderPzBoard() {
         s.textContent = GLYPH[p.toLowerCase()];
         div.appendChild(s);
       }
-      if (PZ.sel && legal[PZ.sel] && legal[PZ.sel].includes(sq)) {
+      if (SETTINGS.showDots && PZ.sel && legal[PZ.sel] && legal[PZ.sel].includes(sq)) {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
@@ -1230,7 +1237,7 @@ function renderOgBoard() {
         s.textContent = GLYPH[p.toLowerCase()];
         div.appendChild(s);
       }
-      if (OG.sel && legal[OG.sel] && legal[OG.sel].includes(sq)) {
+      if (SETTINGS.showDots && OG.sel && legal[OG.sel] && legal[OG.sel].includes(sq)) {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
@@ -1522,6 +1529,26 @@ enableBoardDrag($("pzBoard"), {
   legal: () => (PZ.legal && PZ.legal.legal) || {},
   commit: (from, to) => { PZ.hintSq = null; pzUserMove(from + to); },
 });
+
+// =========================================================================== //
+// SETTINGS modal
+// =========================================================================== //
+function rerenderBoards() {
+  if (AIG.state) renderAiBoard();
+  if (OG.state) renderOgBoard();
+  if (PZ.fen) renderPzBoard();
+}
+$("settingsBtn").onclick = () => {
+  $("setShowDots").checked = SETTINGS.showDots;
+  $("settingsModal").classList.remove("hidden");
+};
+$("settingsClose").onclick = () => $("settingsModal").classList.add("hidden");
+$("settingsModal").onclick = (e) => { if (e.target === $("settingsModal")) $("settingsModal").classList.add("hidden"); };
+$("setShowDots").onchange = (e) => {
+  SETTINGS.showDots = e.target.checked;
+  localStorage.setItem("cc_showdots", SETTINGS.showDots ? "1" : "0");
+  rerenderBoards();
+};
 
 // boot
 aiBoot();

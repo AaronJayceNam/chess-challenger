@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=11">
+<link rel="stylesheet" href="/static/style.css?v=12">
 </head>
 <body>
 
@@ -12,6 +12,7 @@
   <h1>Chess Challenger</h1>
   <div class="rating-chip" id="ratingChip">레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
+  <button class="iconbtn" id="settingsBtn" title="설정">⚙️</button>
   <div class="auth-area" id="authArea"></div>
 </header>
 
@@ -274,6 +275,20 @@
   <div class="box"><div class="spin"></div><div id="overlayMsg">엔진이 분석 중입니다…</div></div>
 </div>
 
+<!-- settings modal -->
+<div class="overlay hidden" id="settingsModal">
+  <div class="auth-box">
+    <h2>⚙️ 설정</h2>
+    <label class="setrow">
+      <span><b>이동 가능 칸 표시</b><br><span class="setdesc">말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.</span></span>
+      <span class="switch"><input type="checkbox" id="setShowDots"><span class="slider"></span></span>
+    </label>
+    <div class="auth-actions" style="margin-top:16px">
+      <button class="ghost" id="settingsClose">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- login / register modal -->
 <div class="overlay hidden" id="authModal">
   <div class="auth-box">
@@ -312,6 +327,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=11"></script>
+<script src="/static/app.js?v=12"></script>
 </body>
 </html>
