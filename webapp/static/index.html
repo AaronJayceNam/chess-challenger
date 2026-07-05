@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=13">
+<link rel="stylesheet" href="/static/style.css?v=14">
 </head>
 <body>
 
@@ -54,29 +54,45 @@
         </div>
       </div>
       <div class="status" id="ogStatus"></div>
+      <div class="ogchat hidden" id="ogChat">
+        <div class="ogchat-log" id="ogChatLog"></div>
+        <div class="ogchat-in">
+          <input type="text" id="ogChatInput" maxlength="300" placeholder="상대에게 메시지…" autocomplete="off">
+          <button class="ghost" id="ogChatSend">보내기</button>
+        </div>
+      </div>
     </div>
     <div style="flex:1; min-width:300px; max-width:430px;">
       <div class="card" id="ogSetup">
         <h3>온라인 매치</h3>
-        <div class="og-rating">내 레이팅 <b id="ogRating">400</b>
-          <span class="small">400에서 시작(0 밑으로는 안 내려감) · 2000점 ≈ 프로 · 상대 레이팅에 따라 변동 폭이 달라집니다</span></div>
-        <label class="field">닉네임</label>
-        <input type="text" id="ogName" value="플레이어" maxlength="20">
-        <div style="margin-top:14px;">
-          <button class="primary" id="ogQuick">⚡ 빠른 매치 찾기</button>
-          <button class="ghost hidden" id="ogCancel">매칭 취소</button>
+        <div id="ogLoginGate" class="hidden">
+          <div class="og-rating" style="text-align:center">
+            <b style="font-size:16px">🔒 로그인이 필요합니다</b>
+            <span class="small">온라인 레이팅 대국은 <b>로그인한 계정</b>만 이용할 수 있습니다. 레이팅과 전적이 계정에 저장됩니다.</span>
+          </div>
+          <div style="margin-top:12px"><button class="primary" id="ogLoginBtn">👤 로그인 / 회원가입</button></div>
         </div>
-        <div class="status" id="ogSetupStatus"></div>
-        <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
-        <h3>친구와 하기 (초대 코드)</h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="ghost" id="ogCreate">🔗 초대 코드 만들기</button>
-        </div>
-        <div class="og-code hidden" id="ogCodeBox">코드: <b id="ogCode"></b> <span class="small">— 친구에게 알려주세요</span></div>
-        <label class="field">친구가 준 코드 입력</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="ogJoinCode" placeholder="예: AB3C" maxlength="4" style="text-transform:uppercase; flex:1">
-          <button class="ghost" id="ogJoin">참가</button>
+        <div id="ogMatchBody">
+          <div class="og-rating">내 레이팅 <b id="ogRating">400</b>
+            <span class="small">400에서 시작(0 밑으로는 안 내려감) · 2000점 ≈ 프로 · 상대 레이팅에 따라 변동 폭이 달라집니다</span></div>
+          <label class="field">닉네임 (계정 아이디)</label>
+          <input type="text" id="ogName" value="플레이어" maxlength="20" readonly>
+          <div style="margin-top:14px;">
+            <button class="primary" id="ogQuick">⚡ 빠른 매치 찾기</button>
+            <button class="ghost hidden" id="ogCancel">매칭 취소</button>
+          </div>
+          <div class="status" id="ogSetupStatus"></div>
+          <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+          <h3>친구와 하기 (초대 코드)</h3>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="ghost" id="ogCreate">🔗 초대 코드 만들기</button>
+          </div>
+          <div class="og-code hidden" id="ogCodeBox">코드: <b id="ogCode"></b> <span class="small">— 친구에게 알려주세요</span></div>
+          <label class="field">친구가 준 코드 입력</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="ogJoinCode" placeholder="예: AB3C" maxlength="4" style="text-transform:uppercase; flex:1">
+            <button class="ghost" id="ogJoin">참가</button>
+          </div>
         </div>
       </div>
       <div class="card hidden" id="ogGameInfo">
@@ -335,6 +351,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=13"></script>
+<script src="/static/app.js?v=14"></script>
 </body>
 </html>

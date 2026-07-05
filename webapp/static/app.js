@@ -147,7 +147,10 @@ function switchTab(name) {
   document.querySelectorAll(".tab").forEach((t) =>
     t.classList.toggle("active", t.id === "tab-" + name));
   window.scrollTo(0, 0);
-  if (name === "online" && typeof loadLeaderboard === "function") loadLeaderboard();
+  if (name === "online") {
+    if (typeof loadLeaderboard === "function") loadLeaderboard();
+    if (typeof updateOgAuthGate === "function") updateOgAuthGate();
+  }
 }
 // empty-state "go analyze" buttons
 document.querySelectorAll("[data-goto]").forEach((b) => {
@@ -1196,6 +1199,7 @@ function ogHandle(msg) {
       $("ogColorInfo").textContent = `당신은 ${OG.color === "w" ? "백(선공)" : "흑(후공)"}입니다.`;
       setStatus("ogStatus", "대국 시작! 행운을 빕니다 🍀");
       setStatus("ogSetupStatus", "");
+      ogEnterGame();
       renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
       break;
     case "state":
@@ -1211,6 +1215,9 @@ function ogHandle(msg) {
       break;
     case "draw_declined":
       setStatus("ogStatus", "상대가 무승부 제안을 거절했습니다.", true);
+      break;
+    case "chat":
+      ogAppendChat(OG.opponent || "상대", msg.text || "", false);
       break;
     case "end":
       ogEnd(msg.result, msg.reason);
@@ -1304,7 +1311,7 @@ function updateOgTurn() {
 }
 
 function ogEnd(result, reason) {
-  OG.over = true; renderOgBoard(); updateOgTurn();
+  OG.over = true; ogExitGame(); renderOgBoard(); updateOgTurn();
   let kind = "draw";
   if (result === "1-0") kind = OG.color === "w" ? "win" : "loss";
   else if (result === "0-1") kind = OG.color === "b" ? "win" : "loss";
@@ -1353,20 +1360,25 @@ function ogReset() {
   $("ogTopBar").classList.add("hidden");
   $("ogBottomBar").classList.add("hidden");
   $("ogDrawPrompt").classList.add("hidden");
+  ogExitGame();
+  updateOgAuthGate();
   setStatus("ogStatus", ""); setStatus("ogSetupStatus", "");
   renderOgBoard(); renderOgMoves(); updateOgTurn();
   switchTab("online");
 }
 
 $("ogQuick").onclick = () => {
+  if (!requireLogin()) return;
   setStatus("ogSetupStatus", "서버에 연결 중…");
   ogFresh(() => ogSend({ type: "quick", name: ogName(), rating: myRating() }));
 };
 $("ogCreate").onclick = () => {
+  if (!requireLogin()) return;
   setStatus("ogSetupStatus", "서버에 연결 중…");
   ogFresh(() => ogSend({ type: "create", name: ogName(), rating: myRating() }));
 };
 $("ogJoin").onclick = () => {
+  if (!requireLogin()) return;
   const code = ($("ogJoinCode").value || "").trim().toUpperCase();
   if (code.length !== 4) { setStatus("ogSetupStatus", "4글자 코드를 입력하세요.", true); return; }
   setStatus("ogSetupStatus", "방에 참가하는 중…");
@@ -1385,6 +1397,53 @@ $("ogDraw").onclick = () => {
 $("ogDrawAccept").onclick = () => { ogSend({ type: "draw_accept" }); $("ogDrawPrompt").classList.add("hidden"); };
 $("ogDrawDecline").onclick = () => { ogSend({ type: "draw_decline" }); $("ogDrawPrompt").classList.add("hidden"); };
 $("ogFlip").onclick = () => { OG.orient = OG.orient === "w" ? "b" : "w"; renderOgBoard(); };
+
+// ---- login gate: online rated play requires an account ----
+function openAuth() { $("authModal").classList.remove("hidden"); setStatus("authStatus", ""); $("authId").focus(); }
+function updateOgAuthGate() {
+  const gate = $("ogLoginGate"), body = $("ogMatchBody");
+  if (!gate || !body) return;
+  const on = !!AUTH.token;
+  gate.classList.toggle("hidden", on);
+  body.classList.toggle("hidden", !on);
+  if (on && $("ogName")) $("ogName").value = AUTH.id || "플레이어";
+}
+$("ogLoginBtn").onclick = openAuth;
+function requireLogin() {
+  if (AUTH.token) return true;
+  setStatus("ogSetupStatus", "온라인 대국은 로그인 후 이용할 수 있습니다.", true);
+  openAuth();
+  return false;
+}
+
+// ---- immersive in-game mode (hide menus) ----
+function ogEnterGame() {
+  document.body.classList.add("ingame");
+  $("ogChat").classList.remove("hidden");
+  $("ogChatLog").innerHTML = "";
+}
+function ogExitGame() {
+  document.body.classList.remove("ingame");
+  $("ogChat").classList.add("hidden");
+}
+
+// ---- in-game chat ----
+function ogAppendChat(who, text, me) {
+  const log = $("ogChatLog");
+  const d = document.createElement("div");
+  d.className = "chatmsg" + (me ? " me" : "");
+  d.innerHTML = `<b>${escapeHtml(who)}</b> ${escapeHtml(text)}`;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+function ogSendChat() {
+  const inp = $("ogChatInput"), t = (inp.value || "").trim();
+  if (!t || !OG.started || OG.over) return;
+  ogSend({ type: "chat", text: t });
+  ogAppendChat(AUTH.id || "나", t, true);
+  inp.value = "";
+}
+$("ogChatSend").onclick = ogSendChat;
+$("ogChatInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); ogSendChat(); } });
 
 // =========================================================================== //
 // ACCOUNTS — register/login with id+password; progress lives on the server.
@@ -1433,6 +1492,7 @@ function authClearSession() {
   AUTH.token = null; AUTH.id = null;
   localStorage.removeItem("cc_token"); localStorage.removeItem("cc_uid");
   renderAuthArea();
+  if (typeof updateOgAuthGate === "function") updateOgAuthGate();
 }
 
 function authSetSession(id, token, progress) {
@@ -1441,6 +1501,7 @@ function authSetSession(id, token, progress) {
   applyProgress(progress);
   const nick = $("ogName"); if (nick) nick.value = id;   // nickname = account id
   renderAuthArea();
+  if (typeof updateOgAuthGate === "function") updateOgAuthGate();
 }
 
 function renderAuthArea() {
@@ -1510,6 +1571,7 @@ async function loadLeaderboard() {
 
 async function authBoot() {
   renderAuthArea();
+  updateOgAuthGate();
   if (!AUTH.token) return;
   try {
     const r = await api("/api/auth/load", { token: AUTH.token });
@@ -1517,6 +1579,7 @@ async function authBoot() {
     applyProgress(r.progress);
     const nick = $("ogName"); if (nick) nick.value = r.id;
     renderAuthArea();
+    updateOgAuthGate();
   } catch (e) {
     if (!isOffline(e)) authClearSession();   // expired session; keep it if just offline
   }

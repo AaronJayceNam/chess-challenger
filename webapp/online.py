@@ -317,6 +317,17 @@ class Lobby:
             other = game.opponent_ws(ws)
         await _send(other, {"type": "draw_declined"})
 
+    async def chat(self, ws: WebSocket, text: str) -> None:
+        text = text.strip()[:300]
+        if not text:
+            return
+        async with self.lock:
+            game = self.games.get(ws)
+            if game is None:
+                return
+            other = game.opponent_ws(ws)
+        await _send(other, {"type": "chat", "text": text})
+
     async def disconnect(self, ws: WebSocket) -> None:
         other = None
         result = None
@@ -373,6 +384,8 @@ def register_online(app: FastAPI, legal_state) -> Lobby:
                     await lobby.draw_accept(ws)
                 elif t == "draw_decline":
                     await lobby.draw_decline(ws)
+                elif t == "chat":
+                    await lobby.chat(ws, str(msg.get("text") or ""))
         except WebSocketDisconnect:
             await lobby.disconnect(ws)
         except Exception:
