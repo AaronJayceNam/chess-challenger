@@ -73,11 +73,12 @@ function enableBoardDrag(boardEl, cfg) {
     const pc = e.target.closest(".pc");
     const sqEl = pc && pc.closest(".sq");
     const from = sqEl && sqEl.dataset.sq;
-    const legal = cfg.legal() || {};
-    if (!from || !legal[from] || !legal[from].length) return;   // not a movable piece
+    if (!from) return;                 // must grab an actual piece
+    // ANY piece can be picked up; only a legal target completes a move. A piece
+    // with no legal moves just lifts and snaps back.
     // no preventDefault: touch-action:none (CSS) already stops scrolling/zoom, and
     // letting the native click through keeps tap-to-move working on touch too.
-    d = { from, pc, sx: e.clientX, sy: e.clientY, moved: false, clone: null, legal, cell: boardEl.getBoundingClientRect().width / 8 };
+    d = { from, pc, sx: e.clientX, sy: e.clientY, moved: false, clone: null, legal: cfg.legal() || {}, cell: boardEl.getBoundingClientRect().width / 8 };
     try { boardEl.setPointerCapture(e.pointerId); } catch (err) {}
   });
 
@@ -94,7 +95,8 @@ function enableBoardDrag(boardEl, cfg) {
       document.body.appendChild(c);
       d.clone = c;
       d.pc.style.opacity = "0";   // hide the original so the piece itself appears to move
-      if (SETTINGS.showDots) d.legal[d.from].forEach((t) => { const el = boardEl.querySelector(`.sq[data-sq="${t}"]`); if (el) el.classList.add("dnd-target"); });
+      if (d.pc.parentElement) d.pc.parentElement.classList.add("dnd-from");   // highlight origin square
+      if (SETTINGS.showDots) (d.legal[d.from] || []).forEach((t) => { const el = boardEl.querySelector(`.sq[data-sq="${t}"]`); if (el) el.classList.add("dnd-target"); });
     }
     d.clone.style.left = (e.clientX - d.cell / 2) + "px";
     d.clone.style.top = (e.clientY - d.cell / 2) + "px";
@@ -104,6 +106,7 @@ function enableBoardDrag(boardEl, cfg) {
     if (!d) return;
     const cur = d; d = null;
     clearTargets();
+    boardEl.querySelectorAll(".dnd-from").forEach((el) => el.classList.remove("dnd-from"));
     if (cur.clone) cur.clone.remove();
     if (cur.pc) cur.pc.style.opacity = "";
     if (!cur.moved) return;   // a tap, not a drag → let the click handler run
@@ -1199,8 +1202,15 @@ function ogHandle(msg) {
       OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null;
       OG.lastUci = msg.lastUci || null;
       ogSyncClock(msg.state);
+      $("ogDrawPrompt").classList.add("hidden");   // a move voids any pending draw offer
       renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
       if (OG.lastUci) animateMove($("ogBoard"), OG.lastUci.slice(0, 2), OG.lastUci.slice(2, 4), OG.orient);
+      break;
+    case "draw_offered":
+      $("ogDrawPrompt").classList.remove("hidden");
+      break;
+    case "draw_declined":
+      setStatus("ogStatus", "상대가 무승부 제안을 거절했습니다.", true);
       break;
     case "end":
       ogEnd(msg.result, msg.reason);
@@ -1298,7 +1308,7 @@ function ogEnd(result, reason) {
   let kind = "draw";
   if (result === "1-0") kind = OG.color === "w" ? "win" : "loss";
   else if (result === "0-1") kind = OG.color === "b" ? "win" : "loss";
-  const reasonTxt = { checkmate: "체크메이트", resign: "기권", forfeit: "상대가 나갔습니다", timeout: "시간 초과", draw: "무승부" }[reason] || "";
+  const reasonTxt = { checkmate: "체크메이트", resign: "기권", forfeit: "상대가 나갔습니다", timeout: "시간 초과", agreement: "합의 무승부", draw: "무승부" }[reason] || "";
   const me = ogName();
   const white = OG.color === "w" ? me : (OG.opponent || "상대");
   const black = OG.color === "b" ? me : (OG.opponent || "상대");
@@ -1342,6 +1352,7 @@ function ogReset() {
   $("ogCancel").classList.add("hidden");
   $("ogTopBar").classList.add("hidden");
   $("ogBottomBar").classList.add("hidden");
+  $("ogDrawPrompt").classList.add("hidden");
   setStatus("ogStatus", ""); setStatus("ogSetupStatus", "");
   renderOgBoard(); renderOgMoves(); updateOgTurn();
   switchTab("online");
@@ -1366,6 +1377,13 @@ $("ogResign").onclick = () => {
   if (!OG.started || OG.over) { setStatus("ogStatus", "진행 중인 대국이 없습니다.", true); return; }
   ogSend({ type: "resign" });
 };
+$("ogDraw").onclick = () => {
+  if (!OG.started || OG.over) { setStatus("ogStatus", "진행 중인 대국이 없습니다.", true); return; }
+  ogSend({ type: "draw_offer" });
+  setStatus("ogStatus", "무승부를 제안했습니다. 상대의 응답을 기다립니다…");
+};
+$("ogDrawAccept").onclick = () => { ogSend({ type: "draw_accept" }); $("ogDrawPrompt").classList.add("hidden"); };
+$("ogDrawDecline").onclick = () => { ogSend({ type: "draw_decline" }); $("ogDrawPrompt").classList.add("hidden"); };
 $("ogFlip").onclick = () => { OG.orient = OG.orient === "w" ? "b" : "w"; renderOgBoard(); };
 
 // =========================================================================== //

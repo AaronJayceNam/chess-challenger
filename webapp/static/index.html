@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=12">
+<link rel="stylesheet" href="/static/style.css?v=13">
 </head>
 <body>
 
@@ -43,7 +43,15 @@
       <div class="turn" id="ogTurn"><span class="pill"></span>매치를 시작하면 보드가 열립니다.</div>
       <div class="controls">
         <button class="ghost" id="ogResign">🏳️ 기권</button>
+        <button class="ghost" id="ogDraw">🤝 무승부 제안</button>
         <button class="ghost" id="ogFlip">⇅ 보드 뒤집기</button>
+      </div>
+      <div class="og-draw hidden" id="ogDrawPrompt">
+        <b>상대가 무승부를 제안했습니다.</b>
+        <div class="row">
+          <button class="primary" id="ogDrawAccept">수락</button>
+          <button class="ghost" id="ogDrawDecline">거절</button>
+        </div>
       </div>
       <div class="status" id="ogStatus"></div>
     </div>
@@ -327,6 +335,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=12"></script>
+<script src="/static/app.js?v=13"></script>
 </body>
 </html>

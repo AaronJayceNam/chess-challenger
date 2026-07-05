@@ -71,6 +71,7 @@ class Game:
         # move's clock runs. turn_started marks when the current turn began.
         self.clock = {chess.WHITE: CLOCK_START, chess.BLACK: CLOCK_START}
         self.turn_started = time.monotonic()
+        self.draw_offer_by = None   # colour with a pending draw offer (expires on a move)
 
     def remaining(self) -> tuple[float, float]:
         """(white, black) seconds left, including the running turn's elapsed."""
@@ -208,6 +209,7 @@ class Lobby:
                 return
             game.clock[color] = left
             game.turn_started = now
+            game.draw_offer_by = None   # a move withdraws any pending draw offer
             game.san.append(game.board.san(mv))
             game.board.push(mv)
             game.moves.append(uci)
@@ -265,6 +267,56 @@ class Lobby:
                 for c in (chess.WHITE, chess.BLACK):
                     await _send(game.ws[c], end)
 
+    async def draw_offer(self, ws: WebSocket) -> None:
+        agree = False
+        other = None
+        async with self.lock:
+            game = self.games.get(ws)
+            if game is None or game.over:
+                return
+            color = game.color_of(ws)
+            # if the opponent already offered, this offer completes the agreement
+            if game.draw_offer_by is not None and game.draw_offer_by != color:
+                agree = True
+            else:
+                game.draw_offer_by = color
+                other = game.opponent_ws(ws)
+        if agree:
+            await self._agree_draw(game)
+        elif other is not None:
+            await _send(other, {"type": "draw_offered"})
+
+    async def draw_accept(self, ws: WebSocket) -> None:
+        game = None
+        async with self.lock:
+            g = self.games.get(ws)
+            if g is None or g.over:
+                return
+            color = g.color_of(ws)
+            if g.draw_offer_by is None or g.draw_offer_by == color:
+                return   # must be the OTHER side's offer to accept
+            game = g
+        await self._agree_draw(game)
+
+    async def _agree_draw(self, game: Game) -> None:
+        async with self.lock:
+            if game.over:
+                return
+            game.over = True
+            self._cleanup_game(game)
+        end = {"type": "end", "result": "1/2-1/2", "reason": "agreement"}
+        for c in (chess.WHITE, chess.BLACK):
+            await _send(game.ws[c], end)
+
+    async def draw_decline(self, ws: WebSocket) -> None:
+        async with self.lock:
+            game = self.games.get(ws)
+            if game is None or game.over or game.draw_offer_by is None:
+                return
+            game.draw_offer_by = None
+            other = game.opponent_ws(ws)
+        await _send(other, {"type": "draw_declined"})
+
     async def disconnect(self, ws: WebSocket) -> None:
         other = None
         result = None
@@ -315,6 +367,12 @@ def register_online(app: FastAPI, legal_state) -> Lobby:
                     await lobby.move(ws, str(msg.get("uci") or ""))
                 elif t == "resign":
                     await lobby.resign(ws)
+                elif t == "draw_offer":
+                    await lobby.draw_offer(ws)
+                elif t == "draw_accept":
+                    await lobby.draw_accept(ws)
+                elif t == "draw_decline":
+                    await lobby.draw_decline(ws)
         except WebSocketDisconnect:
             await lobby.disconnect(ws)
         except Exception:

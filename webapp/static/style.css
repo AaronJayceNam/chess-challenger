@@ -622,3 +622,16 @@ input[type=text]:focus, input[type=password]:focus, textarea:focus, select:focus
   background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.4); }
 .switch input:checked + .slider { background:linear-gradient(180deg,var(--accent2),var(--accent)); }
 .switch input:checked + .slider::before { transform:translateX(22px); }
+
+/* ---------- stronger selected / picked-up square ---------- */
+.sq.sel, .sq.dnd-from {
+  box-shadow: inset 0 0 0 5px rgba(255,206,64,.95), inset 0 0 20px rgba(255,206,64,.35);
+}
+.sq.sel .pc { transform: scale(1.08); }
+.pc.dragging { cursor:grabbing; text-shadow:0 4px 12px rgba(0,0,0,.75); transform:scale(1.18); }
+
+/* ---------- draw offer ---------- */
+.og-draw { margin-top:10px; padding:11px 13px; border-radius:11px;
+  background:rgba(240,179,46,.14); border:1px solid rgba(240,179,46,.35); font-size:14px; }
+.og-draw .row { display:flex; gap:8px; margin-top:9px; }
+.og-draw .row button { flex:1; }
