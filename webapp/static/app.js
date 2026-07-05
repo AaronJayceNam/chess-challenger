@@ -49,6 +49,69 @@ function overlay(show, msg) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// --------------------------------------------------------------------------- //
+// drag-to-move (works alongside click-to-move on every game board)
+// --------------------------------------------------------------------------- //
+let _dragJustMoved = false;   // suppress the click that follows a drag-drop
+
+// cfg: { movable():bool, legal():{sq:[dests]}, commit(from,to) }  — commit plays
+// the move (handling promotion). Attach ONCE per board element; survives the
+// board's innerHTML re-renders because the listener lives on the board itself.
+function enableBoardDrag(boardEl, cfg) {
+  let d = null;
+  const clearTargets = () => boardEl.querySelectorAll(".dnd-target").forEach((el) => el.classList.remove("dnd-target"));
+
+  boardEl.addEventListener("pointerdown", (e) => {
+    if (!cfg.movable()) return;
+    const pc = e.target.closest(".pc");
+    const sqEl = pc && pc.closest(".sq");
+    const from = sqEl && sqEl.dataset.sq;
+    const legal = cfg.legal() || {};
+    if (!from || !legal[from] || !legal[from].length) return;   // not a movable piece
+    // no preventDefault: touch-action:none (CSS) already stops scrolling/zoom, and
+    // letting the native click through keeps tap-to-move working on touch too.
+    d = { from, pc, sx: e.clientX, sy: e.clientY, moved: false, clone: null, legal, cell: boardEl.getBoundingClientRect().width / 8 };
+    try { boardEl.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+
+  boardEl.addEventListener("pointermove", (e) => {
+    if (!d) return;
+    if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 6) return;
+    if (!d.moved) {
+      d.moved = true;
+      const c = d.pc.cloneNode(true);
+      c.className = d.pc.className + " dragging";
+      c.style.cssText = `position:fixed;width:${d.cell}px;height:${d.cell}px;display:flex;` +
+        `align-items:center;justify-content:center;font-size:${getComputedStyle(d.pc).fontSize};` +
+        `pointer-events:none;z-index:70;`;
+      document.body.appendChild(c);
+      d.clone = c;
+      d.pc.style.opacity = "0.25";
+      d.legal[d.from].forEach((t) => { const el = boardEl.querySelector(`.sq[data-sq="${t}"]`); if (el) el.classList.add("dnd-target"); });
+    }
+    d.clone.style.left = (e.clientX - d.cell / 2) + "px";
+    d.clone.style.top = (e.clientY - d.cell / 2) + "px";
+  });
+
+  const finish = (e) => {
+    if (!d) return;
+    const cur = d; d = null;
+    clearTargets();
+    if (cur.clone) cur.clone.remove();
+    if (cur.pc) cur.pc.style.opacity = "";
+    if (!cur.moved) return;   // a tap, not a drag → let the click handler run
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const sqEl = el && el.closest(".sq");
+    const to = sqEl && sqEl.dataset.sq;
+    if (to && to !== cur.from && cur.legal[cur.from] && cur.legal[cur.from].includes(to)) {
+      _dragJustMoved = true; setTimeout(() => { _dragJustMoved = false; }, 0);
+      cfg.commit(cur.from, to);
+    }
+  };
+  boardEl.addEventListener("pointerup", finish);
+  boardEl.addEventListener("pointercancel", finish);
+}
+
 // Keep the active move visible by scrolling ONLY the list container — never the
 // page (element.scrollIntoView scrolls the whole window, which on phones makes
 // the screen jump/scroll down on every move).
@@ -518,6 +581,7 @@ function renderAiBoard() {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
+      div.dataset.sq = sq;
       div.onclick = () => onAiClick(sq);
       board.appendChild(div);
     }
@@ -525,6 +589,7 @@ function renderAiBoard() {
 }
 
 function onAiClick(sq) {
+  if (_dragJustMoved) return;
   const st = AIG.state;
   if (!AIG.started || AIG.over || AIG.thinking || !st || st.turn !== AIG.human) return;
   const map = parseFen(st.fen), legal = st.legal || {};
@@ -762,6 +827,7 @@ function renderPzBoard() {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
+      div.dataset.sq = sq;
       div.onclick = () => onPzClick(sq);
       board.appendChild(div);
     }
@@ -769,7 +835,7 @@ function renderPzBoard() {
 }
 
 function onPzClick(sq) {
-  if (PZ.busy || PZ.locked) return;
+  if (_dragJustMoved || PZ.busy || PZ.locked) return;
   PZ.hintSq = null;
   const legal = PZ.legal.legal || {};
   if (PZ.sel) {
@@ -810,7 +876,12 @@ async function pzUserMove(uci) {
   renderPzBoard();
   animateMove($("pzBoard"), uci.slice(0, 2), uci.slice(2, 4), "w");
 
-  if (res.solved) { PZ.busy = false; PZ.legal = { legal: {} }; pzSolved(); return; }
+  if (res.solved) {
+    PZ.busy = false; PZ.legal = { legal: {} };
+    await sleep(300);   // let the final piece finish sliding before the result shows
+    pzSolved();
+    return;
+  }
 
   // defender replies after a short beat
   await sleep(260);
@@ -1163,6 +1234,7 @@ function renderOgBoard() {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
+      div.dataset.sq = sq;
       div.onclick = () => onOgClick(sq);
       board.appendChild(div);
     }
@@ -1170,6 +1242,7 @@ function renderOgBoard() {
 }
 
 function onOgClick(sq) {
+  if (_dragJustMoved) return;
   const st = OG.state;
   if (!OG.started || OG.over || !st || st.turn !== OG.color) return;
   const map = parseFen(st.fen), legal = st.legal || {};
@@ -1423,6 +1496,32 @@ async function authBoot() {
     if (!isOffline(e)) authClearSession();   // expired session; keep it if just offline
   }
 }
+
+// drag-to-move on each game board (click-to-move still works)
+enableBoardDrag($("aiBoard"), {
+  movable: () => AIG.started && !AIG.over && !AIG.thinking && AIG.state && AIG.state.turn === AIG.human,
+  legal: () => (AIG.state && AIG.state.legal) || {},
+  commit: (from, to) => {
+    const p = parseFen(AIG.state.fen)[from], r = +to[1]; AIG.sel = null;
+    if (p && p.toLowerCase() === "p" && (r === 8 || r === 1)) promoChooser($("aiBoard"), p === "P", (pp) => aiHumanMove(from + to + pp));
+    else aiHumanMove(from + to);
+  },
+});
+enableBoardDrag($("ogBoard"), {
+  movable: () => OG.started && !OG.over && OG.state && OG.state.turn === OG.color,
+  legal: () => (OG.state && OG.state.legal) || {},
+  commit: (from, to) => {
+    const p = parseFen(OG.state.fen)[from], r = +to[1]; OG.sel = null;
+    if (p && p.toLowerCase() === "p" && (r === 8 || r === 1)) promoChooser($("ogBoard"), p === "P", (pp) => ogSend({ type: "move", uci: from + to + pp }));
+    else ogSend({ type: "move", uci: from + to });
+    renderOgBoard();
+  },
+});
+enableBoardDrag($("pzBoard"), {
+  movable: () => !PZ.busy && !PZ.locked && PZ.legal && PZ.legal.legal,
+  legal: () => (PZ.legal && PZ.legal.legal) || {},
+  commit: (from, to) => { PZ.hintSq = null; pzUserMove(from + to); },
+});
 
 // boot
 aiBoot();
