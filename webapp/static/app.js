@@ -274,9 +274,13 @@ function ratingHTML(r) {
 function ratingText(r) { return `${ratingTier(r).sym} ${r}`; }
 
 function updateRatingChip() {
-  const el = $("ratingChip"); if (!el) return;
-  el.innerHTML = `레이팅 <b>${ratingHTML(myRating())}</b>`;
-  const og = $("ogRating"); if (og) og.innerHTML = ratingHTML(myRating());
+  const el = $("ratingChip");
+  const loggedIn = !!(typeof AUTH !== "undefined" && AUTH && AUTH.token);
+  if (el) {
+    el.classList.toggle("hidden", !loggedIn);   // no rating shown when logged out
+    if (loggedIn) el.innerHTML = `레이팅 <b>${ratingHTML(myRating())}</b>`;
+  }
+  const og = $("ogRating"); if (og && loggedIn) og.innerHTML = ratingHTML(myRating());
 }
 
 function gameHistory() {
@@ -1492,6 +1496,7 @@ function authClearSession() {
   AUTH.token = null; AUTH.id = null;
   localStorage.removeItem("cc_token"); localStorage.removeItem("cc_uid");
   renderAuthArea();
+  updateRatingChip();
   if (typeof updateOgAuthGate === "function") updateOgAuthGate();
 }
 
@@ -1501,6 +1506,7 @@ function authSetSession(id, token, progress) {
   applyProgress(progress);
   const nick = $("ogName"); if (nick) nick.value = id;   // nickname = account id
   renderAuthArea();
+  updateRatingChip();
   if (typeof updateOgAuthGate === "function") updateOgAuthGate();
 }
 
