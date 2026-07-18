@@ -534,8 +534,9 @@ function setBestLevel(n) { localStorage.setItem("cc_best_level", String(n)); aut
 function updateRankBadge() {
   const b = bestLevel(), el = $("aiRank");
   if (!el) return;
-  if (b > 0) { el.textContent = `내 최고 기록: 레벨 ${b} 클리어`; el.classList.toggle("master", b >= 15); }
-  else { el.textContent = "아직 클리어한 레벨이 없습니다"; el.classList.remove("master"); }
+  const rb = (typeof t === "function") ? t("rank_best") : "내 최고 기록";
+  if (b > 0) { el.textContent = `${rb}: ${aiLevelWord()} ${b} · ${aiTitle(b)}`; el.classList.toggle("master", b >= 10); }
+  else { el.textContent = (typeof t === "function") ? t("rank_none") : "아직 클리어한 레벨이 없습니다"; el.classList.remove("master"); }
 }
 
 // ---- big win/loss/draw result screen ----
@@ -638,13 +639,17 @@ function onAiClick(sq) {
 
 // ---- AI opponent identity for the player bar (name + rating) ----
 const AI_STYLE_LABEL = { tal: "탈", fischer: "피셔", carlsen: "카를센", petrosian: "페트로시안" };
+// 10-level ladder: title (호칭) per level + a friendly display rating that
+// shows the widening gap. Titles are translated via i18n (lvl_1..lvl_10).
+const AI_LEVEL_RATING = [0, 250, 450, 650, 850, 1050, 1300, 1550, 1850, 2200, 2850];
+function aiTitle(n) { n = Math.max(1, Math.min(10, +n || 1)); return (typeof t === "function") ? t("lvl_" + n) : String(n); }
+function aiLevelWord() { return (typeof t === "function") ? t("word_level") : "레벨"; }
+function aiLevelText(n) { return `${aiLevelWord()} ${n} · ${aiTitle(n)}`; }
 function aiOppInfo() {
   if (AIG.style && AIG.style !== "default")
     return { name: `${AI_STYLE_LABEL[AIG.style] || "AI"} AI`, rating: "최강" };
   const lv = AIG.level;
-  const elo = lv >= 10 ? 2700 + (lv - 10) * 40
-    : Math.round(1320 + (lv - 1) / 8 * (2700 - 1320));
-  return { name: `AI · 레벨 ${lv}`, rating: elo };
+  return { name: `AI · ${aiTitle(lv)}`, rating: AI_LEVEL_RATING[lv] || 2850 };
 }
 function renderAiPbars() {
   const top = $("aiTopBar"), bottom = $("aiBottomBar");
@@ -716,9 +721,10 @@ async function aiReply() {
 
 function aiPlayerNames() {
   const lv = AIG.level;
+  const ai = `AI ${aiTitle(lv)}`;
   return AIG.human === "w"
-    ? { white: "나(You)", black: `AI 레벨 ${lv}` }
-    : { white: `AI 레벨 ${lv}`, black: "나(You)" };
+    ? { white: "나(You)", black: ai }
+    : { white: ai, black: "나(You)" };
 }
 
 function aiEndGame() {
@@ -732,10 +738,10 @@ function aiEndGame() {
   let badge = null;
   if (kind === "win" && lv > bestLevel()) {
     setBestLevel(lv); updateRankBadge();
-    badge = { text: `레벨 ${lv} 클리어!`, master: lv >= 15 };
+    badge = { text: `${aiLevelText(lv)} 클리어!`, master: lv >= 10 };
   }
   // AI games go into the history but never move the rating (online-only).
-  addHistory({ mode: "ai", opponent: `AI 레벨 ${lv}`, result: kind, ratingDelta: null });
+  addHistory({ mode: "ai", opponent: `AI ${aiTitle(lv)}`, result: kind, ratingDelta: null });
   setStatus("aiStatus", `대국 종료 (${r}).`);
   $("aiAnalyze").classList.remove("hidden");
 
@@ -745,11 +751,12 @@ function aiEndGame() {
       onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 350 }) },
     { label: "🔄 새 대국", onClick: () => switchTab("ai") },
   ];
+  const aiName = `AI ${aiTitle(lv)}`;
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: "승리!", sub: `레벨 ${lv} AI를 이겼습니다`, badge, actions }
+    ? { kind, icon: "🏆", title: "승리!", sub: `${aiName}를 이겼습니다`, badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: "패배", sub: `레벨 ${lv} AI에게 졌습니다. 다시 도전!`, actions }
-      : { kind, icon: "🤝", title: "무승부", sub: `레벨 ${lv} AI와 비겼습니다`, actions };
+      ? { kind, icon: "😢", title: "패배", sub: `${aiName}에게 졌습니다. 다시 도전!`, actions }
+      : { kind, icon: "🤝", title: "무승부", sub: `${aiName}와 비겼습니다`, actions };
   setTimeout(() => showResult(opts), 500);   // let the final move finish sliding
 }
 
@@ -765,15 +772,14 @@ async function aiStart() {
   const styleNames = { tal: "탈 스타일 ⚔️", fischer: "피셔 스타일 🎯", carlsen: "카를센 스타일 ♟️", petrosian: "페트로시안 스타일 🛡️" };
   setStatus("aiStatus", AIG.style !== "default"
     ? `${styleNames[AIG.style]} AI와 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`
-    : `레벨 ${AIG.level} 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
+    : `${aiLevelText(AIG.level)} AI와 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
   document.body.classList.add("ingame");     // immersive: board + opponent only
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (AIG.human === "b") await aiReply();   // AI (white) moves first
 }
 
 $("aiLevel").oninput = (e) => {
-  const n = +e.target.value;
-  $("aiLevelLabel").textContent = `레벨 ${n}`;
+  $("aiLevelLabel").textContent = aiLevelText(+e.target.value);
 };
 $("aiStyle").onchange = (e) => {
   const styled = e.target.value !== "default";
@@ -995,7 +1001,7 @@ async function aiBoot() {
   updateRatingChip();
   renderHistory();
   updateRankBadge();
-  $("aiLevelLabel").textContent = `레벨 ${$("aiLevel").value}`;
+  $("aiLevelLabel").textContent = aiLevelText($("aiLevel").value);
   try { AIG.state = await api("/api/legal", { moves: [] }); renderAiBoard(); updateAiTurn(); }
   catch (e) { /* board stays empty until 새 대국 시작 */ }
 }
@@ -1772,7 +1778,7 @@ function renderGrowthAdapt() {
   el.querySelectorAll("[data-goto]").forEach((b) => (b.onclick = () => switchTab(b.dataset.goto)));
   const harder = $("grHarder");
   if (harder) harder.onclick = () => {
-    const lv = Math.min(15, (bestLevel() || 3) + 1);
+    const lv = Math.min(10, (bestLevel() || 3) + 1);
     $("aiLevel").value = lv; $("aiLevel").dispatchEvent(new Event("input"));
     switchTab("ai");
   };
@@ -1905,7 +1911,12 @@ function renderSidebarProfile() {
 }
 
 function refreshDashboard() {
-  try { renderHomeStats(); renderSidebarProfile(); } catch (e) {}
+  try {
+    renderHomeStats(); renderSidebarProfile();
+    if (typeof updateRankBadge === "function") updateRankBadge();
+    const ll = document.getElementById("aiLevelLabel"), lv = document.getElementById("aiLevel");
+    if (ll && lv && typeof aiLevelText === "function") ll.textContent = aiLevelText(lv.value);
+  } catch (e) {}
 }
 refreshDashboard();
 

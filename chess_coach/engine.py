@@ -7,12 +7,35 @@ so the pipeline never has to juggle White/Black sign conventions per ply.
 from __future__ import annotations
 
 import os
+import random
 import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
 import chess
 import chess.engine
+
+
+# 10-step difficulty ladder. The low levels are deliberately very weak: most of
+# their moves are picked completely at random (a beginner can win easily), and
+# the random share drops in big steps so the gap between levels is large. The
+# engine's own strength (UCI_Elo, floored at 1320 by Stockfish) only starts to
+# matter from the middle of the ladder, reaching full strength at level 10.
+#   rand = probability of playing a uniformly random legal move this turn
+#   elo  = UCI_Elo when the engine does move (None = full strength)
+_LADDER = {
+    1:  {"rand": 0.85, "elo": 1320},
+    2:  {"rand": 0.70, "elo": 1320},
+    3:  {"rand": 0.55, "elo": 1320},
+    4:  {"rand": 0.40, "elo": 1320},
+    5:  {"rand": 0.27, "elo": 1350},
+    6:  {"rand": 0.15, "elo": 1450},
+    7:  {"rand": 0.06, "elo": 1600},
+    8:  {"rand": 0.00, "elo": 1850},
+    9:  {"rand": 0.00, "elo": 2200},
+    10: {"rand": 0.00, "elo": None},
+}
+_MAX_LEVEL = 10
 
 
 def _no_window_popen_args() -> dict:
@@ -103,32 +126,33 @@ class Engine:
         return chess.engine.Limit(depth=self.config.depth or 18)
 
     def play(self, board: chess.Board, level: int, style: str = None) -> Optional[chess.Move]:
-        """Pick a move at difficulty `level` (1=weakest .. 15=hardest).
+        """Pick a move at difficulty `level` (1=weakest .. 10=hardest).
 
-        Levels 1-10 are unchanged: 1-9 cap the engine with UCI_LimitStrength/
-        UCI_Elo (≈1320..2700) and level 10 plays at full strength with a short
-        time budget. Levels 11-15 keep full strength but think progressively
-        longer (deeper search), so they are harder than 10.
+        See `_LADDER`: low levels mostly play random moves (very beginner-
+        friendly, with large gaps between levels), higher levels tighten toward
+        full engine strength at level 10.
 
         `style` (optional) makes the engine play a famous-player persona at full
         strength — see _play_styled. Only used in AI matches.
         """
         assert self._engine is not None, "Engine not opened"
-        level = max(1, min(15, level))
+        level = max(1, min(_MAX_LEVEL, level))
         if style and style != "default":
             return self._play_styled(board, style)
+        cfg = _LADDER[level]
+        # weakest levels: often just blunder a random legal move
+        if cfg["rand"] and random.random() < cfg["rand"]:
+            moves = list(board.legal_moves)
+            if moves:
+                return random.choice(moves)
         try:
-            if level >= 10:
-                self._engine.configure({"UCI_LimitStrength": False})
+            if cfg["elo"] is not None:
+                self._engine.configure({"UCI_LimitStrength": True, "UCI_Elo": cfg["elo"]})
             else:
-                elo = int(round(1320 + (level - 1) / 8 * (2700 - 1320)))
-                self._engine.configure({"UCI_LimitStrength": True, "UCI_Elo": elo})
+                self._engine.configure({"UCI_LimitStrength": False})
         except chess.engine.EngineError:
             pass  # option unsupported -> just play full strength
-        if level <= 10:
-            movetime = 120 + level * 40          # 1..10 unchanged (160..520ms)
-        else:
-            movetime = 520 + (level - 10) * 350  # 11..15: 870..2270ms (stronger)
+        movetime = 1200 if cfg["elo"] is None else 160
         result = self._engine.play(board, chess.engine.Limit(time=movetime / 1000.0))
         return result.move
 
