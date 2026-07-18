@@ -151,6 +151,7 @@ function switchTab(name) {
     if (typeof loadLeaderboard === "function") loadLeaderboard();
     if (typeof updateOgAuthGate === "function") updateOgAuthGate();
   }
+  if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
 }
 // empty-state "go analyze" buttons
 document.querySelectorAll("[data-goto]").forEach((b) => {
@@ -1616,6 +1617,121 @@ enableBoardDrag($("pzBoard"), {
   legal: () => (PZ.legal && PZ.legal.legal) || {},
   commit: (from, to) => { PZ.hintSq = null; pzUserMove(from + to); },
 });
+
+// =========================================================================== //
+// GROWTH REPORT — rating graph (⑨), future projection (⑪), adaptive rec (③)
+// All from local history; no AI key needed. (Meta/coaching, so allowed anywhere.)
+// =========================================================================== //
+function ratingSeries() {
+  // history is newest-first with per-online-game ratingDelta; reconstruct the
+  // rating after each game working from the current rating backwards.
+  const games = gameHistory().slice().reverse();   // oldest first
+  const total = games.reduce((s, g) => s + (g.ratingDelta || 0), 0);
+  let cur = Math.max(0, myRating() - total);
+  const pts = [{ r: cur, date: null, label: "시작" }];
+  for (const g of games) {
+    cur = Math.max(0, cur + (g.ratingDelta || 0));
+    pts.push({ r: cur, date: g.date || null, mode: g.mode, result: g.result });
+  }
+  return pts;
+}
+
+function currentStreak() {
+  const h = gameHistory();
+  if (!h.length) return { kind: null, n: 0 };
+  const first = h[0].result;
+  if (first === "draw") return { kind: "draw", n: 1 };
+  let n = 0;
+  for (const g of h) { if (g.result === first) n++; else break; }
+  return { kind: first, n };
+}
+
+function renderGrowth() {
+  renderGrowthAdapt();
+  renderGrowthChart();
+  renderGrowthProjection();
+}
+
+function renderGrowthAdapt() {
+  const el = $("grAdapt"); if (!el) return;
+  const s = currentStreak();
+  let html;
+  if (s.kind === "loss" && s.n >= 3) {
+    html = `<p class="grtip">😮‍💨 <b>${s.n}연패 중</b>이에요. 무리하게 이어가기보다 <b>쉬운 퍼즐</b>로 감을 되찾는 걸 추천해요.</p>` +
+      `<button class="primary" data-goto="puzzle">🧩 쉬운 퍼즐 풀러 가기</button>`;
+  } else if (s.kind === "win" && s.n >= 3) {
+    html = `<p class="grtip">🔥 <b>${s.n}연승 중</b>! 실력이 오르는 신호예요. <b>더 높은 난이도 AI</b>에 도전해 성장 속도를 높여보세요.</p>` +
+      `<button class="primary" id="grHarder">🤖 더 어려운 AI와 대국</button>`;
+  } else {
+    const r = myRating();
+    html = `<p class="grtip">꾸준함이 실력을 만듭니다. 오늘도 한 판, 퍼즐 몇 개 어때요?</p>` +
+      `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" data-goto="ai">🤖 AI 대국</button>` +
+      `<button class="ghost" data-goto="puzzle">🧩 퍼즐</button>${AUTH.token ? '<button class="ghost" data-goto="online">🌐 온라인</button>' : ""}</div>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll("[data-goto]").forEach((b) => (b.onclick = () => switchTab(b.dataset.goto)));
+  const harder = $("grHarder");
+  if (harder) harder.onclick = () => {
+    const lv = Math.min(15, (bestLevel() || 3) + 1);
+    $("aiLevel").value = lv; $("aiLevel").dispatchEvent(new Event("input"));
+    switchTab("ai");
+  };
+}
+
+function renderGrowthChart() {
+  const box = $("grChartBox"), stats = $("grStats");
+  const pts = ratingSeries();
+  const rated = gameHistory().filter((g) => g.mode === "online").length;
+  if (pts.length < 2 || rated === 0) {
+    box.innerHTML = '<div class="hist-empty">온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.</div>';
+    stats.innerHTML = ""; return;
+  }
+  const vals = pts.map((p) => p.r);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const pad = Math.max(30, (max - min) * 0.15);
+  const lo = Math.max(0, min - pad), hi = max + pad;
+  const W = 320, H = 150, m = { l: 34, r: 8, t: 10, b: 16 };
+  const x = (i) => m.l + (i / (pts.length - 1)) * (W - m.l - m.r);
+  const y = (v) => m.t + (1 - (v - lo) / (hi - lo || 1)) * (H - m.t - m.b);
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.r).toFixed(1)}`).join(" ");
+  const area = line + ` L${x(pts.length - 1).toFixed(1)},${H - m.b} L${x(0).toFixed(1)},${H - m.b} Z`;
+  const dots = pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.r).toFixed(1)}" r="2.4" fill="#57b97c"/>`).join("");
+  const yl = [hi, (hi + lo) / 2, lo].map((v) =>
+    `<text x="2" y="${(y(v) + 3).toFixed(1)}" font-size="9" fill="#8b93a1">${Math.round(v)}</text>`).join("");
+  box.innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">` +
+    `<defs><linearGradient id="grg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57b97c" stop-opacity=".35"/><stop offset="1" stop-color="#57b97c" stop-opacity="0"/></linearGradient></defs>` +
+    `<path d="${area}" fill="url(#grg)"/><path d="${line}" fill="none" stroke="#57b97c" stroke-width="2"/>${dots}${yl}</svg>`;
+  const startR = pts[0].r, nowR = myRating(), delta = nowR - startR;
+  const peak = Math.max(...vals);
+  stats.innerHTML =
+    `<span>현재 <b>${ratingHTML(nowR)}</b></span><span>최고 <b>${peak}</b></span>` +
+    `<span>누적 <b class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" + delta : delta}</b></span>` +
+    `<span>온라인 <b>${rated}</b>판</span>`;
+}
+
+function renderGrowthProjection() {
+  const el = $("grProjection");
+  const online = gameHistory().filter((g) => g.mode === "online" && g.date);
+  if (online.length < 4) {
+    el.innerHTML = '<div class="hist-empty">온라인 대국이 4판 이상 쌓이면 예측이 표시됩니다.</div>'; return;
+  }
+  // rating change per day over the rated span
+  const dates = online.map((g) => g.date).sort();
+  const first = new Date(dates[0]), last = new Date(dates[dates.length - 1]);
+  const days = Math.max(1, (last - first) / 86400000);
+  const totalDelta = online.reduce((s, g) => s + (g.ratingDelta || 0), 0);
+  const perDay = totalDelta / days;
+  // clamp the 90-day change to a realistic band so short/steep samples don't
+  // extrapolate to absurd numbers.
+  const change = Math.max(-400, Math.min(400, perDay * 90));
+  const proj90 = Math.max(0, Math.round(myRating() + change));
+  const trend = perDay > 0.3 ? "상승세" : perDay < -0.3 ? "하락세" : "안정적";
+  const arrow = perDay > 0.3 ? "📈" : perDay < -0.3 ? "📉" : "➖";
+  el.innerHTML =
+    `<div class="grproj">${arrow} 최근 추세는 <b>${trend}</b>입니다.<br>` +
+    `지금처럼 계속하면 <b>3개월 뒤 약 ${ratingHTML(proj90)}</b> 정도가 예상돼요.</div>`;
+}
 
 // =========================================================================== //
 // SETTINGS modal

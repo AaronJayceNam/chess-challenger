@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=15">
+<link rel="stylesheet" href="/static/style.css?v=16">
 </head>
 <body>
 
@@ -21,6 +21,7 @@
   <button data-tab="online"><span class="ti">🌐</span>온라인 대국</button>
   <button data-tab="puzzle"><span class="ti">🧩</span>퍼즐</button>
   <button data-tab="learn"><span class="ti">📖</span>체스 배우기</button>
+  <button data-tab="growth"><span class="ti">📈</span>성장</button>
   <button data-tab="review" id="tabReview"><span class="ti">📊</span>리뷰</button>
 </div>
 
@@ -29,6 +30,7 @@
   <button data-tab="ai" class="active"><span class="bi">🤖</span><span class="bl">AI</span></button>
   <button data-tab="online"><span class="bi">🌐</span><span class="bl">온라인</span></button>
   <button data-tab="puzzle"><span class="bi">🧩</span><span class="bl">퍼즐</span></button>
+  <button data-tab="growth"><span class="bi">📈</span><span class="bl">성장</span></button>
   <button data-tab="learn"><span class="bi">📖</span><span class="bl">배우기</span></button>
   <button data-tab="review"><span class="bi">📊</span><span class="bl">리뷰</span></button>
 </nav>
@@ -237,6 +239,26 @@
   </div>
 </section>
 
+<!-- ====================== 성장 리포트 ====================== -->
+<section class="tab" id="tab-growth">
+  <div class="growth-wrap">
+    <div class="card" id="grAdaptCard">
+      <h3>오늘의 추천</h3>
+      <div id="grAdapt"></div>
+    </div>
+    <div class="card">
+      <h3>레이팅 성장 그래프</h3>
+      <div id="grChartBox"><div class="hist-empty">온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.</div></div>
+      <div class="grstats" id="grStats"></div>
+    </div>
+    <div class="card">
+      <h3>미래 레이팅 예측</h3>
+      <div id="grProjection"><div class="hist-empty">최근 대국 데이터가 쌓이면 예측이 표시됩니다.</div></div>
+      <p class="setdesc" style="margin-top:8px">최근 온라인 대국 추세를 단순 연장한 추정치입니다 — 참고용이에요.</p>
+    </div>
+  </div>
+</section>
+
 <!-- ====================== REVIEW ====================== -->
 <section class="tab" id="tab-review">
   <div class="empty-state" id="rvEmpty">
@@ -351,6 +373,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=15"></script>
+<script src="/static/app.js?v=16"></script>
 </body>
 </html>

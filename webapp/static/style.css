@@ -652,3 +652,13 @@ body.ingame { padding-bottom:0 !important; }
 .chatmsg.me b { opacity:.85; }
 .ogchat-in { display:flex; gap:6px; padding:8px; border-top:1px solid var(--line); }
 .ogchat-in input { flex:1; }
+
+/* ---------- growth report ---------- */
+.growth-wrap { max-width:520px; }
+#grChartBox { background:#0f1318; border:1px solid var(--line2); border-radius:12px; padding:10px 8px; }
+.grstats { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:13.5px; color:var(--muted); }
+.grstats b { color:var(--ink); }
+.grstats .up { color:#5fc287; } .grstats .down { color:#f0584f; }
+.grtip { font-size:14.5px; line-height:1.6; margin:0 0 12px; }
+.grproj { font-size:15px; line-height:1.7; padding:12px 14px; border-radius:12px;
+  background:rgba(87,185,124,.12); border:1px solid rgba(87,185,124,.3); }
