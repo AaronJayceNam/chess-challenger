@@ -575,3 +575,56 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   .es-art{ width:170px; }
   .boardwrap::before, .boardwrap::after{ display:none; }
 }
+
+/* ============================================================
+   STRUCTURE v23 — desktop LEFT SIDEBAR layout + packed home
+   dashboard (stats strip, sidebar profile). Mobile unchanged
+   (bottom nav). Overturns the old top-tab structure.
+   ============================================================ */
+.shell{ display:block; }
+.side-profile, .side-tip{ display:none; }
+
+/* packed home stats strip */
+.statstrip{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+.stat{ position:relative; overflow:hidden; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; padding:14px 14px; box-shadow:var(--shadow); }
+.stat .ic{ position:absolute; right:9px; top:8px; font-size:22px; opacity:.22; }
+.stat .k{ font-size:11.5px; color:var(--muted); font-weight:600; margin-bottom:5px; }
+.stat .v{ font-size:22px; font-weight:800; color:var(--ink); letter-spacing:-.5px; line-height:1.1; }
+.stat .v .tier{ font-size:18px; }
+body.ingame .statstrip{ display:none !important; }
+
+@media (max-width:760px){ .statstrip{ grid-template-columns:repeat(2,1fr); gap:10px; } }
+
+/* --- desktop: turn the tab bar into a left sidebar rail --- */
+@media (min-width:761px){
+  .shell{ display:flex; align-items:flex-start; gap:22px; max-width:1440px; margin:0 auto; padding:22px 24px; }
+  .tabs{ position:sticky; top:74px; align-self:flex-start; z-index:5;
+    flex:0 0 218px; width:218px; flex-direction:column; align-items:stretch; gap:4px;
+    overflow:visible; padding:12px; border:1px solid var(--line); border-radius:18px;
+    background:var(--panel); box-shadow:var(--shadow); }
+  .tabs button{ width:100%; justify-content:flex-start; text-align:left;
+    padding:11px 14px; font-size:15px; font-weight:650; border-radius:12px; }
+  .tabs button .ti{ font-size:18px; margin-right:11px; width:22px; text-align:center; }
+  .content{ flex:1 1 auto; min-width:0; }
+  .content .tab{ padding:0; }
+
+  .side-profile{ display:block; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .sp-top{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .sp-ava{ width:38px; height:38px; border-radius:11px; display:grid; place-items:center; font-weight:800;
+    color:#fff; font-size:16px; background:linear-gradient(145deg,var(--accent2),var(--accent-deep)); flex:0 0 auto; }
+  .sp-name{ font-weight:700; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sp-sub{ font-size:12px; color:var(--muted); margin-top:1px; }
+  .sp-stats{ display:flex; gap:8px; }
+  .sp-stat{ flex:1; text-align:center; background:var(--elevated); border-radius:10px; padding:8px 4px; }
+  .sp-stat b{ display:block; font-size:15px; color:var(--ink); }
+  .sp-stat span{ font-size:10.5px; color:var(--muted); }
+
+  .side-tip{ display:block; margin-top:12px; padding:12px 13px; border-radius:12px; font-size:12.5px; line-height:1.55;
+    background:linear-gradient(180deg,rgba(63,157,99,.10),rgba(63,157,99,.04));
+    border:1px solid rgba(63,157,99,.25); color:var(--accent-deep); }
+  .side-tip b{ font-size:12.5px; }
+
+  /* in a game the rail collapses away for a clean board */
+  body.ingame .shell{ display:block; max-width:none; padding:0; }
+}
