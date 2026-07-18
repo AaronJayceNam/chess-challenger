@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=23">
+<link rel="stylesheet" href="/static/style.css?v=24">
 </head>
 <body>
 
@@ -18,31 +18,31 @@
 
 <div class="shell">
 <div class="tabs">
-  <button data-tab="ai" class="active"><span class="ti">🤖</span>AI 대국</button>
-  <button data-tab="online"><span class="ti">🌐</span>온라인 대국</button>
-  <button data-tab="puzzle"><span class="ti">🧩</span>퍼즐</button>
-  <button data-tab="learn"><span class="ti">📖</span>체스 배우기</button>
-  <button data-tab="growth"><span class="ti">📈</span>성장</button>
-  <button data-tab="review" id="tabReview"><span class="ti">📊</span>리뷰</button>
+  <button data-tab="ai" class="active"><span class="ti">🤖</span><span data-i18n="nav_ai">AI 대국</span></button>
+  <button data-tab="online"><span class="ti">🌐</span><span data-i18n="nav_online">온라인 대국</span></button>
+  <button data-tab="puzzle"><span class="ti">🧩</span><span data-i18n="nav_puzzle">퍼즐</span></button>
+  <button data-tab="learn"><span class="ti">📖</span><span data-i18n="nav_learn">체스 배우기</span></button>
+  <button data-tab="growth"><span class="ti">📈</span><span data-i18n="nav_growth">성장</span></button>
+  <button data-tab="review" id="tabReview"><span class="ti">📊</span><span data-i18n="nav_review">리뷰</span></button>
   <div class="side-profile" id="sideProfile"></div>
-  <div class="side-tip" id="sideTip"><b>💡 오늘의 팁</b><br>기물을 잃지 않으려면 매 수마다 “상대가 나를 잡을 수 있나?”를 먼저 확인하세요.</div>
+  <div class="side-tip" id="sideTip"><b data-i18n="tip_title">💡 오늘의 팁</b><br><span data-i18n="tip_body">기물을 잃지 않으려면 매 수마다 “상대가 나를 잡을 수 있나?”를 먼저 확인하세요.</span></div>
 </div>
 
 <!-- mobile bottom navigation (top chess-app pattern) -->
 <nav class="bottomnav">
-  <button data-tab="ai" class="active"><span class="bi">🤖</span><span class="bl">AI</span></button>
-  <button data-tab="online"><span class="bi">🌐</span><span class="bl">온라인</span></button>
-  <button data-tab="puzzle"><span class="bi">🧩</span><span class="bl">퍼즐</span></button>
-  <button data-tab="growth"><span class="bi">📈</span><span class="bl">성장</span></button>
-  <button data-tab="learn"><span class="bi">📖</span><span class="bl">배우기</span></button>
-  <button data-tab="review"><span class="bi">📊</span><span class="bl">리뷰</span></button>
+  <button data-tab="ai" class="active"><span class="bi">🤖</span><span class="bl" data-i18n="navs_ai">AI</span></button>
+  <button data-tab="online"><span class="bi">🌐</span><span class="bl" data-i18n="navs_online">온라인</span></button>
+  <button data-tab="puzzle"><span class="bi">🧩</span><span class="bl" data-i18n="navs_puzzle">퍼즐</span></button>
+  <button data-tab="growth"><span class="bi">📈</span><span class="bl" data-i18n="navs_growth">성장</span></button>
+  <button data-tab="learn"><span class="bi">📖</span><span class="bl" data-i18n="navs_learn">배우기</span></button>
+  <button data-tab="review"><span class="bi">📊</span><span class="bl" data-i18n="navs_review">리뷰</span></button>
 </nav>
 
 <main class="content">
 
 <!-- ====================== 온라인 대국 ====================== -->
 <section class="tab" id="tab-online">
-  <div class="hero"><div class="hero-txt"><h2>온라인 대국</h2><p>전 세계 플레이어와 실시간 레이팅 대국. 10분 대국 · 초대 코드로 친구와도.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+  <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_online_t">온라인 대국</h2><p data-i18n="hero_online_p">전 세계 플레이어와 실시간 레이팅 대국. 10분 대국 · 초대 코드로 친구와도.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <circle cx="80" cy="60" r="40" fill="#fff" opacity=".13"/><circle cx="80" cy="60" r="40" stroke="#fff" stroke-width="3"/>
     <ellipse cx="80" cy="60" rx="16" ry="40" stroke="#fff" stroke-width="2.5" opacity=".85"/>
     <path d="M40 60h80M46 40h68M46 80h68" stroke="#fff" stroke-width="2" opacity=".6"/>
@@ -115,7 +115,7 @@
         <div class="status" id="ogColorInfo"></div>
       </div>
       <div class="card">
-        <h3>기보</h3>
+        <h3 data-i18n="h_moves">기보</h3>
         <div class="movelist" id="ogMoves"><span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
       </div>
       <div class="card">
@@ -133,7 +133,7 @@
 
 <!-- ====================== 체스 기초 배우기 ====================== -->
 <section class="tab" id="tab-learn">
-  <div class="hero"><div class="hero-txt"><h2>체스 배우기</h2><p>기물별 움직임과 특수 규칙을 보드에서 직접 눌러보며 익히세요.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+  <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_learn_t">체스 배우기</h2><p data-i18n="hero_learn_p">기물별 움직임과 특수 규칙을 보드에서 직접 눌러보며 익히세요.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <path d="M80 46C69 38 54 38 42 42V88C54 84 69 84 80 92Z" fill="#fff" opacity=".93"/>
     <path d="M80 46C91 38 106 38 118 42V88C106 84 91 84 80 92Z" fill="#fff" opacity=".78"/>
     <line x1="80" y1="46" x2="80" y2="92" stroke="#2f7d4d" stroke-width="2" opacity=".35"/>
@@ -186,7 +186,7 @@
 
 <!-- ====================== AI와 대국 ====================== -->
 <section class="tab active" id="tab-ai">
-  <div class="hero"><div class="hero-txt"><h2>AI와 대국</h2><p>난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+  <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_ai_t">AI와 대국</h2><p data-i18n="hero_ai_p">난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <g opacity=".16" fill="#fff"><rect x="6" y="84" width="14" height="14"/><rect x="20" y="70" width="14" height="14"/><rect x="34" y="84" width="14" height="14"/></g>
     <line x1="104" y1="18" x2="104" y2="34" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="104" cy="13" r="5" fill="#ffd968"/>
     <rect x="72" y="34" width="66" height="52" rx="14" fill="#fff" opacity=".95"/>
@@ -205,18 +205,18 @@
       <div class="pbar hidden" id="aiBottomBar"></div>
       <div class="turn" id="aiTurn"><span class="pill"></span>새 대국을 시작하세요.</div>
       <div class="controls">
-        <button class="ghost" id="aiResign">🏳️ 기권하고 평가받기</button>
-        <button class="ghost" id="aiFlip">⇅ 보드 뒤집기</button>
+        <button class="ghost" id="aiResign" data-i18n="btn_resign_ai">🏳️ 기권하고 평가받기</button>
+        <button class="ghost" id="aiFlip" data-i18n="btn_flip">⇅ 보드 뒤집기</button>
       </div>
     </div>
     <div style="flex:1; min-width:300px; max-width:420px;">
       <div class="card">
-        <h3>새 대국 설정</h3>
+        <h3 data-i18n="h_newgame">새 대국 설정</h3>
         <div class="rankbadge" id="aiRank">내 최고 기록: -</div>
-        <label class="field">난이도 — 1(가장 쉬움) ~ 15(가장 어려움)</label>
+        <label class="field" data-i18n="lbl_difficulty">난이도 — 1(가장 쉬움) ~ 15(가장 어려움)</label>
         <input type="range" id="aiLevel" min="1" max="15" value="3" step="1" style="accent-color:var(--accent)">
         <div id="aiLevelLabel" class="status" style="font-size:14px">레벨 3</div>
-        <label class="field">AI 스타일 (유명 선수처럼 두기)</label>
+        <label class="field" data-i18n="lbl_style">AI 스타일 (유명 선수처럼 두기)</label>
         <select id="aiStyle">
           <option value="default">기본 (난이도대로)</option>
           <option value="tal">탈 — 공격·희생형 ⚔️</option>
@@ -225,20 +225,20 @@
           <option value="petrosian">페트로시안 — 수비형 🛡️</option>
         </select>
         <div class="setdesc" id="aiStyleNote" style="display:none">스타일 선택 시 AI는 <b>최고 강함</b>으로, 그 선수 성향으로 둡니다(난이도 무시).</div>
-        <label class="field">내 색</label>
+        <label class="field" data-i18n="lbl_color">내 색</label>
         <select id="aiColor">
           <option value="w">백 (내가 선공)</option>
           <option value="b">흑 (AI가 선공)</option>
         </select>
-        <div style="margin-top:14px;"><button class="primary" id="aiStart">▶ 새 대국 시작</button></div>
+        <div style="margin-top:14px;"><button class="primary" id="aiStart" data-i18n="btn_newgame">▶ 새 대국 시작</button></div>
         <div class="status" id="aiStatus"></div>
       </div>
       <div class="card">
-        <h3>기보</h3>
+        <h3 data-i18n="h_moves">기보</h3>
         <div class="movelist" id="aiMoves"><span class="num">대국을 시작하면 여기에 기보가 쌓입니다.</span></div>
       </div>
       <div class="card">
-        <h3>경기 종료 후</h3>
+        <h3 data-i18n="h_after">경기 종료 후</h3>
         <p style="font-size:13px;color:var(--muted);margin:0 0 8px">
           대국이 끝나면 <b>자동으로 AI가 모든 수를 평가</b>하고 리뷰 화면으로 넘어갑니다.</p>
         <button class="ghost hidden" id="aiAnalyze">🤖 평가 다시 보기</button>
@@ -249,7 +249,7 @@
 
 <!-- ====================== 체크메이트 퍼즐 ====================== -->
 <section class="tab" id="tab-puzzle">
-  <div class="hero"><div class="hero-txt"><h2>체크메이트 퍼즐</h2><p>1수부터 4수까지 100개. 정해진 수 안에 체크메이트를 완성하세요.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+  <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_puzzle_t">체크메이트 퍼즐</h2><p data-i18n="hero_puzzle_p">1수부터 4수까지 100개. 정해진 수 안에 체크메이트를 완성하세요.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <path d="M72 36h16a7 7 0 0 1 14 0h16v16a7 7 0 0 0 0 14v16h-16a7 7 0 0 1-14 0h-16v-16a7 7 0 0 0 0-14z" fill="#fff" opacity=".92"/>
     <text x="96" y="82" font-size="30" fill="#2f7d4d" text-anchor="middle">&#9818;</text>
     <circle cx="40" cy="40" r="5" fill="#ffd968"/><circle cx="44" cy="88" r="4" fill="#fff" opacity=".7"/><circle cx="128" cy="46" r="4" fill="#fff" opacity=".7"/>
@@ -289,7 +289,7 @@
 
 <!-- ====================== 성장 리포트 ====================== -->
 <section class="tab" id="tab-growth">
-  <div class="hero"><div class="hero-txt"><h2>성장 리포트</h2><p>레이팅 추이·미래 예측·주간 목표로 실력이 어떻게 늘고 있는지 한눈에.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+  <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_growth_t">성장 리포트</h2><p data-i18n="hero_growth_p">레이팅 추이·미래 예측·주간 목표로 실력이 어떻게 늘고 있는지 한눈에.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <path d="M42 34V90H128" stroke="#fff" stroke-width="2.5" opacity=".5" stroke-linecap="round"/>
     <polyline points="46,82 64,70 82,74 100,54 118,44" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="64" cy="70" r="3.5" fill="#ffd968"/><circle cx="100" cy="54" r="3.5" fill="#ffd968"/><circle cx="118" cy="44" r="5" fill="#ffd968"/>
@@ -396,13 +396,23 @@
 <!-- settings modal -->
 <div class="overlay hidden" id="settingsModal">
   <div class="auth-box">
-    <h2>⚙️ 설정</h2>
+    <h2 data-i18n="set_title">⚙️ 설정</h2>
     <label class="setrow">
-      <span><b>이동 가능 칸 표시</b><br><span class="setdesc">말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.</span></span>
+      <span><b data-i18n="set_lang_label">언어</b><br><span class="setdesc" data-i18n="set_lang_desc">앱 화면의 표시 언어를 선택합니다.</span></span>
+      <select id="setLang" style="width:auto; min-width:132px; flex:0 0 auto">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="es">Español</option>
+      </select>
+    </label>
+    <label class="setrow">
+      <span><b data-i18n="set_dots_label">이동 가능 칸 표시</b><br><span class="setdesc" data-i18n="set_dots_desc">말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.</span></span>
       <span class="switch"><input type="checkbox" id="setShowDots"><span class="slider"></span></span>
     </label>
     <div class="auth-actions" style="margin-top:16px">
-      <button class="ghost" id="settingsClose">닫기</button>
+      <button class="ghost" id="settingsClose" data-i18n="set_close">닫기</button>
     </div>
   </div>
 </div>
@@ -445,6 +455,7 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=23"></script>
+<script src="/static/i18n.js?v=24"></script>
+<script src="/static/app.js?v=24"></script>
 </body>
 </html>

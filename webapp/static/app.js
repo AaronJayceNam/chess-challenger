@@ -1872,12 +1872,13 @@ function renderHomeStats() {
   const wr = (wins + losses) ? Math.round(wins / (wins + losses) * 100) : 0;
   const solved = (typeof PZ !== "undefined" && PZ.solved) ? PZ.solved.size : 0;
   const logged = !!(typeof AUTH !== "undefined" && AUTH.token);
+  const T = (typeof t === "function") ? t : ((k) => k);
   const tiles = [
-    { ic: "⭐", k: "레이팅", v: logged ? ratingHTML(myRating()) : "—" },
-    { ic: "🤖", k: "최고 레벨", v: (bestLevel() || "-") },
-    { ic: "🧩", k: "푼 퍼즐", v: solved + "<span style='font-size:13px;color:var(--muted)'>/100</span>" },
-    { ic: "📈", k: "승률", v: wr + "<span style='font-size:13px;color:var(--muted)'>%</span>" },
-    { ic: "♟", k: "총 대국", v: hist.length },
+    { ic: "⭐", k: T("stat_rating"), v: logged ? ratingHTML(myRating()) : "—" },
+    { ic: "🤖", k: T("stat_best"), v: (bestLevel() || "-") },
+    { ic: "🧩", k: T("stat_puzzles"), v: solved + "<span style='font-size:13px;color:var(--muted)'>/100</span>" },
+    { ic: "📈", k: T("stat_winrate"), v: wr + "<span style='font-size:13px;color:var(--muted)'>%</span>" },
+    { ic: "♟", k: T("stat_games"), v: hist.length },
   ];
   el.innerHTML = tiles.map((t) =>
     `<div class="stat"><div class="ic">${t.ic}</div><div class="k">${t.k}</div><div class="v">${t.v}</div></div>`
@@ -1887,18 +1888,19 @@ function renderHomeStats() {
 function renderSidebarProfile() {
   const el = document.getElementById("sideProfile");
   if (!el) return;
+  const T = (typeof t === "function") ? t : ((k) => k);
   const logged = !!(typeof AUTH !== "undefined" && AUTH.token);
-  const name = (logged && AUTH.id) ? AUTH.id : "게스트";
+  const name = (logged && AUTH.id) ? AUTH.id : T("sp_guest");
   const solved = (typeof PZ !== "undefined" && PZ.solved) ? PZ.solved.size : 0;
   el.innerHTML =
     `<div class="sp-top">` +
       `<div class="sp-ava">${escapeHtml(name.charAt(0).toUpperCase())}</div>` +
       `<div style="min-width:0"><div class="sp-name">${escapeHtml(name)}</div>` +
-      `<div class="sp-sub">${logged ? ratingHTML(myRating()) : "로그인 전 · 게스트"}</div></div>` +
+      `<div class="sp-sub">${logged ? ratingHTML(myRating()) : T("sp_notlogged")}</div></div>` +
     `</div>` +
     `<div class="sp-stats">` +
-      `<div class="sp-stat"><b>${bestLevel() || "-"}</b><span>최고레벨</span></div>` +
-      `<div class="sp-stat"><b>${solved}</b><span>푼 퍼즐</span></div>` +
+      `<div class="sp-stat"><b>${bestLevel() || "-"}</b><span>${T("sp_best")}</span></div>` +
+      `<div class="sp-stat"><b>${solved}</b><span>${T("sp_puzzles")}</span></div>` +
     `</div>`;
 }
 
@@ -1906,3 +1908,7 @@ function refreshDashboard() {
   try { renderHomeStats(); renderSidebarProfile(); } catch (e) {}
 }
 refreshDashboard();
+
+// Apply the saved language now that all renderers exist (translates static
+// [data-i18n] text and re-renders the dynamic dashboard in the chosen tongue).
+if (typeof applyLang === "function") applyLang(typeof CC_LANG !== "undefined" ? CC_LANG : "ko");
