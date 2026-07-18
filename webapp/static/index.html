@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=27">
+<link rel="stylesheet" href="/static/style.css?v=28">
 </head>
 <body>
 
@@ -12,9 +12,13 @@
   <h1>Chess Challenger</h1>
   <div class="rating-chip hidden" id="ratingChip">레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
+  <button class="iconbtn" id="historyBtn" title="게임 기록">📋</button>
   <button class="iconbtn" id="settingsBtn" title="설정">⚙️</button>
   <div class="auth-area" id="authArea"></div>
 </header>
+
+<!-- floating exit: leave the full-screen board after a game ends -->
+<button class="game-exit hidden" id="gameExit" data-i18n="exit_btn">🚪 나가기</button>
 
 <div class="shell">
 <div class="tabs">
@@ -417,6 +421,17 @@
   </div>
 </div>
 
+<!-- game records window: review past games -->
+<div class="overlay hidden" id="historyModal">
+  <div class="auth-box histbox">
+    <h2 data-i18n="hist_title">📋 게임 기록</h2>
+    <div class="histmodal" id="historyList"></div>
+    <div class="auth-actions" style="margin-top:14px">
+      <button class="ghost" id="historyCloseBtn" data-i18n="set_close">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- login / register modal -->
 <div class="overlay hidden" id="authModal">
   <div class="auth-box">
@@ -456,7 +471,7 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/i18n.js?v=27"></script>
-<script src="/static/app.js?v=27"></script>
+<script src="/static/i18n.js?v=28"></script>
+<script src="/static/app.js?v=28"></script>
 </body>
 </html>

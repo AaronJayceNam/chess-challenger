@@ -670,3 +670,28 @@ body.ingame .resultgate{ bottom:24px; }
 }
 .result-close:hover{ background:rgba(255,255,255,.16); color:#fff; }
 @media (max-width:560px){ .result-overlay{ padding-top:4.5vh; } }
+
+/* ============================================================
+   GAME RECORDS + FULL-SCREEN EXIT (v28)
+   ============================================================ */
+/* floating exit button — shown over the board after a game ends */
+.game-exit{
+  position:fixed; top:14px; left:14px; z-index:58;
+  padding:9px 15px; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer;
+  color:#fff; background:linear-gradient(180deg,#3a4150,#2b3240); border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 8px 20px -8px rgba(16,24,40,.5);
+}
+.game-exit:hover{ filter:brightness(1.12); }
+
+/* game records modal */
+.histbox{ width:min(480px,94vw); }
+.histmodal{ max-height:58vh; overflow-y:auto; margin-top:2px; }
+.histm-row{ display:grid; grid-template-columns:42px 1fr auto auto auto; gap:10px; align-items:center;
+  padding:9px 4px; border-bottom:1px solid var(--line); font-size:14px; }
+.histm-row:last-child{ border-bottom:none; }
+.histm-row .dim{ color:var(--faint); font-size:12.5px; }
+.histm-row .hm-opp{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.histm-row .w{ color:var(--good-d); } .histm-row .l{ color:var(--bad); } .histm-row .d{ color:var(--muted); }
+.histm-row .hm-delta{ min-width:34px; text-align:right; font-family:'Consolas','SF Mono',monospace; font-size:12.5px; }
+.histm-row .hm-delta.up{ color:var(--good-d); } .histm-row .hm-delta.down{ color:var(--bad); }
+.histm-row .hm-review{ padding:6px 12px; font-size:13px; }

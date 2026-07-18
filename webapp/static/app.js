@@ -146,8 +146,18 @@ function scrollListToActive(list) {
 document.querySelectorAll("[data-tab]").forEach((b) => {
   b.onclick = () => switchTab(b.dataset.tab);
 });
+function exitImmersive() {
+  document.body.classList.remove("ingame", "gameover");
+  const ge = document.getElementById("gameExit"); if (ge) ge.classList.add("hidden");
+}
+// End a game WITHOUT leaving the full-screen board: mark it over and reveal the
+// floating exit button, so the final position stays on screen to review.
+function markGameOver() {
+  document.body.classList.add("gameover");
+  const ge = document.getElementById("gameExit"); if (ge) ge.classList.remove("hidden");
+}
 function switchTab(name) {
-  document.body.classList.remove("ingame");   // leaving into a browse tab always exits immersive
+  exitImmersive(); hideResult();              // leaving into a browse tab always exits immersive
   document.querySelectorAll("[data-tab]").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) =>
@@ -733,7 +743,7 @@ function aiPlayerNames() {
 }
 
 function aiEndGame() {
-  AIG.over = true; document.body.classList.remove("ingame"); renderAiBoard(); updateAiTurn();
+  AIG.over = true; markGameOver(); renderAiBoard(); updateAiTurn();  // stay full-screen; board keeps the final position
   const r = AIG.state.result, lv = AIG.level;
   let kind = "draw";
   if (r === "1-0") kind = AIG.human === "w" ? "win" : "loss";
@@ -745,16 +755,18 @@ function aiEndGame() {
     setBestLevel(lv); updateRankBadge();
     badge = { text: `${aiLevelText(lv)} 클리어!`, master: lv >= 10 };
   }
-  // AI games go into the history but never move the rating (online-only).
-  addHistory({ mode: "ai", opponent: `AI ${aiTitle(lv)}`, result: kind, ratingDelta: null });
+  const { white, black } = aiPlayerNames();
+  // AI games go into the history (with the moves, so they stay reviewable) but
+  // never move the rating (online-only).
+  addHistory({ mode: "ai", opponent: `AI ${aiTitle(lv)}`, result: kind, ratingDelta: null,
+    moves: [...AIG.moves], white, black });
   setStatus("aiStatus", `대국 종료 (${r}).`);
   $("aiAnalyze").classList.remove("hidden");
-
-  const { white, black } = aiPlayerNames();
   const actions = [
     { label: "🤖 AI 평가 보기", primary: true,
       onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 350 }) },
-    { label: "🔄 새 대국", onClick: () => switchTab("ai") },
+    { label: "🔄 새 대국", onClick: () => aiStart() },
+    { label: "🚪 나가기", onClick: () => exitImmersive() },
   ];
   const aiName = `AI ${aiTitle(lv)}`;
   const opts = kind === "win"
@@ -767,6 +779,8 @@ function aiEndGame() {
 
 async function aiStart() {
   hideResult();
+  document.body.classList.remove("gameover");
+  const ge = $("gameExit"); if (ge) ge.classList.add("hidden");
   AIG.level = +$("aiLevel").value;
   AIG.human = $("aiColor").value;
   AIG.style = $("aiStyle") ? $("aiStyle").value : "default";
@@ -797,17 +811,21 @@ $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
 $("aiResign").onclick = () => {
   if (!AIG.moves.length) { setStatus("aiStatus", "먼저 대국을 시작하고 한 수 이상 두세요.", true); return; }
-  AIG.over = true; document.body.classList.remove("ingame"); renderAiBoard(); updateAiTurn();
+  AIG.over = true; markGameOver(); renderAiBoard(); updateAiTurn();   // stay full-screen
   const { white, black } = aiPlayerNames();
   const moves = [...AIG.moves], lv = AIG.level;
   setStatus("aiStatus", "기권했습니다.");
+  $("aiAnalyze").classList.remove("hidden");
+  addHistory({ mode: "ai", opponent: `AI ${aiTitle(lv)}`, result: "loss", ratingDelta: null,
+    moves: [...moves], white, black });
   // AI review is OPTIONAL — offered as a button, not run automatically.
   showResult({
     kind: "loss", icon: "🏳️", title: "기권하셨습니다",
     sub: `AI ${aiTitle(lv)}에게 기권했습니다`,
     actions: [
       { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 350 }) },
-      { label: "🔄 새 대국", onClick: () => switchTab("ai") },
+      { label: "🔄 새 대국", onClick: () => aiStart() },
+      { label: "🚪 나가기", onClick: () => exitImmersive() },
     ],
   });
 };
@@ -1410,7 +1428,8 @@ function ogEnd(result, reason) {
     const newRating = Math.max(0, before + eloDelta(before, OG.oppRating, score));
     const applied = newRating - before;   // what actually changed (0-floor aware)
     setMyRating(newRating);
-    addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: applied });
+    addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: applied,
+      moves: [...movesCopy], white, black });
     badge = { small: "⚡ 레이팅 변동", text: `${applied >= 0 ? "+" + applied : applied} → ${ratingHTML(newRating)}` };
     setTimeout(loadLeaderboard, 1600);   // after the debounced progress push lands
   }
@@ -1935,6 +1954,52 @@ function refreshDashboard() {
   } catch (e) {}
 }
 refreshDashboard();
+
+// =========================================================================== //
+// GAME RECORDS — a window listing every played game; each row re-opens the AI
+// review of that game (moves are stored in the history entry).
+// =========================================================================== //
+function renderHistoryModal() {
+  const el = document.getElementById("historyList");
+  if (!el) return;
+  const T = (typeof t === "function") ? t : ((k) => k);
+  const h = gameHistory();
+  if (!h.length) { el.innerHTML = `<div class="hist-empty">${T("hist_empty")}</div>`; return; }
+  el.innerHTML = "";
+  h.forEach((g) => {
+    const res = g.result === "win" ? '<b class="w">승</b>' : g.result === "loss" ? '<b class="l">패</b>' : '<b class="d">무</b>';
+    const mode = g.mode === "online" ? "🌐" : "🤖";
+    const delta = (g.ratingDelta === null || g.ratingDelta === undefined) ? '<span class="hm-delta"></span>'
+      : (g.ratingDelta >= 0 ? `<span class="hm-delta up">+${g.ratingDelta}</span>` : `<span class="hm-delta down">${g.ratingDelta}</span>`);
+    const row = document.createElement("div");
+    row.className = "histm-row";
+    row.innerHTML = `<span class="dim">${(g.date || "").slice(5)}</span>` +
+      `<span class="hm-opp">${mode} ${escapeHtml(g.opponent || "")}</span>${res}${delta}`;
+    const btn = document.createElement("button");
+    btn.className = "ghost hm-review";
+    if (g.moves && g.moves.length) {
+      btn.textContent = T("hist_review");
+      btn.onclick = () => {
+        document.getElementById("historyModal").classList.add("hidden");
+        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: 300 });
+      };
+    } else {
+      btn.textContent = T("hist_norec"); btn.disabled = true;
+    }
+    row.appendChild(btn);
+    el.appendChild(row);
+  });
+}
+(function () {
+  const open = document.getElementById("historyBtn");
+  const closeB = document.getElementById("historyCloseBtn");
+  const modal = document.getElementById("historyModal");
+  if (open) open.onclick = () => { renderHistoryModal(); modal.classList.remove("hidden"); };
+  if (closeB) closeB.onclick = () => modal.classList.add("hidden");
+  if (modal) modal.onclick = (e) => { if (e.target === modal) modal.classList.add("hidden"); };
+  const ge = document.getElementById("gameExit");
+  if (ge) ge.onclick = () => { hideResult(); exitImmersive(); };
+})();
 
 // Apply the saved language now that all renderers exist (translates static
 // [data-i18n] text and re-renders the dynamic dashboard in the chosen tongue).

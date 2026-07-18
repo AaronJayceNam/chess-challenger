@@ -114,6 +114,12 @@ var I18N = {
   lvl_8:  { ko: "전문가", en: "Expert", ja: "エキスパート", zh: "专家", es: "Experto" },
   lvl_9:  { ko: "마스터", en: "Master", ja: "マスター", zh: "大师", es: "Maestro" },
   lvl_10: { ko: "그랜드마스터", en: "Grandmaster", ja: "グランドマスター", zh: "特级大师", es: "Gran Maestro" },
+  // game records window + full-screen exit
+  hist_title:  { ko: "📋 게임 기록", en: "📋 Game records", ja: "📋 対局履歴", zh: "📋 对局记录", es: "📋 Historial" },
+  hist_empty:  { ko: "아직 기록된 대국이 없습니다.", en: "No games recorded yet.", ja: "まだ記録された対局はありません。", zh: "还没有对局记录。", es: "Aún no hay partidas registradas." },
+  hist_review: { ko: "🔍 리뷰", en: "🔍 Review", ja: "🔍 レビュー", zh: "🔍 复盘", es: "🔍 Analizar" },
+  hist_norec:  { ko: "기보 없음", en: "No moves", ja: "棋譜なし", zh: "无棋谱", es: "Sin registro" },
+  exit_btn:    { ko: "🚪 나가기", en: "🚪 Exit", ja: "🚪 退出", zh: "🚪 退出", es: "🚪 Salir" },
   // loss-result gate (see the last move before the defeat screen)
   gate_msg: { ko: "상대가 마지막 수를 두었습니다. 체스판을 확인한 뒤 결과를 보세요.", en: "Your opponent played their last move. Review the board, then see the result.", ja: "相手が最後の一手を指しました。盤面を確認してから結果を見ましょう。", zh: "对手已走出最后一步。查看棋盘后再看结果。", es: "Tu rival hizo su última jugada. Revisa el tablero y luego ve el resultado." },
   gate_btn: { ko: "결과 보기 ▶", en: "See result ▶", ja: "結果を見る ▶", zh: "查看结果 ▶", es: "Ver resultado ▶" },
