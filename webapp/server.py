@@ -360,14 +360,14 @@ def analyze(req: AnalyzeRequest):
         try:
             pool = _analysis_pool()
             for e in pool:
-                e.config.multipv = 2
+                e.config.multipv = 1
                 e.config.movetime_ms, e.config.depth = mt, dp
             ga = analyze_game_parallel(game, pool)
         except Exception:
             _pool_reset()
             pool = _analysis_pool()
             for e in pool:
-                e.config.multipv = 2
+                e.config.multipv = 1
                 e.config.movetime_ms, e.config.depth = mt, dp
             ga = analyze_game_parallel(game, pool)
     view = build_view_data(game, ga)

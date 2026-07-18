@@ -43,6 +43,38 @@ function animateMove(boardEl, fromSq, toSq, orient) {
   pc.style.transform = "translate(0, 0)";
 }
 
+// square <div> at board coordinate `sq`, honoring board orientation (same
+// indexing renderBoard/animateMove use).
+function _sqDivOf(boardEl, sq, orient) {
+  const files = orient === "w" ? "abcdefgh" : "hgfedcba";
+  const ranks = orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const fi = files.indexOf(sq[0]), ri = ranks.indexOf(+sq[1]);
+  if (fi < 0 || ri < 0) return null;
+  return boardEl.children[ri * 8 + fi];
+}
+// Move the piece in the DOM *now* for instant feedback, before the server
+// confirms. The authoritative re-render (a moment later) fixes any special-move
+// details. Handles the common cases (capture, castling rook) cleanly.
+function optimisticMove(boardEl, from, to, orient) {
+  const fromDiv = _sqDivOf(boardEl, from, orient), toDiv = _sqDivOf(boardEl, to, orient);
+  if (!fromDiv || !toDiv) return;
+  const pc = fromDiv.querySelector(".pc");
+  if (!pc) return;
+  const cap = toDiv.querySelector(".pc"); if (cap) cap.remove();
+  toDiv.appendChild(pc);
+  // castling: king moves two files → bring the matching rook along
+  if (pc.textContent === "♔" || pc.textContent === "♚") {
+    const ff = "abcdefgh".indexOf(from[0]), tf = "abcdefgh".indexOf(to[0]), rank = from[1];
+    const shift = (rf, rt) => {
+      const rFrom = _sqDivOf(boardEl, rf + rank, orient), rTo = _sqDivOf(boardEl, rt + rank, orient);
+      const r = rFrom && rFrom.querySelector(".pc"); if (r && rTo) rTo.appendChild(r);
+    };
+    if (tf - ff === 2) shift("h", "f");        // kingside
+    else if (ff - tf === 2) shift("a", "d");   // queenside
+  }
+  animateMove(boardEl, from, to, orient);
+}
+
 function overlay(show, msg) {
   $("overlay").classList.toggle("hidden", !show);
   if (msg) $("overlayMsg").textContent = msg;
@@ -334,7 +366,7 @@ let LAST_REQ = null;
 
 async function runAnalyze(req, statusId = "aiStatus") {
   LAST_REQ = req;
-  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 5~15초)");
+  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 1~3초)");
   try {
     const view = await api("/api/analyze", req);
     loadReview(view);
@@ -707,16 +739,17 @@ function renderAiMoves() {
 }
 
 async function aiHumanMove(uci) {
+  // Instant feedback: move the piece right away, don't wait for the server.
+  AIG.sel = null;
+  optimisticMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   const moves = [...AIG.moves, uci];
   let st;
   try { st = await api("/api/legal", { moves }); }
-  catch (e) { setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "수 처리 오류: " + e.message, true); return; }
-  AIG.moves = moves; AIG.state = st; AIG.sel = null;
-  renderAiBoard(); renderAiMoves(); updateAiTurn();
-  animateMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
+  catch (e) { renderAiBoard(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "수 처리 오류: " + e.message, true); return; }
+  AIG.moves = moves; AIG.state = st;
+  renderAiBoard(); renderAiMoves(); updateAiTurn();   // authoritative — fixes any special move / check
   if (st.gameOver) { aiEndGame(); return; }
-  await sleep(150);   // let the player's piece finish sliding before the AI replies
-  await aiReply();
+  await aiReply();   // no artificial delay
 }
 
 async function aiReply() {
@@ -764,7 +797,7 @@ function aiEndGame() {
   $("aiAnalyze").classList.remove("hidden");
   const actions = [
     { label: "🤖 AI 평가 보기", primary: true,
-      onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 350 }) },
+      onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 120 }) },
     { label: "🔄 새 대국", onClick: () => aiStart() },
     { label: "🚪 나가기", onClick: () => exitImmersive() },
   ];
@@ -823,7 +856,7 @@ $("aiResign").onclick = () => {
     kind: "loss", icon: "🏳️", title: "기권하셨습니다",
     sub: `AI ${aiTitle(lv)}에게 기권했습니다`,
     actions: [
-      { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 350 }) },
+      { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 120 }) },
       { label: "🔄 새 대국", onClick: () => aiStart() },
       { label: "🚪 나가기", onClick: () => exitImmersive() },
     ],
@@ -832,7 +865,7 @@ $("aiResign").onclick = () => {
 $("aiAnalyze").onclick = () => {
   if (!AIG.moves.length) return;
   const { white, black } = aiPlayerNames();
-  runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
+  runAnalyze({ moves: AIG.moves, white, black, movetime: 120 });
 };
 
 // =========================================================================== //
@@ -1415,7 +1448,7 @@ function ogEnd(result, reason) {
   const actions = [];
   if (movesCopy.length) {
     actions.push({ label: "🤖 AI 평가 보기", primary: true,
-      onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 350 }, "ogStatus") });
+      onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 120 }, "ogStatus") });
   }
   actions.push({ label: "🔄 새 매치", onClick: ogReset });
 
@@ -1981,7 +2014,7 @@ function renderHistoryModal() {
       btn.textContent = T("hist_review");
       btn.onclick = () => {
         document.getElementById("historyModal").classList.add("hidden");
-        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: 300 });
+        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: 120 });
       };
     } else {
       btn.textContent = T("hist_norec"); btn.disabled = true;
