@@ -76,8 +76,8 @@ function enableBoardDrag(boardEl, cfg) {
     if (!from) return;                 // must grab an actual piece
     // ANY piece can be picked up; only a legal target completes a move. A piece
     // with no legal moves just lifts and snaps back.
-    // no preventDefault: touch-action:none (CSS) already stops scrolling/zoom, and
-    // letting the native click through keeps tap-to-move working on touch too.
+    // no preventDefault: touch-action:pan-y (CSS) lets a vertical swipe scroll the
+    // page, while letting the native click through keeps tap-to-move working on touch.
     d = { from, pc, sx: e.clientX, sy: e.clientY, moved: false, clone: null, legal: cfg.legal() || {}, cell: boardEl.getBoundingClientRect().width / 8 };
     try { boardEl.setPointerCapture(e.pointerId); } catch (err) {}
   });
@@ -102,14 +102,18 @@ function enableBoardDrag(boardEl, cfg) {
     d.clone.style.top = (e.clientY - d.cell / 2) + "px";
   });
 
-  const finish = (e) => {
-    if (!d) return;
+  const cleanup = () => {
+    if (!d) return null;
     const cur = d; d = null;
     clearTargets();
     boardEl.querySelectorAll(".dnd-from").forEach((el) => el.classList.remove("dnd-from"));
     if (cur.clone) cur.clone.remove();
     if (cur.pc) cur.pc.style.opacity = "";
-    if (!cur.moved) return;   // a tap, not a drag → let the click handler run
+    return cur;
+  };
+  const finish = (e) => {
+    const cur = cleanup();
+    if (!cur || !cur.moved) return;   // a tap, not a drag → let the click handler run
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const sqEl = el && el.closest(".sq");
     const to = sqEl && sqEl.dataset.sq;
@@ -119,7 +123,8 @@ function enableBoardDrag(boardEl, cfg) {
     }
   };
   boardEl.addEventListener("pointerup", finish);
-  boardEl.addEventListener("pointercancel", finish);
+  // pointercancel = the browser took the gesture for scrolling → abort, never move
+  boardEl.addEventListener("pointercancel", () => { cleanup(); });
 }
 
 // Keep the active move visible by scrolling ONLY the list container — never the
