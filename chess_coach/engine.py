@@ -102,16 +102,21 @@ class Engine:
             return chess.engine.Limit(time=self.config.movetime_ms / 1000.0)
         return chess.engine.Limit(depth=self.config.depth or 18)
 
-    def play(self, board: chess.Board, level: int) -> Optional[chess.Move]:
+    def play(self, board: chess.Board, level: int, style: str = None) -> Optional[chess.Move]:
         """Pick a move at difficulty `level` (1=weakest .. 15=hardest).
 
         Levels 1-10 are unchanged: 1-9 cap the engine with UCI_LimitStrength/
         UCI_Elo (≈1320..2700) and level 10 plays at full strength with a short
         time budget. Levels 11-15 keep full strength but think progressively
         longer (deeper search), so they are harder than 10.
+
+        `style` (optional) makes the engine play a famous-player persona at full
+        strength — see _play_styled. Only used in AI matches.
         """
         assert self._engine is not None, "Engine not opened"
         level = max(1, min(15, level))
+        if style and style != "default":
+            return self._play_styled(board, style)
         try:
             if level >= 10:
                 self._engine.configure({"UCI_LimitStrength": False})
@@ -126,6 +131,48 @@ class Engine:
             movetime = 520 + (level - 10) * 350  # 11..15: 870..2270ms (stronger)
         result = self._engine.play(board, chess.engine.Limit(time=movetime / 1000.0))
         return result.move
+
+    def _play_styled(self, board: chess.Board, style: str) -> Optional[chess.Move]:
+        """Play a strong move biased toward a famous player's style.
+
+        Get several near-best candidate moves (multipv) and pick among the ones
+        within an acceptable centipawn loss, biased by persona:
+          tal        — attacking/sacrificial (captures, checks, giving up material)
+          fischer    — the objective best (classical precision)
+          carlsen    — solid & practical, leans to quiet safe moves
+          petrosian  — defensive/prophylactic, prefers quiet non-captures
+        """
+        try:
+            self._engine.configure({"UCI_LimitStrength": False})
+        except chess.engine.EngineError:
+            pass
+        window = 90 if style == "tal" else 45 if style in ("carlsen", "petrosian") else 20
+        info = self._engine.analyse(board, chess.engine.Limit(time=0.5), multipv=6)
+        if isinstance(info, dict):
+            info = [info]
+        scored = []
+        for it in info:
+            pv = it.get("pv") or []
+            if not pv:
+                continue
+            sc = it["score"].relative.score(mate_score=100000)
+            scored.append((pv[0], sc if sc is not None else -100000))
+        if not scored:
+            return self._engine.play(board, chess.engine.Limit(time=0.4)).move
+        best = scored[0][1]
+        cands = [mv for mv, sc in scored if best - sc <= window] or [scored[0][0]]
+
+        def is_sac(mv):
+            b2 = board.copy(stack=False); b2.push(mv)
+            # a quiet move into a square the opponent attacks = offering material
+            return board.is_capture(mv) is False and b2.is_attacked_by(not board.turn, mv.to_square)
+
+        if style == "tal":
+            cands.sort(key=lambda m: (board.is_capture(m) or board.gives_check(m) or is_sac(m)), reverse=True)
+        elif style in ("carlsen", "petrosian"):
+            cands.sort(key=lambda m: (not board.is_capture(m)) and (not board.gives_check(m)), reverse=True)
+        # fischer / default: keep best-first order
+        return cands[0]
 
     def evaluate(self, board: chess.Board) -> PositionEval:
         """Analyse a position. Returns a mover-POV PositionEval.

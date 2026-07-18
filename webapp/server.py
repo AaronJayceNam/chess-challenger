@@ -172,6 +172,7 @@ class AnalyzeRequest(BaseModel):
 class AiMoveRequest(BaseModel):
     moves: list[str] = []
     level: int = 5
+    style: str | None = None   # famous-player persona (AI matches only)
 
 
 class PuzzleMoveRequest(BaseModel):
@@ -317,10 +318,10 @@ def ai_move(req: AiMoveRequest):
     if not board.is_game_over(claim_draw=True):
         with _qlock:
             try:
-                mv = _quick_engine().play(board, req.level)
+                mv = _quick_engine().play(board, req.level, req.style)
             except Exception:
                 _quick_reset()
-                mv = _quick_engine().play(board, req.level)
+                mv = _quick_engine().play(board, req.level, req.style)
         if mv is not None:
             reply_san = board.san(mv)
             board.push(mv)

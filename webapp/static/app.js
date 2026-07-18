@@ -517,7 +517,7 @@ $("rvShare").onclick = async () => {
 // =========================================================================== //
 // PLAY vs AI (levels 1-10) -> auto-evaluate when the game ends
 // =========================================================================== //
-const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false };
+const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false, style: "default" };
 
 // Progress: the highest level beaten (persisted in localStorage). Shown as a
 // plain level number — no titles.
@@ -668,7 +668,7 @@ async function aiReply() {
   // in-flight slide animation. Input is already gated by AIG.thinking.
   AIG.thinking = true; updateAiTurn();
   let res;
-  try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level }); }
+  try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level, style: AIG.style }); }
   catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "AI 응수 오류: " + e.message, true); return; }
   AIG.thinking = false;
   if (res.move) AIG.moves.push(res.move);
@@ -720,12 +720,16 @@ function aiEndGame() {
 async function aiStart() {
   AIG.level = +$("aiLevel").value;
   AIG.human = $("aiColor").value;
+  AIG.style = $("aiStyle") ? $("aiStyle").value : "default";
   AIG.orient = AIG.human;
   AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true;
   $("aiAnalyze").classList.add("hidden");
   try { AIG.state = await api("/api/legal", { moves: [] }); }
   catch (e) { AIG.started = false; setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "시작 오류: " + e.message, true); return; }
-  setStatus("aiStatus", `레벨 ${AIG.level} 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
+  const styleNames = { tal: "탈 스타일 ⚔️", fischer: "피셔 스타일 🎯", carlsen: "카를센 스타일 ♟️", petrosian: "페트로시안 스타일 🛡️" };
+  setStatus("aiStatus", AIG.style !== "default"
+    ? `${styleNames[AIG.style]} AI와 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`
+    : `레벨 ${AIG.level} 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (AIG.human === "b") await aiReply();   // AI (white) moves first
 }
@@ -733,6 +737,12 @@ async function aiStart() {
 $("aiLevel").oninput = (e) => {
   const n = +e.target.value;
   $("aiLevelLabel").textContent = `레벨 ${n}`;
+};
+$("aiStyle").onchange = (e) => {
+  const styled = e.target.value !== "default";
+  $("aiStyleNote").style.display = styled ? "block" : "none";
+  $("aiLevel").disabled = styled;
+  $("aiLevelLabel").style.opacity = styled ? "0.4" : "1";
 };
 $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
@@ -1647,9 +1657,60 @@ function currentStreak() {
 }
 
 function renderGrowth() {
+  renderGoal();
   renderGrowthAdapt();
   renderGrowthChart();
   renderGrowthProjection();
+}
+
+// ---- weekly goals (⑳) ----
+function weekKey(d) {
+  d = d || new Date();
+  const t = new Date(d); t.setHours(0, 0, 0, 0);
+  const day = (t.getDay() + 6) % 7;   // Mon=0
+  t.setDate(t.getDate() - day);
+  return t.toISOString().slice(0, 10);   // Monday's date = week id
+}
+const GOAL_TYPES = {
+  onlinewin: { label: "온라인 승리", unit: "승", presets: [3, 5, 10] },
+  games: { label: "대국 수", unit: "판", presets: [5, 10, 20] },
+  rating: { label: "레이팅 상승", unit: "점", presets: [30, 60, 100] },
+};
+function goalGet() { try { return JSON.parse(localStorage.getItem("cc_goal") || "null"); } catch (e) { return null; } }
+function goalSet(g) { localStorage.setItem("cc_goal", JSON.stringify(g)); renderGoal(); }
+function goalProgress(g) {
+  const wk = weekKey();
+  const hist = gameHistory().filter((x) => x.date && weekKey(new Date(x.date)) === wk);
+  if (g.type === "onlinewin") return hist.filter((x) => x.mode === "online" && x.result === "win").length;
+  if (g.type === "games") return hist.length;
+  if (g.type === "rating") return Math.max(0, hist.filter((x) => x.mode === "online").reduce((s, x) => s + (x.ratingDelta || 0), 0));
+  return 0;
+}
+function renderGoal() {
+  const el = $("grGoal"); if (!el) return;
+  const g = goalGet();
+  if (!g || g.week !== weekKey()) {
+    // no active goal for this week — offer presets
+    let html = `<p class="setdesc" style="margin:0 0 10px">이번 주 목표를 정해 꾸준함을 유지해 보세요.</p><div class="goal-presets">`;
+    for (const [type, cfg] of Object.entries(GOAL_TYPES)) {
+      cfg.presets.forEach((t) => {
+        html += `<button class="ghost goal-set" data-type="${type}" data-target="${t}">${cfg.label} ${t}${cfg.unit}</button>`;
+      });
+    }
+    html += `</div>`;
+    el.innerHTML = html;
+    el.querySelectorAll(".goal-set").forEach((b) => (b.onclick = () =>
+      goalSet({ type: b.dataset.type, target: +b.dataset.target, week: weekKey() })));
+    return;
+  }
+  const cfg = GOAL_TYPES[g.type], p = goalProgress(g), pct = Math.min(100, Math.round((p / g.target) * 100));
+  const done = p >= g.target;
+  el.innerHTML =
+    `<div class="goal-head"><b>${cfg.label} ${g.target}${cfg.unit}</b>` +
+    `<span>${done ? "🎉 달성!" : `${p} / ${g.target}${cfg.unit}`}</span></div>` +
+    `<div class="goal-bar"><div class="goal-fill ${done ? "done" : ""}" style="width:${pct}%"></div></div>` +
+    `<div style="margin-top:10px"><button class="ghost" id="goalReset">목표 바꾸기</button></div>`;
+  $("goalReset").onclick = () => { localStorage.removeItem("cc_goal"); renderGoal(); };
 }
 
 function renderGrowthAdapt() {

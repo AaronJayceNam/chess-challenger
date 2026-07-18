@@ -662,3 +662,10 @@ body.ingame { padding-bottom:0 !important; }
 .grtip { font-size:14.5px; line-height:1.6; margin:0 0 12px; }
 .grproj { font-size:15px; line-height:1.7; padding:12px 14px; border-radius:12px;
   background:rgba(87,185,124,.12); border:1px solid rgba(87,185,124,.3); }
+
+/* ---------- weekly goals ---------- */
+.goal-presets { display:flex; flex-wrap:wrap; gap:7px; }
+.goal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:15px; }
+.goal-bar { height:12px; border-radius:999px; background:#0f1318; border:1px solid var(--line2); overflow:hidden; }
+.goal-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .4s; }
+.goal-fill.done { background:linear-gradient(90deg,#f7c94f,var(--gold-deep)); }
