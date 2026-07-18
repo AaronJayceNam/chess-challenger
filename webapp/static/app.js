@@ -366,7 +366,7 @@ let LAST_REQ = null;
 
 async function runAnalyze(req, statusId = "aiStatus") {
   LAST_REQ = req;
-  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 1~3초)");
+  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 2~5초)");
   try {
     const view = await api("/api/analyze", req);
     loadReview(view);
@@ -797,7 +797,7 @@ function aiEndGame() {
   $("aiAnalyze").classList.remove("hidden");
   const actions = [
     { label: "🤖 AI 평가 보기", primary: true,
-      onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 120 }) },
+      onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 90 }) },
     { label: "🔄 새 대국", onClick: () => aiStart() },
     { label: "🚪 나가기", onClick: () => exitImmersive() },
   ];
@@ -856,7 +856,7 @@ $("aiResign").onclick = () => {
     kind: "loss", icon: "🏳️", title: "기권하셨습니다",
     sub: `AI ${aiTitle(lv)}에게 기권했습니다`,
     actions: [
-      { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 120 }) },
+      { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 90 }) },
       { label: "🔄 새 대국", onClick: () => aiStart() },
       { label: "🚪 나가기", onClick: () => exitImmersive() },
     ],
@@ -865,7 +865,7 @@ $("aiResign").onclick = () => {
 $("aiAnalyze").onclick = () => {
   if (!AIG.moves.length) return;
   const { white, black } = aiPlayerNames();
-  runAnalyze({ moves: AIG.moves, white, black, movetime: 120 });
+  runAnalyze({ moves: AIG.moves, white, black, movetime: 90 });
 };
 
 // =========================================================================== //
@@ -1448,7 +1448,7 @@ function ogEnd(result, reason) {
   const actions = [];
   if (movesCopy.length) {
     actions.push({ label: "🤖 AI 평가 보기", primary: true,
-      onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 120 }, "ogStatus") });
+      onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 90 }, "ogStatus") });
   }
   actions.push({ label: "🔄 새 매치", onClick: ogReset });
 
@@ -2014,7 +2014,7 @@ function renderHistoryModal() {
       btn.textContent = T("hist_review");
       btn.onclick = () => {
         document.getElementById("historyModal").classList.add("hidden");
-        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: 120 });
+        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: 90 });
       };
     } else {
       btn.textContent = T("hist_norec"); btn.disabled = true;
