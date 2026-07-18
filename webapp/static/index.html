@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=26">
+<link rel="stylesheet" href="/static/style.css?v=27">
 </head>
 <body>
 
@@ -436,15 +436,10 @@
   </div>
 </div>
 
-<!-- loss gate: see the opponent's last move before the defeat screen -->
-<div class="resultgate hidden" id="resultGate">
-  <span class="rg-msg" data-i18n="gate_msg">상대가 마지막 수를 두었습니다. 체스판을 확인한 뒤 결과를 보세요.</span>
-  <button class="primary" id="resultGateBtn" data-i18n="gate_btn">결과 보기 ▶</button>
-</div>
-
-<!-- big win / loss / draw result screen -->
+<!-- win / loss / draw result window — floats over the game screen, closeable -->
 <div class="result-overlay hidden" id="resultOverlay">
   <div class="result-box" id="resultBox">
+    <button class="result-close" id="resultClose" aria-label="닫기" title="닫기">×</button>
     <div class="confetti" id="confetti"></div>
     <div class="result-icon" id="resultIcon">🏆</div>
     <div class="result-title" id="resultTitle">승리!</div>
@@ -461,7 +456,7 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/i18n.js?v=26"></script>
-<script src="/static/app.js?v=26"></script>
+<script src="/static/i18n.js?v=27"></script>
+<script src="/static/app.js?v=27"></script>
 </body>
 </html>

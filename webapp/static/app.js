@@ -575,28 +575,11 @@ function showResult(o) {
   $("resultOverlay").classList.remove("hidden");
 }
 function hideResult() { $("resultOverlay").classList.add("hidden"); }
+(function () { const c = $("resultClose"); if (c) c.onclick = hideResult; })();
 
-// On a LOSS we don't slam the defeat screen over the board — the player should
-// get to see the move that just beat them first. presentResult() shows a small
-// "see result" gate instead; wins/draws still pop the overlay right away.
-let _pendingResult = null;
-function presentResult(opts, gate) {
-  hideResultGate();
-  if (gate) {
-    _pendingResult = opts;
-    const g = $("resultGate");
-    if (g) { g.classList.remove("hidden"); return; }
-  }
-  setTimeout(() => showResult(opts), 450);
-}
-function hideResultGate() {
-  _pendingResult = null;
-  const g = $("resultGate"); if (g) g.classList.add("hidden");
-}
-(function () {
-  const btn = $("resultGateBtn");
-  if (btn) btn.onclick = () => { const o = _pendingResult; _pendingResult = null; $("resultGate").classList.add("hidden"); if (o) showResult(o); };
-})();
+// The result window floats over the game screen without blocking it and can be
+// closed with its × — so the player can study the final position / last move.
+function presentResult(opts) { setTimeout(() => showResult(opts), 420); }
 
 function renderAiBoard() {
   const board = $("aiBoard"); board.innerHTML = "";
@@ -775,15 +758,15 @@ function aiEndGame() {
   ];
   const aiName = `AI ${aiTitle(lv)}`;
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: "승리!", sub: `${aiName}를 이겼습니다`, badge, actions }
+    ? { kind, icon: "🏆", title: "승리하셨습니다", sub: `${aiName}를 이겼습니다`, badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: "패배", sub: `${aiName}에게 졌습니다. 다시 도전!`, actions }
-      : { kind, icon: "🤝", title: "무승부", sub: `${aiName}와 비겼습니다`, actions };
-  presentResult(opts, kind === "loss");   // loss: let the player see the mating move first
+      ? { kind, icon: "😢", title: "패배하셨습니다", sub: `${aiName}에게 졌습니다. 다시 도전!`, actions }
+      : { kind, icon: "🤝", title: "무승부입니다", sub: `${aiName}와 비겼습니다`, actions };
+  presentResult(opts);
 }
 
 async function aiStart() {
-  hideResultGate();
+  hideResult();
   AIG.level = +$("aiLevel").value;
   AIG.human = $("aiColor").value;
   AIG.style = $("aiStyle") ? $("aiStyle").value : "default";
@@ -820,7 +803,7 @@ $("aiResign").onclick = () => {
   setStatus("aiStatus", "기권했습니다.");
   // AI review is OPTIONAL — offered as a button, not run automatically.
   showResult({
-    kind: "loss", icon: "🏳️", title: "기권",
+    kind: "loss", icon: "🏳️", title: "기권하셨습니다",
     sub: `AI ${aiTitle(lv)}에게 기권했습니다`,
     actions: [
       { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 350 }) },
@@ -1433,16 +1416,16 @@ function ogEnd(result, reason) {
   }
 
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: "승리!", sub: `${OG.opponent}님을 이겼습니다 (${reasonTxt})`, badge, actions }
+    ? { kind, icon: "🏆", title: "승리하셨습니다", sub: `${OG.opponent}님을 이겼습니다 (${reasonTxt})`, badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: "패배", sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, badge, actions }
-      : { kind, icon: "🤝", title: "무승부", sub: `${OG.opponent}님과 비겼습니다`, badge, actions };
+      ? { kind, icon: "😢", title: "패배하셨습니다", sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, badge, actions }
+      : { kind, icon: "🤝", title: "무승부입니다", sub: `${OG.opponent}님과 비겼습니다`, badge, actions };
   setStatus("ogStatus", `대국 종료 (${result}) — ${reasonTxt}`);
-  presentResult(opts, kind === "loss");   // loss: let the player see the opponent's last move first
+  presentResult(opts);
 }
 
 function ogReset() {
-  hideResultGate();
+  hideResult();
   OG.started = false; OG.over = false; OG.color = null; OG.opponent = null;
   OG.state = null; OG.moves = []; OG.sel = null; OG.lastUci = null;
   $("ogSetup").classList.remove("hidden");
