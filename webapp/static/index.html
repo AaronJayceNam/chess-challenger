@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=21">
+<link rel="stylesheet" href="/static/style.css?v=22">
 </head>
 <body>
 
@@ -37,7 +37,12 @@
 
 <!-- ====================== 온라인 대국 ====================== -->
 <section class="tab" id="tab-online">
-  <div class="hero"><div class="hero-txt"><h2>온라인 대국</h2><p>전 세계 플레이어와 실시간 레이팅 대국. 10분 대국 · 초대 코드로 친구와도.</p></div></div>
+  <div class="hero"><div class="hero-txt"><h2>온라인 대국</h2><p>전 세계 플레이어와 실시간 레이팅 대국. 10분 대국 · 초대 코드로 친구와도.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+    <circle cx="80" cy="60" r="40" fill="#fff" opacity=".13"/><circle cx="80" cy="60" r="40" stroke="#fff" stroke-width="3"/>
+    <ellipse cx="80" cy="60" rx="16" ry="40" stroke="#fff" stroke-width="2.5" opacity=".85"/>
+    <path d="M40 60h80M46 40h68M46 80h68" stroke="#fff" stroke-width="2" opacity=".6"/>
+    <circle cx="52" cy="60" r="7" fill="#ffd968"/><circle cx="108" cy="60" r="7" fill="#fff"/>
+  </svg></div>
   <div class="cols">
     <div>
       <div class="pbar hidden" id="ogTopBar"></div>
@@ -123,7 +128,16 @@
 
 <!-- ====================== 체스 기초 배우기 ====================== -->
 <section class="tab" id="tab-learn">
-  <div class="hero"><div class="hero-txt"><h2>체스 배우기</h2><p>기물별 움직임과 특수 규칙을 보드에서 직접 눌러보며 익히세요.</p></div></div>
+  <div class="hero"><div class="hero-txt"><h2>체스 배우기</h2><p>기물별 움직임과 특수 규칙을 보드에서 직접 눌러보며 익히세요.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+    <path d="M80 46C69 38 54 38 42 42V88C54 84 69 84 80 92Z" fill="#fff" opacity=".93"/>
+    <path d="M80 46C91 38 106 38 118 42V88C106 84 91 84 80 92Z" fill="#fff" opacity=".78"/>
+    <line x1="80" y1="46" x2="80" y2="92" stroke="#2f7d4d" stroke-width="2" opacity=".35"/>
+    <g stroke="#2f7d4d" stroke-width="2" opacity=".32" stroke-linecap="round">
+      <line x1="50" y1="54" x2="72" y2="52"/><line x1="50" y1="62" x2="72" y2="60"/><line x1="50" y1="70" x2="72" y2="68"/>
+      <line x1="88" y1="52" x2="110" y2="54"/><line x1="88" y1="60" x2="110" y2="62"/><line x1="88" y1="68" x2="110" y2="70"/>
+    </g>
+    <text x="118" y="40" font-size="24" fill="#ffd968">&#9823;</text>
+  </svg></div>
   <div class="cols">
     <div>
       <div class="boardwrap"><div class="boardstack"><div class="cboard" id="learnBoard"></div></div></div>
@@ -167,7 +181,15 @@
 
 <!-- ====================== AI와 대국 ====================== -->
 <section class="tab active" id="tab-ai">
-  <div class="hero"><div class="hero-txt"><h2>AI와 대국</h2><p>난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.</p></div></div>
+  <div class="hero"><div class="hero-txt"><h2>AI와 대국</h2><p>난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+    <g opacity=".16" fill="#fff"><rect x="6" y="84" width="14" height="14"/><rect x="20" y="70" width="14" height="14"/><rect x="34" y="84" width="14" height="14"/></g>
+    <line x1="104" y1="18" x2="104" y2="34" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="104" cy="13" r="5" fill="#ffd968"/>
+    <rect x="72" y="34" width="66" height="52" rx="14" fill="#fff" opacity=".95"/>
+    <rect x="62" y="52" width="9" height="18" rx="3" fill="#fff" opacity=".8"/><rect x="139" y="52" width="9" height="18" rx="3" fill="#fff" opacity=".8"/>
+    <circle cx="92" cy="60" r="7" fill="#2f7d4d"/><circle cx="120" cy="60" r="7" fill="#2f7d4d"/>
+    <rect x="92" y="74" width="28" height="4" rx="2" fill="#2f7d4d" opacity=".45"/>
+    <text x="26" y="52" font-size="30" fill="#fff" opacity=".9">&#9822;</text>
+  </svg></div>
   <div class="cols">
     <div>
       <div class="pbar hidden" id="aiTopBar"></div>
@@ -221,7 +243,11 @@
 
 <!-- ====================== 체크메이트 퍼즐 ====================== -->
 <section class="tab" id="tab-puzzle">
-  <div class="hero"><div class="hero-txt"><h2>체크메이트 퍼즐</h2><p>1수부터 4수까지 100개. 정해진 수 안에 체크메이트를 완성하세요.</p></div></div>
+  <div class="hero"><div class="hero-txt"><h2>체크메이트 퍼즐</h2><p>1수부터 4수까지 100개. 정해진 수 안에 체크메이트를 완성하세요.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+    <path d="M72 36h16a7 7 0 0 1 14 0h16v16a7 7 0 0 0 0 14v16h-16a7 7 0 0 1-14 0h-16v-16a7 7 0 0 0 0-14z" fill="#fff" opacity=".92"/>
+    <text x="96" y="82" font-size="30" fill="#2f7d4d" text-anchor="middle">&#9818;</text>
+    <circle cx="40" cy="40" r="5" fill="#ffd968"/><circle cx="44" cy="88" r="4" fill="#fff" opacity=".7"/><circle cx="128" cy="46" r="4" fill="#fff" opacity=".7"/>
+  </svg></div>
   <div class="cols">
     <div>
       <div class="boardwrap"><div class="boardstack" id="pzStack">
@@ -257,7 +283,12 @@
 
 <!-- ====================== 성장 리포트 ====================== -->
 <section class="tab" id="tab-growth">
-  <div class="hero"><div class="hero-txt"><h2>성장 리포트</h2><p>레이팅 추이·미래 예측·주간 목표로 실력이 어떻게 늘고 있는지 한눈에.</p></div></div>
+  <div class="hero"><div class="hero-txt"><h2>성장 리포트</h2><p>레이팅 추이·미래 예측·주간 목표로 실력이 어떻게 늘고 있는지 한눈에.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
+    <path d="M42 34V90H128" stroke="#fff" stroke-width="2.5" opacity=".5" stroke-linecap="round"/>
+    <polyline points="46,82 64,70 82,74 100,54 118,44" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="64" cy="70" r="3.5" fill="#ffd968"/><circle cx="100" cy="54" r="3.5" fill="#ffd968"/><circle cx="118" cy="44" r="5" fill="#ffd968"/>
+    <path d="M108 16h20v6a10 10 0 0 1-20 0z" fill="#ffd968"/><rect x="116" y="26" width="4" height="7" fill="#ffd968"/><rect x="109" y="33" width="18" height="3" rx="1.5" fill="#ffd968"/>
+  </svg></div>
   <div class="growth-wrap">
     <div class="card">
       <h3>🎯 이번 주 목표</h3>
@@ -283,7 +314,18 @@
 <!-- ====================== REVIEW ====================== -->
 <section class="tab" id="tab-review">
   <div class="empty-state" id="rvEmpty">
-    <div class="icon">🤖</div>
+    <svg class="es-art" viewBox="0 0 200 150" fill="none" aria-hidden="true">
+      <rect x="34" y="22" width="104" height="104" rx="10" fill="#f4f6ec" stroke="#dbe2ea" stroke-width="2"/>
+      <g fill="#779556">
+        <rect x="42" y="30" width="22" height="22"/><rect x="86" y="30" width="22" height="22"/>
+        <rect x="64" y="52" width="22" height="22"/><rect x="108" y="52" width="22" height="22"/>
+        <rect x="42" y="74" width="22" height="22"/><rect x="86" y="74" width="22" height="22"/>
+        <rect x="64" y="96" width="22" height="22"/><rect x="108" y="96" width="22" height="22"/>
+      </g>
+      <text x="70" y="72" font-size="26" fill="#2b2f36" text-anchor="middle">&#9822;</text>
+      <circle cx="128" cy="98" r="26" fill="#fff" fill-opacity=".25" stroke="#3f9d63" stroke-width="6"/>
+      <line x1="146" y1="116" x2="170" y2="140" stroke="#3f9d63" stroke-width="8" stroke-linecap="round"/>
+    </svg>
     <h2>아직 평가한 게임이 없어요</h2>
     <p>먼저 AI에게 분석을 맡기세요.<br>경기를 두거나 파일을 올린 뒤 평가하면 여기에 결과가 나타납니다.</p>
     <div class="actions">
@@ -394,6 +436,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=21"></script>
+<script src="/static/app.js?v=22"></script>
 </body>
 </html>

@@ -113,14 +113,18 @@ header.top .sf.bad b{ color:var(--bad); }
 .tab.active{ display:block; }
 @keyframes fade{ from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:none;} }
 
-.hero{ display:flex; align-items:center; gap:16px; margin-bottom:20px; padding:20px 24px;
+.hero{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; padding:22px 26px;
   border-radius:20px; color:#fff; position:relative; overflow:hidden;
-  background:linear-gradient(120deg,var(--accent-deep) 0%,var(--accent) 58%,#5cbe81 100%);
+  background:linear-gradient(120deg,var(--accent-deep) 0%,var(--accent) 55%,#5cbe81 100%);
   box-shadow:0 18px 44px -22px rgba(47,125,77,.75); }
-.hero::after{ content:"♟"; position:absolute; right:22px; bottom:-26px; font-size:130px; line-height:1; opacity:.13; }
-.hero-txt{ position:relative; z-index:1; }
+/* faint chessboard texture across the hero */
+.hero::before{ content:""; position:absolute; inset:0; opacity:.10; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='32'%20height='32'%3E%3Cg%20fill='white'%3E%3Crect%20width='16'%20height='16'/%3E%3Crect%20x='16'%20y='16'%20width='16'%20height='16'/%3E%3C/g%3E%3C/svg%3E"); }
+.hero-txt{ position:relative; z-index:1; max-width:70%; }
 .hero h2{ margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:-.3px; }
 .hero p{ margin:0; font-size:14px; opacity:.92; line-height:1.5; }
+.hero-art{ position:relative; z-index:1; flex:0 0 auto; width:150px; height:112px; }
+.es-art{ display:block; width:210px; max-width:80%; height:auto; margin:0 auto 16px; }
 
 .cols{ display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
 
@@ -546,3 +550,28 @@ body.ingame .turn{ text-align:center; font-size:13.5px; color:var(--muted); marg
 body.ingame .controls{ justify-content:center; }
 body.ingame .status{ text-align:center; }
 body.ingame .ogchat{ margin-top:10px; }
+
+/* ============================================================
+   VISUAL RICHNESS (v22) — self-contained SVG art & textures so
+   every screen and card has graphics, not just text/emoji.
+   ============================================================ */
+/* subtle chessboard texture behind the whole app (shows in the gaps) */
+body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.6;
+  background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='44'%20height='44'%3E%3Cg%20fill='seagreen'%20fill-opacity='0.05'%3E%3Crect%20width='22'%20height='22'/%3E%3Crect%20x='22'%20y='22'%20width='22'%20height='22'/%3E%3C/g%3E%3C/svg%3E"); }
+/* a little chess-square bullet before every card title */
+.card h3::before{ content:""; display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:8px;
+  vertical-align:1px; background:linear-gradient(135deg,var(--accent2),var(--accent-deep)); box-shadow:0 1px 3px rgba(47,125,77,.4); }
+/* faint chess-square motif in the top-right corner of every card */
+.card{ background-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='54'%20height='54'%3E%3Cg%20fill='seagreen'%20fill-opacity='0.06'%3E%3Crect%20x='36'%20width='18'%20height='18'/%3E%3Crect%20x='18'%20y='18'%20width='18'%20height='18'/%3E%3Crect%20x='36'%20y='36'%20width='18'%20height='18'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:top right; }
+/* decorative corner brackets framing the board */
+.boardwrap{ position:relative; }
+.boardwrap::before, .boardwrap::after{ content:""; position:absolute; width:18px; height:18px; pointer-events:none;
+  border:3px solid var(--accent); opacity:.55; }
+.boardwrap::before{ left:-7px; top:-7px; border-right:none; border-bottom:none; border-radius:6px 0 0 0; }
+.boardwrap::after{ right:-7px; bottom:-7px; border-left:none; border-top:none; border-radius:0 0 6px 0; }
+@media (max-width:560px){
+  .hero-art{ width:96px; height:74px; }
+  .es-art{ width:170px; }
+  .boardwrap::before, .boardwrap::after{ display:none; }
+}
