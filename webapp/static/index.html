@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Chess Challenger</title>
-<link rel="stylesheet" href="/static/style.css?v=19">
+<link rel="stylesheet" href="/static/style.css?v=20">
 </head>
 <body>
 
@@ -48,6 +48,7 @@
         <button class="ghost" id="ogResign">🏳️ 기권</button>
         <button class="ghost" id="ogDraw">🤝 무승부 제안</button>
         <button class="ghost" id="ogFlip">⇅ 보드 뒤집기</button>
+        <button class="ghost" id="ogChatToggle">💬 채팅</button>
       </div>
       <div class="og-draw hidden" id="ogDrawPrompt">
         <b>상대가 무승부를 제안했습니다.</b>
@@ -169,9 +170,11 @@
   <div class="hero"><div class="hero-txt"><h2>AI와 대국</h2><p>난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.</p></div></div>
   <div class="cols">
     <div>
+      <div class="pbar hidden" id="aiTopBar"></div>
       <div class="boardwrap">
         <div class="boardstack"><div class="cboard" id="aiBoard"></div></div>
       </div>
+      <div class="pbar hidden" id="aiBottomBar"></div>
       <div class="turn" id="aiTurn"><span class="pill"></span>새 대국을 시작하세요.</div>
       <div class="controls">
         <button class="ghost" id="aiResign">🏳️ 기권하고 평가받기</button>
@@ -391,6 +394,6 @@
   <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a>
 </footer>
 
-<script src="/static/app.js?v=19"></script>
+<script src="/static/app.js?v=20"></script>
 </body>
 </html>

@@ -509,3 +509,38 @@ body.ingame{ padding-bottom:0 !important; }
   .movelist{ max-height:200px; }
   .appfoot{ font-size:11px; }
 }
+
+/* ============================================================
+   IN-GAME IMMERSIVE MODE (v20)
+   During a game the screen collapses to just the board + the two
+   player bars (opponent nickname + rating on top). Everything else
+   — header, nav, hero, side cards, footer — is hidden.
+   ============================================================ */
+.pv-rating{ font-size:12.5px; font-weight:700; color:var(--muted); padding:2px 8px; border-radius:999px;
+  background:var(--elevated); border:1px solid var(--line); white-space:nowrap; flex:0 0 auto; }
+.pv-rating .tier{ margin-right:2px; }
+.pv-turn{ margin-left:auto; width:12px; height:12px; border-radius:50%; background:var(--line2); flex:0 0 auto; }
+.pv-turn.active{ background:var(--accent); box-shadow:0 0 0 4px rgba(63,157,99,.20); }
+
+/* app-shell: keep browse screens from sprawling on wide monitors */
+.tab{ max-width:1120px; margin-left:auto; margin-right:auto; }
+
+/* ---- immersive stage ---- */
+body.ingame{ padding:0 !important; --board:min(74vh, 560px, 94vw); }
+body.ingame header.top,
+body.ingame .tabs,
+body.ingame .bottomnav,
+body.ingame .appfoot,
+body.ingame .tab > .hero{ display:none !important; }
+body.ingame .tab{ padding:0; max-width:none; margin:0; }
+body.ingame .cols{ justify-content:center; align-items:center; gap:0; min-height:100vh; padding:18px 12px; }
+body.ingame .cols > div:last-child{ display:none !important; }   /* hide the side card stack */
+body.ingame .cols > div:first-child{ width:var(--board); max-width:96vw; display:flex; flex-direction:column; align-items:center; }
+body.ingame .boardwrap{ justify-content:center; }
+body.ingame .pbar{ margin:9px 0; }
+body.ingame .pv-caps{ display:none; }               /* keep it to nickname + rating */
+body.ingame .pv-clock{ margin-left:auto; }
+body.ingame .turn{ text-align:center; font-size:13.5px; color:var(--muted); margin:10px 0 2px; }
+body.ingame .controls{ justify-content:center; }
+body.ingame .status{ text-align:center; }
+body.ingame .ogchat{ margin-top:10px; }

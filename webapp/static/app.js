@@ -142,6 +142,7 @@ document.querySelectorAll("[data-tab]").forEach((b) => {
   b.onclick = () => switchTab(b.dataset.tab);
 });
 function switchTab(name) {
+  document.body.classList.remove("ingame");   // leaving into a browse tab always exits immersive
   document.querySelectorAll("[data-tab]").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) =>
@@ -628,7 +629,35 @@ function onAiClick(sq) {
   if (legal[sq]) { AIG.sel = sq; renderAiBoard(); }
 }
 
+// ---- AI opponent identity for the player bar (name + rating) ----
+const AI_STYLE_LABEL = { tal: "탈", fischer: "피셔", carlsen: "카를센", petrosian: "페트로시안" };
+function aiOppInfo() {
+  if (AIG.style && AIG.style !== "default")
+    return { name: `${AI_STYLE_LABEL[AIG.style] || "AI"} AI`, rating: "최강" };
+  const lv = AIG.level;
+  const elo = lv >= 10 ? 2700 + (lv - 10) * 40
+    : Math.round(1320 + (lv - 1) / 8 * (2700 - 1320));
+  return { name: `AI · 레벨 ${lv}`, rating: elo };
+}
+function renderAiPbars() {
+  const top = $("aiTopBar"), bottom = $("aiBottomBar");
+  if (!top || !bottom) return;
+  if (!AIG.started || !AIG.state) { top.classList.add("hidden"); bottom.classList.add("hidden"); return; }
+  top.classList.remove("hidden"); bottom.classList.remove("hidden");
+  const mine = AIG.human, theirs = mine === "w" ? "b" : "w";
+  const turnOf = (c) => AIG.started && !AIG.over && AIG.state.turn === c;
+  const html = (name, rating, isMe, active) =>
+    `<span class="pv-ava ${isMe ? "me" : ""}">${escapeHtml(String(name).charAt(0).toUpperCase())}</span>` +
+    `<span class="pv-name">${escapeHtml(name)}</span>` +
+    `<span class="pv-rating">${typeof rating === "number" ? ratingHTML(rating) : escapeHtml(rating)}</span>` +
+    `<span class="pv-turn ${active ? "active" : ""}"></span>`;
+  const opp = aiOppInfo();
+  top.innerHTML = html(opp.name, opp.rating, false, turnOf(theirs));
+  bottom.innerHTML = html(AUTH.id || "나", myRating(), true, turnOf(mine));
+}
+
 function updateAiTurn() {
+  renderAiPbars();
   const t = $("aiTurn"), st = AIG.state;
   if (!st || !AIG.started) { t.innerHTML = '<span class="pill"></span>난이도와 색을 고르고 “새 대국 시작”을 누르세요.'; return; }
   if (AIG.over) { t.innerHTML = "<b>대국 종료</b>"; return; }
@@ -686,7 +715,7 @@ function aiPlayerNames() {
 }
 
 function aiEndGame() {
-  AIG.over = true; renderAiBoard(); updateAiTurn();
+  AIG.over = true; document.body.classList.remove("ingame"); renderAiBoard(); updateAiTurn();
   const r = AIG.state.result, lv = AIG.level;
   let kind = "draw";
   if (r === "1-0") kind = AIG.human === "w" ? "win" : "loss";
@@ -730,6 +759,7 @@ async function aiStart() {
   setStatus("aiStatus", AIG.style !== "default"
     ? `${styleNames[AIG.style]} AI와 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`
     : `레벨 ${AIG.level} 대국 시작! 당신은 ${AIG.human === "w" ? "백" : "흑"}입니다.`);
+  document.body.classList.add("ingame");     // immersive: board + opponent only
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (AIG.human === "b") await aiReply();   // AI (white) moves first
 }
@@ -748,7 +778,7 @@ $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
 $("aiResign").onclick = () => {
   if (!AIG.moves.length) { setStatus("aiStatus", "먼저 대국을 시작하고 한 수 이상 두세요.", true); return; }
-  AIG.over = true; updateAiTurn();
+  AIG.over = true; document.body.classList.remove("ingame"); updateAiTurn();
   const { white, black } = aiPlayerNames();
   setStatus("aiStatus", "기권했습니다. 둔 수들을 평가합니다…");
   runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
@@ -1126,7 +1156,7 @@ function renderPbars() {
   top.classList.remove("hidden"); bottom.classList.remove("hidden");
   const mat = materialInfo(OG.state.fen);
   const mine = OG.color, theirs = mine === "w" ? "b" : "w";
-  const bar = (el, color, name, isMe) => {
+  const bar = (el, color, name, rating, isMe) => {
     const caps = color === "w" ? mat.capByWhite : mat.capByBlack;
     const lead = color === "w" ? mat.wLead : -mat.wLead;
     const active = OG.started && !OG.over && OG.state.turn === color;
@@ -1134,12 +1164,13 @@ function renderPbars() {
     el.innerHTML =
       `<span class="pv-ava ${isMe ? "me" : ""}">${escapeHtml((name || "?").charAt(0).toUpperCase())}</span>` +
       `<span class="pv-name">${escapeHtml(name || "")}</span>` +
+      `<span class="pv-rating">${ratingHTML(rating)}</span>` +
       `<span class="pv-clock ${active ? "active" : ""} ${t < 60 ? "low" : ""}">⏱ ${fmtClock(t)}</span>` +
       `<span class="pv-caps">${caps.map((c) => GLYPH[c]).join("")}` +
       `${lead > 0 ? `<b class="pv-lead">+${lead}</b>` : ""}</span>`;
   };
-  bar(top, theirs, OG.opponent || "상대", false);
-  bar(bottom, mine, ogName(), true);
+  bar(top, theirs, OG.opponent || "상대", OG.oppRating, false);
+  bar(bottom, mine, ogName(), myRating(), true);
 }
 setInterval(() => { if (OG.started) renderPbars(); }, 250);
 
@@ -1434,13 +1465,14 @@ function requireLogin() {
 // ---- immersive in-game mode (hide menus) ----
 function ogEnterGame() {
   document.body.classList.add("ingame");
-  $("ogChat").classList.remove("hidden");
+  $("ogChat").classList.add("hidden");   // minimal by default; opened via the 💬 toggle
   $("ogChatLog").innerHTML = "";
 }
 function ogExitGame() {
   document.body.classList.remove("ingame");
   $("ogChat").classList.add("hidden");
 }
+$("ogChatToggle").onclick = () => $("ogChat").classList.toggle("hidden");
 
 // ---- in-game chat ----
 function ogAppendChat(who, text, me) {
