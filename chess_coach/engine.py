@@ -16,24 +16,28 @@ import chess
 import chess.engine
 
 
-# 10-step difficulty ladder. The low levels are deliberately very weak: most of
-# their moves are picked completely at random (a beginner can win easily), and
-# the random share drops in big steps so the gap between levels is large. The
-# engine's own strength (UCI_Elo, floored at 1320 by Stockfish) only starts to
-# matter from the middle of the ladder, reaching full strength at level 10.
-#   rand = probability of playing a uniformly random legal move this turn
-#   elo  = UCI_Elo when the engine does move (None = full strength)
+# 10-step difficulty ladder tuned to a target playing strength per level:
+#   L1 ~200 (barely knows the rules)      L6 ~1200
+#   L2 ~400 (casual)                      L7 ~1500 (tournament player)
+#   L3 ~600 (amateur)                     L8 ~1750
+#   L4 ~800 (knows tactics & strategy)    L9 ~2000 (master)
+#   L5 ~1000 (club player)                L10 full strength (~2400+)
+# Stockfish's UCI_Elo can't go below 1320, so the sub-1320 targets are reached
+# by mixing in uniformly-random blunders: `rand` is the chance of just playing a
+# random legal move this turn. As the level rises the random share falls (big,
+# uneven steps at the bottom = large gaps) and the engine's own Elo takes over.
+#   rand = probability of a random legal move   elo = UCI_Elo (None = full)
 _LADDER = {
-    1:  {"rand": 0.85, "elo": 1320},
-    2:  {"rand": 0.70, "elo": 1320},
-    3:  {"rand": 0.55, "elo": 1320},
-    4:  {"rand": 0.40, "elo": 1320},
-    5:  {"rand": 0.27, "elo": 1350},
-    6:  {"rand": 0.15, "elo": 1450},
-    7:  {"rand": 0.06, "elo": 1600},
-    8:  {"rand": 0.00, "elo": 1850},
-    9:  {"rand": 0.00, "elo": 2200},
-    10: {"rand": 0.00, "elo": None},
+    1:  {"rand": 0.90, "elo": 1320},   # ~200
+    2:  {"rand": 0.78, "elo": 1320},   # ~400
+    3:  {"rand": 0.62, "elo": 1320},   # ~600
+    4:  {"rand": 0.45, "elo": 1320},   # ~800
+    5:  {"rand": 0.30, "elo": 1320},   # ~1000
+    6:  {"rand": 0.16, "elo": 1350},   # ~1200
+    7:  {"rand": 0.05, "elo": 1500},   # ~1500
+    8:  {"rand": 0.00, "elo": 1750},   # ~1750
+    9:  {"rand": 0.00, "elo": 2000},   # ~2000
+    10: {"rand": 0.00, "elo": None},   # full strength
 }
 _MAX_LEVEL = 10
 

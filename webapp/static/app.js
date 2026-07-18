@@ -576,6 +576,28 @@ function showResult(o) {
 }
 function hideResult() { $("resultOverlay").classList.add("hidden"); }
 
+// On a LOSS we don't slam the defeat screen over the board — the player should
+// get to see the move that just beat them first. presentResult() shows a small
+// "see result" gate instead; wins/draws still pop the overlay right away.
+let _pendingResult = null;
+function presentResult(opts, gate) {
+  hideResultGate();
+  if (gate) {
+    _pendingResult = opts;
+    const g = $("resultGate");
+    if (g) { g.classList.remove("hidden"); return; }
+  }
+  setTimeout(() => showResult(opts), 450);
+}
+function hideResultGate() {
+  _pendingResult = null;
+  const g = $("resultGate"); if (g) g.classList.add("hidden");
+}
+(function () {
+  const btn = $("resultGateBtn");
+  if (btn) btn.onclick = () => { const o = _pendingResult; _pendingResult = null; $("resultGate").classList.add("hidden"); if (o) showResult(o); };
+})();
+
 function renderAiBoard() {
   const board = $("aiBoard"); board.innerHTML = "";
   const st = AIG.state; if (!st) return;
@@ -641,7 +663,7 @@ function onAiClick(sq) {
 const AI_STYLE_LABEL = { tal: "탈", fischer: "피셔", carlsen: "카를센", petrosian: "페트로시안" };
 // 10-level ladder: title (호칭) per level + a friendly display rating that
 // shows the widening gap. Titles are translated via i18n (lvl_1..lvl_10).
-const AI_LEVEL_RATING = [0, 250, 450, 650, 850, 1050, 1300, 1550, 1850, 2200, 2850];
+const AI_LEVEL_RATING = [0, 200, 400, 600, 800, 1000, 1200, 1500, 1750, 2000, 2400];
 function aiTitle(n) { n = Math.max(1, Math.min(10, +n || 1)); return (typeof t === "function") ? t("lvl_" + n) : String(n); }
 function aiLevelWord() { return (typeof t === "function") ? t("word_level") : "레벨"; }
 function aiLevelText(n) { return `${aiLevelWord()} ${n} · ${aiTitle(n)}`; }
@@ -757,10 +779,11 @@ function aiEndGame() {
     : kind === "loss"
       ? { kind, icon: "😢", title: "패배", sub: `${aiName}에게 졌습니다. 다시 도전!`, actions }
       : { kind, icon: "🤝", title: "무승부", sub: `${aiName}와 비겼습니다`, actions };
-  setTimeout(() => showResult(opts), 500);   // let the final move finish sliding
+  presentResult(opts, kind === "loss");   // loss: let the player see the mating move first
 }
 
 async function aiStart() {
+  hideResultGate();
   AIG.level = +$("aiLevel").value;
   AIG.human = $("aiColor").value;
   AIG.style = $("aiStyle") ? $("aiStyle").value : "default";
@@ -791,10 +814,19 @@ $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
 $("aiResign").onclick = () => {
   if (!AIG.moves.length) { setStatus("aiStatus", "먼저 대국을 시작하고 한 수 이상 두세요.", true); return; }
-  AIG.over = true; document.body.classList.remove("ingame"); updateAiTurn();
+  AIG.over = true; document.body.classList.remove("ingame"); renderAiBoard(); updateAiTurn();
   const { white, black } = aiPlayerNames();
-  setStatus("aiStatus", "기권했습니다. 둔 수들을 평가합니다…");
-  runAnalyze({ moves: AIG.moves, white, black, movetime: 350 });
+  const moves = [...AIG.moves], lv = AIG.level;
+  setStatus("aiStatus", "기권했습니다.");
+  // AI review is OPTIONAL — offered as a button, not run automatically.
+  showResult({
+    kind: "loss", icon: "🏳️", title: "기권",
+    sub: `AI ${aiTitle(lv)}에게 기권했습니다`,
+    actions: [
+      { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 350 }) },
+      { label: "🔄 새 대국", onClick: () => switchTab("ai") },
+    ],
+  });
 };
 $("aiAnalyze").onclick = () => {
   if (!AIG.moves.length) return;
@@ -1406,10 +1438,11 @@ function ogEnd(result, reason) {
       ? { kind, icon: "😢", title: "패배", sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, badge, actions }
       : { kind, icon: "🤝", title: "무승부", sub: `${OG.opponent}님과 비겼습니다`, badge, actions };
   setStatus("ogStatus", `대국 종료 (${result}) — ${reasonTxt}`);
-  setTimeout(() => showResult(opts), 450);
+  presentResult(opts, kind === "loss");   // loss: let the player see the opponent's last move first
 }
 
 function ogReset() {
+  hideResultGate();
   OG.started = false; OG.over = false; OG.color = null; OG.opponent = null;
   OG.state = null; OG.moves = []; OG.sel = null; OG.lastUci = null;
   $("ogSetup").classList.remove("hidden");

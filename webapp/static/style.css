@@ -628,3 +628,24 @@ body.ingame .statstrip{ display:none !important; }
   /* in a game the rail collapses away for a clean board */
   body.ingame .shell{ display:block; max-width:none; padding:0; }
 }
+
+/* ============================================================
+   LOSS GATE (v26) — a slim bar that lets the player study the
+   opponent's last move before the defeat screen appears.
+   ============================================================ */
+.resultgate{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:55;
+  display:flex; align-items:center; gap:14px; max-width:calc(100vw - 32px);
+  padding:12px 14px 12px 18px; border-radius:16px;
+  background:var(--panel); border:1px solid var(--line2);
+  box-shadow:var(--shadow-lg); animation:gateUp .25s ease both;
+}
+.resultgate .rg-msg{ font-size:13.5px; color:var(--muted); line-height:1.4; }
+.resultgate .primary{ flex:0 0 auto; padding:10px 16px; }
+@keyframes gateUp{ from{ opacity:0; transform:translate(-50%,12px); } to{ opacity:1; transform:translate(-50%,0); } }
+@keyframes gateUpM{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+@media (max-width:560px){
+  .resultgate{ left:12px; right:12px; bottom:76px; transform:none; flex-direction:column; align-items:stretch; text-align:center; animation-name:gateUpM; }
+  .resultgate .primary{ width:100%; }
+}
+body.ingame .resultgate{ bottom:24px; }
