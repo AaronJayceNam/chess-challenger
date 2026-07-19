@@ -17,6 +17,15 @@
 </head>
 <body>
 
+<noscript><div style="padding:18px;text-align:center;font-family:system-ui,sans-serif;color:#334">이 앱을 사용하려면 브라우저의 자바스크립트를 켜주세요.</div></noscript>
+
+<!-- shown only inside in-app browsers (KakaoTalk/Naver/etc.), where PWA install & some features are blocked -->
+<div id="inappBanner" class="hidden" style="align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#fff3cd;color:#664d03;font-size:12.5px;line-height:1.4;border-bottom:1px solid #ffe69c">
+  <span>앱 안의 브라우저예요 — <b>Chrome·네이버 웨일 등 기본 브라우저로 열면</b> 설치와 모든 기능을 쓸 수 있어요.</span>
+  <button id="inappCopy" style="border:1px solid #d6b400;background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap">링크 복사</button>
+  <button id="inappClose" aria-label="닫기" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;color:#664d03">×</button>
+</div>
+
 <header class="top">
   <h1>Matevio</h1>
   <div class="rating-chip hidden" id="ratingChip">레이팅 <b>400</b></div>
@@ -512,6 +521,20 @@
     window.addEventListener("appinstalled", function () {
       deferred = null; if (btn) btn.classList.add("hidden");
     });
+  })();
+  // In-app browsers (KakaoTalk / Naver app / Instagram / Facebook / Line …) block
+  // PWA install and some features — nudge the user to open in a real browser.
+  (function () {
+    var ua = navigator.userAgent || "";
+    if (!/KAKAOTALK|NAVER|Instagram|FBAN|FBAV|FB_IAB|Line\/|DaumApps|Snapchat|; wv\)/i.test(ua)) return;
+    var b = document.getElementById("inappBanner"); if (!b) return;
+    b.style.display = "flex"; b.classList.remove("hidden");
+    var c = document.getElementById("inappClose"); if (c) c.onclick = function () { b.style.display = "none"; };
+    var cp = document.getElementById("inappCopy");
+    if (cp) cp.onclick = function () {
+      try { navigator.clipboard.writeText(location.href); cp.textContent = "복사됨 ✓"; }
+      catch (e) { cp.textContent = location.href; }
+    };
   })();
 </script>
 </body>
