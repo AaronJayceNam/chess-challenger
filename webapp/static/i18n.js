@@ -94,6 +94,7 @@ var I18N = {
   set_dots_label: { ko: "이동 가능 칸 표시", en: "Show move hints", ja: "移動可能マスを表示", zh: "显示可走格子", es: "Mostrar movimientos" },
   set_dots_desc:  { ko: "말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.", en: "Show grey dots on the squares a selected or dragged piece can move to.", ja: "駒を選択・ドラッグしたとき、移動できるマスに灰色の丸を表示します。", zh: "选中或拖动棋子时，在可走的格子上显示灰点。", es: "Muestra puntos grises en las casillas a las que puede ir la pieza seleccionada." },
   set_close:      { ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭", es: "Cerrar" },
+  set_privacy:    { ko: "개인정보 처리방침", en: "Privacy Policy", ja: "プライバシーポリシー", zh: "隐私政策", es: "Política de privacidad" },
   // ----- primary controls / card titles (home) -----
   h_newgame:     { ko: "새 대국 설정", en: "New game setup", ja: "新規対局の設定", zh: "新对局设置", es: "Configurar partida" },
   h_moves:       { ko: "기보", en: "Moves", ja: "棋譜", zh: "棋谱", es: "Jugadas" },

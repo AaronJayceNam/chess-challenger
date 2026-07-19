@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=32">
+<link rel="stylesheet" href="/static/style.css?v=33">
 </head>
 <body>
 
@@ -438,7 +438,10 @@
       <span><b data-i18n="set_del_label">계정 삭제</b><br><span class="setdesc" data-i18n="set_del_desc">계정과 서버에 저장된 모든 데이터(레이팅·기록·퍼즐)를 영구 삭제합니다. 되돌릴 수 없습니다.</span></span>
       <button class="ghost" id="setDeleteBtn" data-i18n="set_del_btn" style="color:#c62828;border-color:#e6b0b0;white-space:nowrap;flex:0 0 auto">계정 삭제</button>
     </label>
-    <div class="auth-actions" style="margin-top:16px">
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:13px">
+      <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy" style="color:var(--accent-deep);text-decoration:none">개인정보 처리방침</a>
+    </div>
+    <div class="auth-actions" style="margin-top:12px">
       <button class="ghost" id="settingsClose" data-i18n="set_close">닫기</button>
     </div>
   </div>
@@ -495,8 +498,8 @@
   <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=32"></script>
-<script src="/static/app.js?v=32"></script>
+<script src="/static/i18n.js?v=33"></script>
+<script src="/static/app.js?v=33"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   if ("serviceWorker" in navigator) {
