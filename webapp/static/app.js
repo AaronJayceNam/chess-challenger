@@ -274,7 +274,7 @@ function setStatus(id, msg, err) {
 function isOffline(e) {
   return /failed to fetch|networkerror|load failed|connection refused/i.test((e && e.message) || "");
 }
-const OFFLINE_MSG = "서버에 연결할 수 없습니다. 바탕화면의 'Chess Challenger' 아이콘을 다시 한 번 실행한 뒤, 이 페이지를 새로고침(F5)하세요.";
+const OFFLINE_MSG = "서버에 연결할 수 없습니다. 잠시 후 이 페이지를 새로고침(F5)하세요.";
 
 // =========================================================================== //
 // RATING + GAME HISTORY — per device (localStorage).
@@ -530,7 +530,7 @@ function aiCommentsByIndex() {
 // ---- export annotated PGN (with AI explanations) ----
 $("rvExport").onclick = () => {
   const { v, white, black } = reviewMeta();
-  let txt = `[Event "Chess Coach Studio"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${v.result}"]\n\n`;
+  let txt = `[Event "Matevio"]\n[White "${white}"]\n[Black "${black}"]\n[Result "${v.result}"]\n\n`;
   let body = "";
   v.moves.forEach((m) => {
     if (m.color === "white") body += `${m.moveNumber}. `;

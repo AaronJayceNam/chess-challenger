@@ -1,13 +1,13 @@
 # Third-party components & licenses
 
-This project (Chess Challenger) is distributed under the **GNU General Public
+This project (Matevio) is distributed under the **GNU General Public
 License v3.0** (see `LICENSE`) because it uses the GPL-3.0 components below.
 
 ## Stockfish (chess engine)
 - **License:** GNU General Public License v3.0
 - **Copyright:** The Stockfish developers (see AUTHORS in the Stockfish repo)
 - **Source code:** https://github.com/official-stockfish/Stockfish
-- **How it is used here:** Chess Challenger runs Stockfish as a **separate
+- **How it is used here:** Matevio runs Stockfish as a **separate
   process** and communicates with it over the standard **UCI protocol**
   (stdin/stdout). Stockfish is **used unmodified**:
   - Docker / server deployment: the Debian `stockfish` package
@@ -28,6 +28,6 @@ License v3.0** (see `LICENSE`) because it uses the GPL-3.0 components below.
   Stockfish). Used unmodified (installed from PyPI: `pip install chess`).
 
 ## Note
-Chess Challenger's own source code is public at
+Matevio's own source code is public at
 https://github.com/AaronJayceNam/chess-challenger and is provided under GPL-3.0,
 satisfying the requirement to make corresponding source available.

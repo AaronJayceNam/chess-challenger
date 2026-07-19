@@ -1,9 +1,9 @@
-# Render.com Blueprint — deploy Chess Challenger as a Docker web service.
+# Render.com Blueprint — deploy Matevio as a Docker web service.
 # In Render: New + > Blueprint > connect this repo. Render reads this file.
 # Docs: https://render.com/docs/blueprint-spec
 services:
   - type: web
-    name: chess-challenger
+    name: matevio-chess
     runtime: docker
     # "free" = 512MB / shared CPU (sleeps when idle; analysis will be slow).
     # Upgrade to "starter" for snappy analysis.

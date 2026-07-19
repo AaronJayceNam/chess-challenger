@@ -1,4 +1,4 @@
-# Chess Challenger — 웹사이트로 배포하기
+# Matevio — 웹사이트로 배포하기
 
 이 앱은 Python 백엔드 + **Stockfish 엔진**이 필요해서, GitHub Pages 같은 정적
 호스팅에는 못 올립니다. 두 가지 길이 있습니다.
@@ -15,7 +15,7 @@
    ```powershell
    winget install Cloudflare.cloudflared
    ```
-2. 앱이 켜져 있는지 확인 (바탕화면 **Chess Challenger** 아이콘).
+2. 앱이 켜져 있는지 확인 (바탕화면 **Matevio** 아이콘).
 3. 새 터미널에서:
    ```powershell
    cloudflared tunnel --url http://localhost:8000
@@ -49,7 +49,7 @@
 1. https://render.com 가입 → GitHub 연결.
 2. **New +** → **Blueprint** → 위 저장소 선택 → **Apply**.
    (`render.yaml`을 읽어 Docker로 Stockfish까지 자동 설치합니다.)
-3. 몇 분 뒤 `https://chess-challenger.onrender.com` 같은 **공개 URL**이 생깁니다.
+3. 몇 분 뒤 `https://matevio-chess.onrender.com` 같은 **공개 URL**이 생깁니다.
 
 > 무료 등급은 메모리·CPU가 작아 분석이 느리고, 일정 시간 미사용 시 잠들어서 첫
 > 접속이 느립니다. 쾌적하게 쓰려면 Render의 **Starter**(월 몇 달러)로 올리세요.

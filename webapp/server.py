@@ -149,7 +149,7 @@ async def lifespan(app: FastAPI):
     _pool_reset()
 
 
-app = FastAPI(title="Chess Challenger", lifespan=lifespan)
+app = FastAPI(title="Matevio", lifespan=lifespan)
 
 
 # --------------------------------------------------------------------------- #
@@ -240,7 +240,7 @@ def _san_history(moves: list[str]) -> list[str]:
 def _game_from_moves(moves: list[str], white: str, black: str) -> chess.pgn.Game:
     board = chess.Board()
     game = chess.pgn.Game()
-    game.headers["Event"] = "Chess Coach Studio"
+    game.headers["Event"] = "Matevio"
     game.headers["White"] = white or "White"
     game.headers["Black"] = black or "Black"
     node = game

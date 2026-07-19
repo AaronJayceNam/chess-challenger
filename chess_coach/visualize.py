@@ -171,7 +171,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title} — Chess Coach</title>
+<title>{title} — Matevio</title>
 <style>
   :root {{ --bg:#1e1f22; --panel:#2b2d31; --ink:#e6e6e6; --muted:#9aa0a6; }}
   * {{ box-sizing:border-box; }}
