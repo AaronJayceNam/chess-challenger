@@ -21,6 +21,7 @@
   <h1>Matevio</h1>
   <div class="rating-chip hidden" id="ratingChip">레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
+  <button id="installBtn" class="hidden" title="앱 설치" style="order:2;padding:7px 13px;border-radius:999px;border:none;background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px -5px var(--accent)">📲 앱 설치</button>
   <button class="iconbtn" id="historyBtn" title="게임 기록">📋</button>
   <button class="iconbtn" id="settingsBtn" title="설정">⚙️</button>
   <div class="auth-area" id="authArea"></div>
@@ -489,6 +490,29 @@
       navigator.serviceWorker.register("/sw.js").catch(function () {});
     });
   }
+  // In-app install button — Chrome/Edge/Android fire beforeinstallprompt when the
+  // app is installable; we surface our own button so it's easy to find.
+  (function () {
+    var deferred = null;
+    var btn = document.getElementById("installBtn");
+    var installed = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      deferred = e;
+      if (btn && !installed) btn.classList.remove("hidden");
+    });
+    if (btn) btn.addEventListener("click", function () {
+      if (!deferred) {
+        alert("이미 설치되어 있거나, 브라우저 메뉴(⋮ → ‘앱 설치’ / 홈 화면에 추가)에서 설치할 수 있어요. 아이폰은 사파리 공유 → ‘홈 화면에 추가’.");
+        return;
+      }
+      deferred.prompt();
+      deferred.userChoice.finally(function () { deferred = null; btn.classList.add("hidden"); });
+    });
+    window.addEventListener("appinstalled", function () {
+      deferred = null; if (btn) btn.classList.add("hidden");
+    });
+  })();
 </script>
 </body>
 </html>
