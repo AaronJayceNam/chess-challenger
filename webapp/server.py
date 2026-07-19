@@ -267,6 +267,12 @@ def index():
                                  "Pragma": "no-cache", "Expires": "0"})
 
 
+@app.get("/privacy")
+def privacy():
+    return FileResponse(os.path.join(STATIC, "privacy.html"),
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/manifest.webmanifest")
 def manifest():
     return FileResponse(os.path.join(STATIC, "manifest.webmanifest"),
