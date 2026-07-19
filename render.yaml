@@ -18,9 +18,20 @@ services:
       # accounts kept resetting. Leave unset to fall back to ephemeral SQLite.
       - key: DATABASE_URL
         sync: false
-      # SMTP for password-reset emails (values set in the dashboard, kept via
-      # sync:false). Leave unset to disable email (recovery codes still work).
-      # For Gmail: SMTP_USER=you@gmail.com, SMTP_PASS=<Google app password>.
+      # Password-reset emails. Two options — set EITHER Resend OR SMTP in the
+      # dashboard (values kept via sync:false). Leave all unset to disable email
+      # (the one-time recovery code still works).
+      #
+      # Option A — Resend (easiest, no app password):
+      #   RESEND_API_KEY=<key from resend.com>
+      #   RESEND_FROM="Matevio <onboarding@resend.dev>"  (until a domain is verified,
+      #     Resend only delivers to your own Resend account email)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      # Option B — SMTP (e.g. Gmail app password):
+      #   SMTP_USER=you@gmail.com, SMTP_PASS=<Google app password>, SMTP_FROM=you@gmail.com
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS

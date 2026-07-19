@@ -22,6 +22,7 @@ import smtplib
 import ssl
 import time
 import unicodedata
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
@@ -29,17 +30,25 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 # --------------------------------------------------------------------------- #
-# email (optional) — send password-reset codes. Configured via env vars; if
-# unset, email is simply disabled and accounts fall back to the recovery code.
-#   SMTP_HOST (default smtp.gmail.com), SMTP_PORT (465), SMTP_USER, SMTP_PASS,
-#   SMTP_FROM (default = SMTP_USER)
+# email (optional) — send password-reset codes. Two providers, checked in order:
+#   1. Resend (HTTP API, no app password):  RESEND_API_KEY, RESEND_FROM
+#   2. SMTP (e.g. Gmail):  SMTP_HOST (default smtp.gmail.com), SMTP_PORT (465),
+#                          SMTP_USER, SMTP_PASS, SMTP_FROM (default = SMTP_USER)
+# If neither is configured, email is disabled and accounts fall back to the
+# one-time recovery code.
 # --------------------------------------------------------------------------- #
+_RESEND_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+# Resend needs a verified sender. Until you verify your own domain you can only
+# use "onboarding@resend.dev" (the default), which delivers to your OWN Resend
+# account email. Set RESEND_FROM to "Matevio <you@yourdomain>" once verified.
+_RESEND_FROM = os.environ.get("RESEND_FROM", "").strip() or "Matevio <onboarding@resend.dev>"
+
 _SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 _SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
 _SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 _SMTP_PASS = os.environ.get("SMTP_PASS", "")
 _SMTP_FROM = os.environ.get("SMTP_FROM", "").strip() or _SMTP_USER
-_EMAIL_ENABLED = bool(_SMTP_USER and _SMTP_PASS)
+_EMAIL_ENABLED = bool(_RESEND_KEY) or bool(_SMTP_USER and _SMTP_PASS)
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -57,19 +66,45 @@ def _mask_email(e: str) -> str:
         return "***"
 
 
+def _send_via_resend(to_addr: str, subject: str, body: str) -> bool:
+    payload = json.dumps({
+        "from": _RESEND_FROM,
+        "to": [to_addr],
+        "subject": subject,
+        "text": body,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {_RESEND_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return 200 <= resp.status < 300
+
+
+def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = _SMTP_FROM
+    msg["To"] = to_addr
+    msg.set_content(body)
+    with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, context=ssl.create_default_context(), timeout=15) as s:
+        s.login(_SMTP_USER, _SMTP_PASS)
+        s.send_message(msg)
+    return True
+
+
 def _send_email(to_addr: str, subject: str, body: str) -> bool:
     if not _EMAIL_ENABLED:
         return False
     try:
-        msg = EmailMessage()
-        msg["Subject"] = subject
-        msg["From"] = _SMTP_FROM
-        msg["To"] = to_addr
-        msg.set_content(body)
-        with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, context=ssl.create_default_context(), timeout=15) as s:
-            s.login(_SMTP_USER, _SMTP_PASS)
-            s.send_message(msg)
-        return True
+        if _RESEND_KEY:
+            return _send_via_resend(to_addr, subject, body)
+        return _send_via_smtp(to_addr, subject, body)
     except Exception:
         return False
 
