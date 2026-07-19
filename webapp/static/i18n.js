@@ -128,6 +128,96 @@ var I18N = {
   btn_newgame:   { ko: "▶ 새 대국 시작", en: "▶ New game", ja: "▶ 新しい対局", zh: "▶ 开始新对局", es: "▶ Nueva partida" },
   btn_resign_ai: { ko: "🏳️ 기권하고 평가받기", en: "🏳️ Resign & review", ja: "🏳️ 投了して評価", zh: "🏳️ 认输并复盘", es: "🏳️ Rendirse y analizar" },
   btn_flip:      { ko: "⇅ 보드 뒤집기", en: "⇅ Flip board", ja: "⇅ 盤を反転", zh: "⇅ 翻转棋盘", es: "⇅ Girar tablero" },
+
+  // ----- account deletion (settings) -----
+  set_del_label: { ko: "계정 삭제", en: "Delete account", ja: "アカウント削除", zh: "删除账号", es: "Eliminar cuenta" },
+  set_del_desc:  { ko: "계정과 서버에 저장된 모든 데이터(레이팅·기록·퍼즐)를 영구 삭제합니다. 되돌릴 수 없습니다.", en: "Permanently delete your account and all server-stored data (rating, history, puzzles). This cannot be undone.", ja: "アカウントとサーバー上の全データ(レート・履歴・パズル)を完全に削除します。取り消せません。", zh: "永久删除您的账号及服务器上的所有数据(等级分·记录·谜题)，不可恢复。", es: "Elimina permanentemente tu cuenta y todos los datos del servidor (rating, historial, puzzles). No se puede deshacer." },
+  set_del_btn:   { ko: "계정 삭제", en: "Delete", ja: "削除", zh: "删除", es: "Eliminar" },
+  del_confirm:   { ko: "정말 계정을 삭제할까요? 서버에 저장된 레이팅·기록·퍼즐이 모두 사라지며 되돌릴 수 없습니다.", en: "Really delete your account? Your rating, history, and puzzles on the server will be gone permanently.", ja: "本当にアカウントを削除しますか? サーバー上のレート・履歴・パズルは完全に消え、元に戻せません。", zh: "确定要删除账号吗？服务器上的等级分、记录和谜题将永久消失，无法恢复。", es: "¿Seguro que quieres eliminar tu cuenta? Tu rating, historial y puzzles del servidor se perderán para siempre." },
+  del_done:      { ko: "계정이 삭제되었습니다.", en: "Your account has been deleted.", ja: "アカウントを削除しました。", zh: "账号已删除。", es: "Tu cuenta ha sido eliminada." },
+
+  // ----- auth modal -----
+  auth_title:    { ko: "👤 로그인 / 회원가입", en: "👤 Sign in / Sign up", ja: "👤 ログイン / 登録", zh: "👤 登录 / 注册", es: "👤 Iniciar sesión / Registrarse" },
+  auth_id_label: { ko: "아이디 (2~20자, 한글/영문/숫자)", en: "Username (2–20 chars)", ja: "ユーザー名(2〜20文字)", zh: "用户名(2–20个字符)", es: "Usuario (2–20 caracteres)" },
+  auth_pw_label: { ko: "비밀번호 (4자 이상)", en: "Password (4+ chars)", ja: "パスワード(4文字以上)", zh: "密码(4位以上)", es: "Contraseña (4+ caracteres)" },
+  auth_login:    { ko: "로그인", en: "Sign in", ja: "ログイン", zh: "登录", es: "Iniciar sesión" },
+  auth_register: { ko: "회원가입", en: "Sign up", ja: "登録", zh: "注册", es: "Registrarse" },
+  auth_open:     { ko: "👤 로그인", en: "👤 Sign in", ja: "👤 ログイン", zh: "👤 登录", es: "👤 Entrar" },
+  auth_logout:   { ko: "로그아웃", en: "Sign out", ja: "ログアウト", zh: "退出", es: "Salir" },
+  auth_hint:     { ko: "회원가입하면 지금까지의 진행상황(레이팅·대국 기록·퍼즐)이 계정에 저장되고, 다른 기기에서 로그인해도 이어집니다.", en: "Sign up to save your progress (rating, game history, puzzles) to your account and continue on any device.", ja: "登録すると進行状況(レート・対局履歴・パズル)がアカウントに保存され、別の端末でも続けられます。", zh: "注册后，您的进度(等级分、对局记录、谜题)会保存到账号，在任何设备登录都能继续。", es: "Regístrate para guardar tu progreso (rating, historial, puzzles) en tu cuenta y seguir en cualquier dispositivo." },
+
+  // ----- online tab -----
+  og_match_title:{ ko: "온라인 매치", en: "Online match", ja: "オンライン対戦", zh: "在线对战", es: "Partida en línea" },
+  og_login_req:  { ko: "🔒 로그인이 필요합니다", en: "🔒 Sign-in required", ja: "🔒 ログインが必要です", zh: "🔒 需要登录", es: "🔒 Inicio de sesión requerido" },
+  og_login_desc: { ko: "온라인 레이팅 대국은 로그인한 계정만 이용할 수 있습니다. 레이팅과 전적이 계정에 저장됩니다.", en: "Online rated games require a signed-in account. Your rating and record are saved to it.", ja: "オンラインのレート対局はログイン済みアカウントのみ利用できます。レートと戦績が保存されます。", zh: "在线等级分对局需要登录账号。您的等级分和战绩将被保存。", es: "Las partidas clasificatorias requieren una cuenta. Tu rating y récord se guardan en ella." },
+  og_rating_label:{ ko: "내 레이팅", en: "My rating", ja: "マイレート", zh: "我的等级分", es: "Mi rating" },
+  og_nick_label: { ko: "닉네임 (계정 아이디)", en: "Nickname (account id)", ja: "ニックネーム(アカウントID)", zh: "昵称(账号ID)", es: "Apodo (id de cuenta)" },
+  og_quick:      { ko: "⚡ 빠른 매치 찾기", en: "⚡ Find a match", ja: "⚡ クイックマッチ", zh: "⚡ 快速匹配", es: "⚡ Buscar partida" },
+  og_cancel:     { ko: "매칭 취소", en: "Cancel", ja: "マッチング取消", zh: "取消匹配", es: "Cancelar" },
+  og_friend_title:{ ko: "친구와 하기 (초대 코드)", en: "Play a friend (invite code)", ja: "友達と対戦(招待コード)", zh: "和好友对战(邀请码)", es: "Jugar con un amigo (código)" },
+  og_create:     { ko: "🔗 초대 코드 만들기", en: "🔗 Create invite code", ja: "🔗 招待コード作成", zh: "🔗 创建邀请码", es: "🔗 Crear código" },
+  og_join_label: { ko: "친구가 준 코드 입력", en: "Enter a friend's code", ja: "友達のコードを入力", zh: "输入好友的邀请码", es: "Introduce el código de un amigo" },
+  og_join:       { ko: "참가", en: "Join", ja: "参加", zh: "加入", es: "Unirse" },
+  og_gameinfo:   { ko: "대국 정보", en: "Game info", ja: "対局情報", zh: "对局信息", es: "Info de la partida" },
+  og_lb_hint:    { ko: "로그인한 플레이어만 순위에 올라갑니다.", en: "Only signed-in players appear on the leaderboard.", ja: "ログイン済みのプレイヤーのみランキングに載ります。", zh: "只有已登录的玩家才会出现在排行榜上。", es: "Solo los jugadores con sesión aparecen en la clasificación." },
+  h_leaderboard: { ko: "🏆 리더보드", en: "🏆 Leaderboard", ja: "🏆 ランキング", zh: "🏆 排行榜", es: "🏆 Clasificación" },
+  h_history:     { ko: "대국 기록", en: "Game history", ja: "対局履歴", zh: "对局记录", es: "Historial" },
+  og_resign:     { ko: "🏳️ 기권", en: "🏳️ Resign", ja: "🏳️ 投了", zh: "🏳️ 认输", es: "🏳️ Rendirse" },
+  og_draw:       { ko: "🤝 무승부 제안", en: "🤝 Offer draw", ja: "🤝 引き分け提案", zh: "🤝 提议和棋", es: "🤝 Ofrecer tablas" },
+  og_chat_btn:   { ko: "💬 채팅", en: "💬 Chat", ja: "💬 チャット", zh: "💬 聊天", es: "💬 Chat" },
+  og_send:       { ko: "보내기", en: "Send", ja: "送信", zh: "发送", es: "Enviar" },
+
+  // ----- puzzle tab -----
+  pz_desc:       { ko: "백이 두어 정해진 수 안에 체크메이트를 만드세요. 상대는 가장 오래 버티는 수로 응수합니다.", en: "Play White and force checkmate within the given moves. Black defends as long as possible.", ja: "白番で、指定手数以内にチェックメイトを。相手は最も長く粘る手で応じます。", zh: "执白在规定步数内将杀。黑方以最顽强的方式抵抗。", es: "Juega con blancas y da mate en las jugadas indicadas. Las negras resisten lo máximo posible." },
+  pz_c1:         { ko: "1수 (1–25)", en: "Mate in 1 (1–25)", ja: "1手詰 (1–25)", zh: "1步杀 (1–25)", es: "Mate en 1 (1–25)" },
+  pz_c2:         { ko: "2수 (26–50)", en: "Mate in 2 (26–50)", ja: "2手詰 (26–50)", zh: "2步杀 (26–50)", es: "Mate en 2 (26–50)" },
+  pz_c3:         { ko: "3수 (51–75)", en: "Mate in 3 (51–75)", ja: "3手詰 (51–75)", zh: "3步杀 (51–75)", es: "Mate en 3 (51–75)" },
+  pz_c4:         { ko: "4수 (76–100)", en: "Mate in 4 (76–100)", ja: "4手詰 (76–100)", zh: "4步杀 (76–100)", es: "Mate en 4 (76–100)" },
+  pz_prev:       { ko: "◀ 이전", en: "◀ Prev", ja: "◀ 前へ", zh: "◀ 上一题", es: "◀ Anterior" },
+  pz_reset:      { ko: "⟲ 다시 풀기", en: "⟲ Retry", ja: "⟲ やり直し", zh: "⟲ 重做", es: "⟲ Reintentar" },
+  pz_hint:       { ko: "💡 힌트", en: "💡 Hint", ja: "💡 ヒント", zh: "💡 提示", es: "💡 Pista" },
+  pz_solution:   { ko: "정답 보기", en: "Solution", ja: "解答を見る", zh: "查看答案", es: "Solución" },
+  pz_next:       { ko: "다음 ▶", en: "Next ▶", ja: "次へ ▶", zh: "下一题 ▶", es: "Siguiente ▶" },
+
+  // ----- growth tab -----
+  gr_goal:       { ko: "🎯 이번 주 목표", en: "🎯 This week's goal", ja: "🎯 今週の目標", zh: "🎯 本周目标", es: "🎯 Meta semanal" },
+  gr_reco:       { ko: "오늘의 추천", en: "Today's suggestion", ja: "今日のおすすめ", zh: "今日推荐", es: "Sugerencia de hoy" },
+  gr_chart:      { ko: "레이팅 성장 그래프", en: "Rating growth chart", ja: "レーティング推移グラフ", zh: "等级分成长图", es: "Gráfico de rating" },
+  gr_proj:       { ko: "미래 레이팅 예측", en: "Rating forecast", ja: "将来のレート予測", zh: "未来等级分预测", es: "Previsión de rating" },
+  gr_proj_note:  { ko: "최근 온라인 대국 추세를 단순 연장한 추정치입니다 — 참고용이에요.", en: "A rough estimate extending your recent online trend — for reference only.", ja: "最近のオンライン対局の傾向を単純に延ばした推定値です(参考用)。", zh: "根据近期在线对局趋势的简单推算，仅供参考。", es: "Una estimación aproximada de tu tendencia reciente: solo de referencia." },
+
+  // ----- review tab -----
+  rv_empty_t:    { ko: "아직 평가한 게임이 없어요", en: "No reviewed games yet", ja: "まだ評価した対局がありません", zh: "还没有已复盘的对局", es: "Aún no hay partidas analizadas" },
+  rv_empty_p:    { ko: "먼저 AI에게 분석을 맡기세요. 경기를 두고 평가하면 여기에 결과가 나타납니다.", en: "Have the AI analyze a game first — play and review, and the results appear here.", ja: "まずAIに分析させましょう。対局して評価すると、ここに結果が表示されます。", zh: "先让 AI 分析一局。下棋并复盘后，结果会显示在这里。", es: "Deja que la IA analice una partida: juega y analiza, y los resultados aparecerán aquí." },
+  rv_goto_ai:    { ko: "🤖 AI와 대국하러 가기", en: "🤖 Play the computer", ja: "🤖 AIと対局へ", zh: "🤖 去人机对弈", es: "🤖 Jugar contra la IA" },
+  rv_goto_online:{ ko: "🌐 온라인 대국하기", en: "🌐 Play online", ja: "🌐 オンライン対局", zh: "🌐 在线对弈", es: "🌐 Jugar en línea" },
+  rv_share_title:{ ko: "공유 / 내보내기", en: "Share / Export", ja: "共有 / 書き出し", zh: "分享 / 导出", es: "Compartir / Exportar" },
+  rv_coach_title:{ ko: "코치 평 (LLM, 선택)", en: "Coach comment (LLM, optional)", ja: "コーチの講評(LLM・任意)", zh: "教练点评(LLM，可选)", es: "Comentario del entrenador (LLM, opcional)" },
+
+  // ----- learn tab -----
+  learn_rules_title:{ ko: "체스의 기본 규칙", en: "Basic chess rules", ja: "チェスの基本ルール", zh: "国际象棋基本规则", es: "Reglas básicas del ajedrez" },
+  pc_pawn:   { ko: "♟ 폰", en: "♟ Pawn", ja: "♟ ポーン", zh: "♟ 兵", es: "♟ Peón" },
+  pc_knight: { ko: "♞ 나이트", en: "♞ Knight", ja: "♞ ナイト", zh: "♞ 马", es: "♞ Caballo" },
+  pc_bishop: { ko: "♝ 비숍", en: "♝ Bishop", ja: "♝ ビショップ", zh: "♝ 象", es: "♝ Alfil" },
+  pc_rook:   { ko: "♜ 룩", en: "♜ Rook", ja: "♜ ルーク", zh: "♜ 车", es: "♜ Torre" },
+  pc_queen:  { ko: "♛ 퀸", en: "♛ Queen", ja: "♛ クイーン", zh: "♛ 后", es: "♛ Dama" },
+  pc_king:   { ko: "♚ 킹", en: "♚ King", ja: "♚ キング", zh: "♚ 王", es: "♚ Rey" },
+  pc_castle: { ko: "캐슬링", en: "Castling", ja: "キャスリング", zh: "王车易位", es: "Enroque" },
+  pc_enp:    { ko: "앙파상", en: "En passant", ja: "アンパッサン", zh: "吃过路兵", es: "Al paso" },
+  pc_promo:  { ko: "승격", en: "Promotion", ja: "プロモーション", zh: "升变", es: "Coronación" },
+
+  // ----- in-game dynamic (turn indicator / result) -----
+  turn_white:  { ko: "백 차례", en: "White to move", ja: "白番", zh: "白方走", es: "Juegan las blancas" },
+  turn_black:  { ko: "흑 차례", en: "Black to move", ja: "黒番", zh: "黑方走", es: "Juegan las negras" },
+  turn_you:    { ko: "(당신)", en: "(you)", ja: "(あなた)", zh: "(你)", es: "(tú)" },
+  turn_ai:     { ko: "(AI)", en: "(AI)", ja: "(AI)", zh: "(AI)", es: "(IA)" },
+  turn_check:  { ko: "체크!", en: "Check!", ja: "チェック!", zh: "将军!", es: "¡Jaque!" },
+  turn_thinking:{ ko: "AI가 생각 중…", en: "AI is thinking…", ja: "AIが考え中…", zh: "AI 思考中…", es: "La IA está pensando…" },
+  turn_start:  { ko: "새 대국을 시작하세요.", en: "Start a new game.", ja: "新しい対局を始めましょう。", zh: "开始新对局。", es: "Empieza una partida nueva." },
+  turn_over:   { ko: "대국 종료", en: "Game over", ja: "対局終了", zh: "对局结束", es: "Partida terminada" },
+  res_win:     { ko: "승리하셨습니다", en: "You won", ja: "勝ちました", zh: "你赢了", es: "Has ganado" },
+  res_loss:    { ko: "패배하셨습니다", en: "You lost", ja: "負けました", zh: "你输了", es: "Has perdido" },
+  res_draw:    { ko: "무승부입니다", en: "It's a draw", ja: "引き分けです", zh: "和棋", es: "Empate" },
 };
 
 function t(key) {

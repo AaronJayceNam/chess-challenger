@@ -188,6 +188,19 @@ def register_auth(app: FastAPI) -> None:
             con.commit()
         return {"ok": True}
 
+    @app.post("/api/auth/delete")
+    def auth_delete(req: TokenRequest):
+        """Permanently delete the account and ALL its server-stored data."""
+        with _connect() as con:
+            uid = _user_for_token(con, req.token)
+            if uid is None:
+                raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인하세요.")
+            cur = con.cursor()
+            cur.execute(f"DELETE FROM tokens WHERE user_id = {_ph()}", (uid,))
+            cur.execute(f"DELETE FROM users WHERE id = {_ph()}", (uid,))
+            con.commit()
+        return {"ok": True}
+
     @app.post("/api/auth/load")
     def auth_load(req: TokenRequest):
         with _connect() as con:

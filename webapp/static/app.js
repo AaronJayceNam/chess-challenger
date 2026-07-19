@@ -1919,7 +1919,21 @@ function rerenderBoards() {
 }
 $("settingsBtn").onclick = () => {
   $("setShowDots").checked = SETTINGS.showDots;
+  const row = $("setAccountRow"); if (row) row.style.display = (AUTH && AUTH.token) ? "flex" : "none";
   $("settingsModal").classList.remove("hidden");
+};
+$("setDeleteBtn").onclick = async () => {
+  if (!AUTH || !AUTH.token) return;
+  const T = (typeof t === "function") ? t : ((k) => k);
+  if (!confirm(T("del_confirm"))) return;
+  try {
+    await api("/api/auth/delete", { token: AUTH.token });
+    authClearSession();
+    $("settingsModal").classList.add("hidden");
+    alert(T("del_done"));
+  } catch (e) {
+    alert(isOffline(e) ? OFFLINE_MSG : (e.message || "삭제 실패"));
+  }
 };
 $("settingsClose").onclick = () => $("settingsModal").classList.add("hidden");
 $("settingsModal").onclick = (e) => { if (e.target === $("settingsModal")) $("settingsModal").classList.add("hidden"); };

@@ -11,6 +11,13 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
+      # Postgres connection string (e.g. Neon). The VALUE is set in the Render
+      # dashboard, not here (it's a secret). `sync: false` tells Render to keep
+      # the dashboard value and NOT wipe it on every blueprint deploy — without
+      # this, a Blueprint sync can drop a manually-added var, which is why
+      # accounts kept resetting. Leave unset to fall back to ephemeral SQLite.
+      - key: DATABASE_URL
+        sync: false
       # Sized to fit the 512MB free tier (0.1 shared CPU). A single small engine
       # avoids the out-of-memory crash during analysis.
       - key: CC_WORKERS

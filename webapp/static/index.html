@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=31">
+<link rel="stylesheet" href="/static/style.css?v=32">
 </head>
 <body>
 
@@ -78,10 +78,10 @@
       <div class="pbar hidden" id="ogBottomBar"></div>
       <div class="turn" id="ogTurn"><span class="pill"></span>매치를 시작하면 보드가 열립니다.</div>
       <div class="controls">
-        <button class="ghost" id="ogResign">🏳️ 기권</button>
-        <button class="ghost" id="ogDraw">🤝 무승부 제안</button>
-        <button class="ghost" id="ogFlip">⇅ 보드 뒤집기</button>
-        <button class="ghost" id="ogChatToggle">💬 채팅</button>
+        <button class="ghost" id="ogResign" data-i18n="og_resign">🏳️ 기권</button>
+        <button class="ghost" id="ogDraw" data-i18n="og_draw">🤝 무승부 제안</button>
+        <button class="ghost" id="ogFlip" data-i18n="btn_flip">⇅ 보드 뒤집기</button>
+        <button class="ghost" id="ogChatToggle" data-i18n="og_chat_btn">💬 채팅</button>
       </div>
       <div class="og-draw hidden" id="ogDrawPrompt">
         <b>상대가 무승부를 제안했습니다.</b>
@@ -95,45 +95,45 @@
         <div class="ogchat-log" id="ogChatLog"></div>
         <div class="ogchat-in">
           <input type="text" id="ogChatInput" maxlength="300" placeholder="상대에게 메시지…" autocomplete="off">
-          <button class="ghost" id="ogChatSend">보내기</button>
+          <button class="ghost" id="ogChatSend" data-i18n="og_send">보내기</button>
         </div>
       </div>
     </div>
     <div style="flex:1; min-width:300px; max-width:430px;">
       <div class="card" id="ogSetup">
-        <h3>온라인 매치</h3>
+        <h3 data-i18n="og_match_title">온라인 매치</h3>
         <div id="ogLoginGate" class="hidden">
           <div class="og-rating" style="text-align:center">
-            <b style="font-size:16px">🔒 로그인이 필요합니다</b>
-            <span class="small">온라인 레이팅 대국은 <b>로그인한 계정</b>만 이용할 수 있습니다. 레이팅과 전적이 계정에 저장됩니다.</span>
+            <b style="font-size:16px" data-i18n="og_login_req">🔒 로그인이 필요합니다</b>
+            <span class="small" data-i18n="og_login_desc">온라인 레이팅 대국은 로그인한 계정만 이용할 수 있습니다. 레이팅과 전적이 계정에 저장됩니다.</span>
           </div>
-          <div style="margin-top:12px"><button class="primary" id="ogLoginBtn">👤 로그인 / 회원가입</button></div>
+          <div style="margin-top:12px"><button class="primary" id="ogLoginBtn" data-i18n="auth_title">👤 로그인 / 회원가입</button></div>
         </div>
         <div id="ogMatchBody">
-          <div class="og-rating">내 레이팅 <b id="ogRating">400</b>
+          <div class="og-rating"><span data-i18n="og_rating_label">내 레이팅</span> <b id="ogRating">400</b>
             <span class="small">400에서 시작(0 밑으로는 안 내려감) · 2000점 ≈ 프로 · 상대 레이팅에 따라 변동 폭이 달라집니다</span></div>
-          <label class="field">닉네임 (계정 아이디)</label>
+          <label class="field" data-i18n="og_nick_label">닉네임 (계정 아이디)</label>
           <input type="text" id="ogName" value="플레이어" maxlength="20" readonly>
           <div style="margin-top:14px;">
-            <button class="primary" id="ogQuick">⚡ 빠른 매치 찾기</button>
-            <button class="ghost hidden" id="ogCancel">매칭 취소</button>
+            <button class="primary" id="ogQuick" data-i18n="og_quick">⚡ 빠른 매치 찾기</button>
+            <button class="ghost hidden" id="ogCancel" data-i18n="og_cancel">매칭 취소</button>
           </div>
           <div class="status" id="ogSetupStatus"></div>
           <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
-          <h3>친구와 하기 (초대 코드)</h3>
+          <h3 data-i18n="og_friend_title">친구와 하기 (초대 코드)</h3>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="ghost" id="ogCreate">🔗 초대 코드 만들기</button>
+            <button class="ghost" id="ogCreate" data-i18n="og_create">🔗 초대 코드 만들기</button>
           </div>
           <div class="og-code hidden" id="ogCodeBox">코드: <b id="ogCode"></b> <span class="small">— 친구에게 알려주세요</span></div>
-          <label class="field">친구가 준 코드 입력</label>
+          <label class="field" data-i18n="og_join_label">친구가 준 코드 입력</label>
           <div style="display:flex; gap:8px;">
             <input type="text" id="ogJoinCode" placeholder="예: AB3C" maxlength="4" style="text-transform:uppercase; flex:1">
-            <button class="ghost" id="ogJoin">참가</button>
+            <button class="ghost" id="ogJoin" data-i18n="og_join">참가</button>
           </div>
         </div>
       </div>
       <div class="card hidden" id="ogGameInfo">
-        <h3>대국 정보</h3>
+        <h3 data-i18n="og_gameinfo">대국 정보</h3>
         <div id="ogVs" style="font-size:15px; font-weight:700"></div>
         <div class="status" id="ogColorInfo"></div>
       </div>
@@ -142,12 +142,12 @@
         <div class="movelist" id="ogMoves"><span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
       </div>
       <div class="card">
-        <h3>🏆 리더보드 <span id="lbTotal" style="color:var(--muted);font-weight:400"></span></h3>
+        <h3><span data-i18n="h_leaderboard">🏆 리더보드</span> <span id="lbTotal" style="color:var(--muted);font-weight:400"></span></h3>
         <div class="lb" id="lbList"><div class="hist-empty">불러오는 중…</div></div>
-        <p class="auth-hint" style="margin-top:10px">로그인한 플레이어만 순위에 올라갑니다.</p>
+        <p class="auth-hint" style="margin-top:10px" data-i18n="og_lb_hint">로그인한 플레이어만 순위에 올라갑니다.</p>
       </div>
       <div class="card">
-        <h3>대국 기록</h3>
+        <h3 data-i18n="h_history">대국 기록</h3>
         <div class="hist" id="ogHistory"></div>
       </div>
     </div>
@@ -170,15 +170,15 @@
     <div>
       <div class="boardwrap"><div class="boardstack"><div class="cboard" id="learnBoard"></div></div></div>
       <div class="learn-sel" id="learnSel">
-        <button data-topic="pawn" class="active">♟ 폰</button>
-        <button data-topic="knight">♞ 나이트</button>
-        <button data-topic="bishop">♝ 비숍</button>
-        <button data-topic="rook">♜ 룩</button>
-        <button data-topic="queen">♛ 퀸</button>
-        <button data-topic="king">♚ 킹</button>
-        <button data-topic="castle">캐슬링</button>
-        <button data-topic="enpassant">앙파상</button>
-        <button data-topic="promotion">승격</button>
+        <button data-topic="pawn" class="active" data-i18n="pc_pawn">♟ 폰</button>
+        <button data-topic="knight" data-i18n="pc_knight">♞ 나이트</button>
+        <button data-topic="bishop" data-i18n="pc_bishop">♝ 비숍</button>
+        <button data-topic="rook" data-i18n="pc_rook">♜ 룩</button>
+        <button data-topic="queen" data-i18n="pc_queen">♛ 퀸</button>
+        <button data-topic="king" data-i18n="pc_king">♚ 킹</button>
+        <button data-topic="castle" data-i18n="pc_castle">캐슬링</button>
+        <button data-topic="enpassant" data-i18n="pc_enp">앙파상</button>
+        <button data-topic="promotion" data-i18n="pc_promo">승격</button>
       </div>
       <div class="legend" style="margin-top:10px">
         <span><span class="lg move"></span> 이동 가능</span>
@@ -191,7 +191,7 @@
         <div id="learnDesc" style="font-size:14.5px; line-height:1.75"></div>
       </div>
       <div class="card">
-        <h3>체스의 기본 규칙</h3>
+        <h3 data-i18n="learn_rules_title">체스의 기본 규칙</h3>
         <div class="learn-rules">
           <p><b>🎯 목표</b> — 상대 <b>킹</b>을 빠져나갈 수 없게 가두면(체크메이트) 이깁니다. 킹은 실제로 잡지 않습니다.</p>
           <p><b>▶ 차례</b> — <b>백이 먼저</b> 두고, 한 수씩 번갈아 둡니다.</p>
@@ -286,23 +286,23 @@
       <div class="turn" id="pzPrompt">퍼즐을 불러오는 중…</div>
       <div class="status" id="pzFeedback" style="font-size:15px; min-height:22px;"></div>
       <div class="controls">
-        <button class="ghost" id="pzPrev">◀ 이전</button>
-        <button class="ghost" id="pzReset">⟲ 다시 풀기</button>
-        <button class="ghost" id="pzHint">💡 힌트</button>
-        <button class="ghost" id="pzSolution">정답 보기</button>
-        <button class="ghost" id="pzNext">다음 ▶</button>
+        <button class="ghost" id="pzPrev" data-i18n="pz_prev">◀ 이전</button>
+        <button class="ghost" id="pzReset" data-i18n="pz_reset">⟲ 다시 풀기</button>
+        <button class="ghost" id="pzHint" data-i18n="pz_hint">💡 힌트</button>
+        <button class="ghost" id="pzSolution" data-i18n="pz_solution">정답 보기</button>
+        <button class="ghost" id="pzNext" data-i18n="pz_next">다음 ▶</button>
       </div>
     </div>
     <div style="flex:1; min-width:300px; max-width:430px;">
       <div class="card">
-        <h3>체크메이트 퍼즐 <span id="pzProgress" style="color:#9aa0a6;font-weight:400"></span></h3>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 10px">
-          백이 두어 정해진 수 안에 <b>체크메이트</b>를 만드세요. 상대는 가장 오래 버티는 수로 응수합니다.</p>
+        <h3><span data-i18n="hero_puzzle_t">체크메이트 퍼즐</span> <span id="pzProgress" style="color:#9aa0a6;font-weight:400"></span></h3>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px" data-i18n="pz_desc">
+          백이 두어 정해진 수 안에 체크메이트를 만드세요. 상대는 가장 오래 버티는 수로 응수합니다.</p>
         <div class="pz-cats" id="pzCats">
-          <button data-cat="0" class="active">1수 (1–25)</button>
-          <button data-cat="1">2수 (26–50)</button>
-          <button data-cat="2">3수 (51–75)</button>
-          <button data-cat="3">4수 (76–100)</button>
+          <button data-cat="0" class="active" data-i18n="pz_c1">1수 (1–25)</button>
+          <button data-cat="1" data-i18n="pz_c2">2수 (26–50)</button>
+          <button data-cat="2" data-i18n="pz_c3">3수 (51–75)</button>
+          <button data-cat="3" data-i18n="pz_c4">4수 (76–100)</button>
         </div>
         <div class="pz-grid" id="pzGrid"></div>
       </div>
@@ -320,22 +320,22 @@
   </svg></div>
   <div class="growth-wrap">
     <div class="card">
-      <h3>🎯 이번 주 목표</h3>
+      <h3 data-i18n="gr_goal">🎯 이번 주 목표</h3>
       <div id="grGoal"></div>
     </div>
     <div class="card" id="grAdaptCard">
-      <h3>오늘의 추천</h3>
+      <h3 data-i18n="gr_reco">오늘의 추천</h3>
       <div id="grAdapt"></div>
     </div>
     <div class="card">
-      <h3>레이팅 성장 그래프</h3>
+      <h3 data-i18n="gr_chart">레이팅 성장 그래프</h3>
       <div id="grChartBox"><div class="hist-empty">온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.</div></div>
       <div class="grstats" id="grStats"></div>
     </div>
     <div class="card">
-      <h3>미래 레이팅 예측</h3>
+      <h3 data-i18n="gr_proj">미래 레이팅 예측</h3>
       <div id="grProjection"><div class="hist-empty">최근 대국 데이터가 쌓이면 예측이 표시됩니다.</div></div>
-      <p class="setdesc" style="margin-top:8px">최근 온라인 대국 추세를 단순 연장한 추정치입니다 — 참고용이에요.</p>
+      <p class="setdesc" style="margin-top:8px" data-i18n="gr_proj_note">최근 온라인 대국 추세를 단순 연장한 추정치입니다 — 참고용이에요.</p>
     </div>
   </div>
 </section>
@@ -355,11 +355,11 @@
       <circle cx="128" cy="98" r="26" fill="#fff" fill-opacity=".25" stroke="#3f9d63" stroke-width="6"/>
       <line x1="146" y1="116" x2="170" y2="140" stroke="#3f9d63" stroke-width="8" stroke-linecap="round"/>
     </svg>
-    <h2>아직 평가한 게임이 없어요</h2>
-    <p>먼저 AI에게 분석을 맡기세요.<br>경기를 두거나 파일을 올린 뒤 평가하면 여기에 결과가 나타납니다.</p>
+    <h2 data-i18n="rv_empty_t">아직 평가한 게임이 없어요</h2>
+    <p data-i18n="rv_empty_p">먼저 AI에게 분석을 맡기세요. 경기를 두고 평가하면 여기에 결과가 나타납니다.</p>
     <div class="actions">
-      <button class="primary" data-goto="ai">🤖 AI와 대국하러 가기</button>
-      <button class="ghost" data-goto="online">🌐 온라인 대국하기</button>
+      <button class="primary" data-goto="ai" data-i18n="rv_goto_ai">🤖 AI와 대국하러 가기</button>
+      <button class="ghost" data-goto="online" data-i18n="rv_goto_online">🌐 온라인 대국하기</button>
     </div>
   </div>
   <div id="rvContent" class="hidden">
@@ -391,7 +391,7 @@
       <div class="card detail" id="rvDetail"></div>
       <div class="card"><h3>기보</h3><div class="movelist" id="rvMoves"></div></div>
       <div class="card">
-        <h3>공유 / 내보내기</h3>
+        <h3 data-i18n="rv_share_title">공유 / 내보내기</h3>
         <p style="font-size:13px;color:#9aa0a6;margin:0 0 10px">
           AI가 만든 수별 해설이 담긴 공유본을 만듭니다. 보드의 화살표/강조도 함께 들어갑니다.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -401,7 +401,7 @@
         <div class="status" id="rvShareStatus">공유본은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.</div>
       </div>
       <div class="card">
-        <h3>코치 평 (LLM, 선택)</h3>
+        <h3 data-i18n="rv_coach_title">코치 평 (LLM, 선택)</h3>
         <div id="rvCoach"></div>
       </div>
     </div>
@@ -434,6 +434,10 @@
       <span><b data-i18n="set_dots_label">이동 가능 칸 표시</b><br><span class="setdesc" data-i18n="set_dots_desc">말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.</span></span>
       <span class="switch"><input type="checkbox" id="setShowDots"><span class="slider"></span></span>
     </label>
+    <label class="setrow" id="setAccountRow" style="display:none">
+      <span><b data-i18n="set_del_label">계정 삭제</b><br><span class="setdesc" data-i18n="set_del_desc">계정과 서버에 저장된 모든 데이터(레이팅·기록·퍼즐)를 영구 삭제합니다. 되돌릴 수 없습니다.</span></span>
+      <button class="ghost" id="setDeleteBtn" data-i18n="set_del_btn" style="color:#c62828;border-color:#e6b0b0;white-space:nowrap;flex:0 0 auto">계정 삭제</button>
+    </label>
     <div class="auth-actions" style="margin-top:16px">
       <button class="ghost" id="settingsClose" data-i18n="set_close">닫기</button>
     </div>
@@ -454,18 +458,18 @@
 <!-- login / register modal -->
 <div class="overlay hidden" id="authModal">
   <div class="auth-box">
-    <h2>👤 로그인 / 회원가입</h2>
-    <label class="field">아이디 (2~20자, 한글/영문/숫자)</label>
+    <h2 data-i18n="auth_title">👤 로그인 / 회원가입</h2>
+    <label class="field" data-i18n="auth_id_label">아이디 (2~20자, 한글/영문/숫자)</label>
     <input type="text" id="authId" maxlength="20" autocomplete="username">
-    <label class="field">비밀번호 (4자 이상)</label>
+    <label class="field" data-i18n="auth_pw_label">비밀번호 (4자 이상)</label>
     <input type="password" id="authPw" maxlength="64" autocomplete="current-password">
     <div class="status" id="authStatus"></div>
     <div class="auth-actions">
-      <button class="primary" id="authLoginBtn">로그인</button>
-      <button class="ghost" id="authRegisterBtn">회원가입</button>
-      <button class="ghost" id="authCloseBtn">닫기</button>
+      <button class="primary" id="authLoginBtn" data-i18n="auth_login">로그인</button>
+      <button class="ghost" id="authRegisterBtn" data-i18n="auth_register">회원가입</button>
+      <button class="ghost" id="authCloseBtn" data-i18n="set_close">닫기</button>
     </div>
-    <p class="auth-hint">회원가입하면 지금까지의 진행상황(레이팅·대국 기록·퍼즐)이 계정에 저장되고,
+    <p class="auth-hint" data-i18n="auth_hint">회원가입하면 지금까지의 진행상황(레이팅·대국 기록·퍼즐)이 계정에 저장되고,
       다른 기기에서 로그인해도 이어집니다.</p>
   </div>
 </div>
@@ -491,8 +495,8 @@
   <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=31"></script>
-<script src="/static/app.js?v=31"></script>
+<script src="/static/i18n.js?v=32"></script>
+<script src="/static/app.js?v=32"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   if ("serviceWorker" in navigator) {
