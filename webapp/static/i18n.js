@@ -95,6 +95,11 @@ var I18N = {
   set_dots_desc:  { ko: "말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.", en: "Show grey dots on the squares a selected or dragged piece can move to.", ja: "駒を選択・ドラッグしたとき、移動できるマスに灰色の丸を表示します。", zh: "选中或拖动棋子时，在可走的格子上显示灰点。", es: "Muestra puntos grises en las casillas a las que puede ir la pieza seleccionada." },
   set_close:      { ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭", es: "Cerrar" },
   set_privacy:    { ko: "개인정보 처리방침", en: "Privacy Policy", ja: "プライバシーポリシー", zh: "隐私政策", es: "Política de privacidad" },
+  sync_btn:       { ko: "🔄 동기화 · 최신으로 새로고침", en: "🔄 Sync & update", ja: "🔄 同期して最新に更新", zh: "🔄 同步并更新", es: "🔄 Sincronizar y actualizar" },
+  sync_desc:      { ko: "진행상황을 계정에 저장하고, 앱을 최신 버전으로 새로고침합니다.", en: "Saves your progress to your account and reloads the app to the latest version.", ja: "進行状況をアカウントに保存し、アプリを最新版に更新します。", zh: "将进度保存到账号，并把应用刷新到最新版本。", es: "Guarda tu progreso en tu cuenta y actualiza la app a la última versión." },
+  sync_running:   { ko: "동기화 중…", en: "Syncing…", ja: "同期中…", zh: "同步中…", es: "Sincronizando…" },
+  update_avail:   { ko: "새 버전이 있어요.", en: "A new version is available.", ja: "新しいバージョンがあります。", zh: "有新版本可用。", es: "Hay una nueva versión disponible." },
+  update_btn:     { ko: "🔄 업데이트", en: "🔄 Update", ja: "🔄 更新", zh: "🔄 更新", es: "🔄 Actualizar" },
   // ----- primary controls / card titles (home) -----
   h_newgame:     { ko: "새 대국 설정", en: "New game setup", ja: "新規対局の設定", zh: "新对局设置", es: "Configurar partida" },
   h_moves:       { ko: "기보", en: "Moves", ja: "棋譜", zh: "棋谱", es: "Jugadas" },

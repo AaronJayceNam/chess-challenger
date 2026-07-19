@@ -13,11 +13,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=33">
+<link rel="stylesheet" href="/static/style.css?v=34">
 </head>
 <body>
 
 <noscript><div style="padding:18px;text-align:center;font-family:system-ui,sans-serif;color:#334">이 앱을 사용하려면 브라우저의 자바스크립트를 켜주세요.</div></noscript>
+
+<!-- shown when a newer app version is ready (service worker found an update) -->
+<div id="updateBanner" class="hidden" style="align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:9px 12px;background:#e7f6ec;color:#1c5236;font-size:13px;border-bottom:1px solid #bfe6cd">
+  <span data-i18n="update_avail">새 버전이 있어요.</span>
+  <button id="updateReload" data-i18n="update_btn" style="border:none;background:linear-gradient(180deg,#4bb277,#2f7d4d);color:#fff;font-weight:700;border-radius:8px;padding:5px 12px;font-size:12.5px;cursor:pointer">🔄 업데이트</button>
+</div>
 
 <!-- shown only inside in-app browsers (KakaoTalk/Naver/etc.), where PWA install & some features are blocked -->
 <div id="inappBanner" class="hidden" style="align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#fff3cd;color:#664d03;font-size:12.5px;line-height:1.4;border-bottom:1px solid #ffe69c">
@@ -420,6 +426,10 @@
 <div class="overlay hidden" id="settingsModal">
   <div class="auth-box">
     <h2 data-i18n="set_title">⚙️ 설정</h2>
+    <div style="margin:2px 0 10px">
+      <button class="primary" id="setSyncBtn" data-i18n="sync_btn" style="width:100%">🔄 동기화 · 최신으로 새로고침</button>
+      <div class="setdesc" data-i18n="sync_desc" style="margin-top:5px">진행상황을 계정에 저장하고, 앱을 최신 버전으로 새로고침합니다.</div>
+    </div>
     <label class="setrow">
       <span><b data-i18n="set_lang_label">언어</b><br><span class="setdesc" data-i18n="set_lang_desc">앱 화면의 표시 언어를 선택합니다.</span></span>
       <select id="setLang" style="width:auto; min-width:132px; flex:0 0 auto">
@@ -498,13 +508,28 @@
   <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=33"></script>
-<script src="/static/app.js?v=33"></script>
+<script src="/static/i18n.js?v=34"></script>
+<script src="/static/app.js?v=34"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
+  function showUpdateBanner() {
+    var ub = document.getElementById("updateBanner");
+    if (ub) { ub.style.display = "flex"; ub.classList.remove("hidden"); }
+  }
   if ("serviceWorker" in navigator) {
+    var rl = document.getElementById("updateReload");
+    if (rl) rl.onclick = function () { location.reload(); };
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("/sw.js").catch(function () {});
+      navigator.serviceWorker.register("/sw.js").then(function (reg) {
+        // a new version was pushed → SW re-installs; tell the user right away
+        reg.addEventListener("updatefound", function () {
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", function () {
+            if (nw.state === "installed" && navigator.serviceWorker.controller) showUpdateBanner();
+          });
+        });
+      }).catch(function () {});
     });
   }
   // In-app install button — Chrome/Edge/Android fire beforeinstallprompt when the

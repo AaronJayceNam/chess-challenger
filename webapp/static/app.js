@@ -1935,6 +1935,24 @@ $("setDeleteBtn").onclick = async () => {
     alert(isOffline(e) ? OFFLINE_MSG : (e.message || "삭제 실패"));
   }
 };
+$("setSyncBtn").onclick = async () => {
+  const btn = $("setSyncBtn"), T = (typeof t === "function") ? t : ((k) => k);
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = T("sync_running");
+  try {
+    // 1) save the latest progress to the account (so a refresh never loses it)
+    if (AUTH && AUTH.token) await api("/api/auth/save", { token: AUTH.token, progress: collectProgress() });
+    // 2) ask the service worker to fetch the newest app version, then reload
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) { try { await reg.update(); } catch (e) {} }
+    }
+  } catch (e) {
+    btn.disabled = false; btn.textContent = orig;
+    alert(isOffline(e) ? OFFLINE_MSG : (e.message || "동기화 실패"));
+    return;
+  }
+  location.reload();   // pick up the latest assets
+};
 $("settingsClose").onclick = () => $("settingsModal").classList.add("hidden");
 $("settingsModal").onclick = (e) => { if (e.target === $("settingsModal")) $("settingsModal").classList.add("hidden"); };
 $("setShowDots").onchange = (e) => {
