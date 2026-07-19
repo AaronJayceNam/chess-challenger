@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=34">
+<link rel="stylesheet" href="/static/style.css?v=35">
 </head>
 <body>
 
@@ -444,6 +444,14 @@
       <span><b data-i18n="set_dots_label">이동 가능 칸 표시</b><br><span class="setdesc" data-i18n="set_dots_desc">말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.</span></span>
       <span class="switch"><input type="checkbox" id="setShowDots"><span class="slider"></span></span>
     </label>
+    <label class="setrow">
+      <span><b data-i18n="set_sound_label">효과음</b><br><span class="setdesc" data-i18n="set_sound_desc">수를 두거나 잡을 때, 체크·승패 시 소리를 재생합니다.</span></span>
+      <span class="switch"><input type="checkbox" id="setSound"><span class="slider"></span></span>
+    </label>
+    <label class="setrow">
+      <span><b data-i18n="set_coords_label">보드 좌표 표시</b><br><span class="setdesc" data-i18n="set_coords_desc">보드에 a–h, 1–8 좌표를 표시합니다.</span></span>
+      <span class="switch"><input type="checkbox" id="setCoords"><span class="slider"></span></span>
+    </label>
     <label class="setrow" id="setAccountRow" style="display:none">
       <span><b data-i18n="set_del_label">계정 삭제</b><br><span class="setdesc" data-i18n="set_del_desc">계정과 서버에 저장된 모든 데이터(레이팅·기록·퍼즐)를 영구 삭제합니다. 되돌릴 수 없습니다.</span></span>
       <button class="ghost" id="setDeleteBtn" data-i18n="set_del_btn" style="color:#c62828;border-color:#e6b0b0;white-space:nowrap;flex:0 0 auto">계정 삭제</button>
@@ -482,6 +490,7 @@
       <button class="ghost" id="authRegisterBtn" data-i18n="auth_register">회원가입</button>
       <button class="ghost" id="authCloseBtn" data-i18n="set_close">닫기</button>
     </div>
+    <div style="margin-top:10px"><a id="authForgot" href="#" data-i18n="auth_forgot" style="font-size:13px;color:var(--accent-deep);text-decoration:none">비밀번호를 잊으셨나요?</a></div>
     <p class="auth-hint" data-i18n="auth_hint">회원가입하면 지금까지의 진행상황(레이팅·대국 기록·퍼즐)이 계정에 저장되고,
       다른 기기에서 로그인해도 이어집니다.</p>
   </div>
@@ -508,8 +517,8 @@
   <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=34"></script>
-<script src="/static/app.js?v=34"></script>
+<script src="/static/i18n.js?v=35"></script>
+<script src="/static/app.js?v=35"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

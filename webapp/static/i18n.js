@@ -94,6 +94,10 @@ var I18N = {
   set_dots_label: { ko: "이동 가능 칸 표시", en: "Show move hints", ja: "移動可能マスを表示", zh: "显示可走格子", es: "Mostrar movimientos" },
   set_dots_desc:  { ko: "말을 선택·드래그할 때 갈 수 있는 칸에 회색 원을 표시합니다.", en: "Show grey dots on the squares a selected or dragged piece can move to.", ja: "駒を選択・ドラッグしたとき、移動できるマスに灰色の丸を表示します。", zh: "选中或拖动棋子时，在可走的格子上显示灰点。", es: "Muestra puntos grises en las casillas a las que puede ir la pieza seleccionada." },
   set_close:      { ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭", es: "Cerrar" },
+  set_sound_label:{ ko: "효과음", en: "Sound effects", ja: "効果音", zh: "音效", es: "Efectos de sonido" },
+  set_sound_desc: { ko: "수를 두거나 잡을 때, 체크·승패 시 소리를 재생합니다.", en: "Play sounds on moves, captures, checks, and results.", ja: "着手・駒取り・チェック・勝敗時に音を鳴らします。", zh: "在走子、吃子、将军和胜负时播放声音。", es: "Reproduce sonidos al mover, capturar, dar jaque y al terminar." },
+  set_coords_label:{ ko: "보드 좌표 표시", en: "Board coordinates", ja: "盤の座標", zh: "棋盘坐标", es: "Coordenadas" },
+  set_coords_desc:{ ko: "보드에 a–h, 1–8 좌표를 표시합니다.", en: "Show a–h and 1–8 labels on the board.", ja: "盤に a–h・1–8 の座標を表示します。", zh: "在棋盘上显示 a–h、1–8 坐标。", es: "Muestra las coordenadas a–h y 1–8 en el tablero." },
   set_privacy:    { ko: "개인정보 처리방침", en: "Privacy Policy", ja: "プライバシーポリシー", zh: "隐私政策", es: "Política de privacidad" },
   sync_btn:       { ko: "🔄 동기화 · 최신으로 새로고침", en: "🔄 Sync & update", ja: "🔄 同期して最新に更新", zh: "🔄 同步并更新", es: "🔄 Sincronizar y actualizar" },
   sync_desc:      { ko: "진행상황을 계정에 저장하고, 앱을 최신 버전으로 새로고침합니다.", en: "Saves your progress to your account and reloads the app to the latest version.", ja: "進行状況をアカウントに保存し、アプリを最新版に更新します。", zh: "将进度保存到账号，并把应用刷新到最新版本。", es: "Guarda tu progreso en tu cuenta y actualiza la app a la última versión." },
@@ -151,6 +155,12 @@ var I18N = {
   auth_open:     { ko: "👤 로그인", en: "👤 Sign in", ja: "👤 ログイン", zh: "👤 登录", es: "👤 Entrar" },
   auth_logout:   { ko: "로그아웃", en: "Sign out", ja: "ログアウト", zh: "退出", es: "Salir" },
   auth_hint:     { ko: "회원가입하면 지금까지의 진행상황(레이팅·대국 기록·퍼즐)이 계정에 저장되고, 다른 기기에서 로그인해도 이어집니다.", en: "Sign up to save your progress (rating, game history, puzzles) to your account and continue on any device.", ja: "登録すると進行状況(レート・対局履歴・パズル)がアカウントに保存され、別の端末でも続けられます。", zh: "注册后，您的进度(等级分、对局记录、谜题)会保存到账号，在任何设备登录都能继续。", es: "Regístrate para guardar tu progreso (rating, historial, puzzles) en tu cuenta y seguir en cualquier dispositivo." },
+  auth_forgot:   { ko: "비밀번호를 잊으셨나요?", en: "Forgot your password?", ja: "パスワードをお忘れですか?", zh: "忘记密码?", es: "¿Olvidaste tu contraseña?" },
+  recovery_saved:{ ko: "🔑 복구 코드를 안전한 곳에 저장하세요! 비밀번호를 잊으면 이 코드로만 재설정할 수 있어요:", en: "🔑 Save this recovery code somewhere safe! It's the only way to reset your password if you forget it:", ja: "🔑 この復旧コードを安全な場所に保存してください! パスワードを忘れた場合、これでのみ再設定できます:", zh: "🔑 请把这个恢复码保存在安全的地方! 忘记密码时只能用它来重置:", es: "🔑 ¡Guarda este código de recuperación en un lugar seguro! Es la única forma de restablecer tu contraseña si la olvidas:" },
+  reset_id:      { ko: "아이디를 입력하세요", en: "Enter your username", ja: "ユーザー名を入力", zh: "输入用户名", es: "Introduce tu usuario" },
+  reset_code:    { ko: "복구 코드를 입력하세요 (가입 때 받은 코드)", en: "Enter your recovery code (from sign-up)", ja: "復旧コードを入力(登録時のコード)", zh: "输入恢复码(注册时获得)", es: "Introduce tu código de recuperación (del registro)" },
+  reset_newpw:   { ko: "새 비밀번호를 입력하세요 (4자 이상)", en: "Enter a new password (4+ chars)", ja: "新しいパスワードを入力(4文字以上)", zh: "输入新密码(4位以上)", es: "Introduce una nueva contraseña (4+ caracteres)" },
+  reset_done:    { ko: "비밀번호가 재설정되었습니다. 새 복구 코드:", en: "Password reset. Your new recovery code:", ja: "パスワードを再設定しました。新しい復旧コード:", zh: "密码已重置。新的恢复码:", es: "Contraseña restablecida. Tu nuevo código de recuperación:" },
 
   // ----- online tab -----
   og_match_title:{ ko: "온라인 매치", en: "Online match", ja: "オンライン対戦", zh: "在线对战", es: "Partida en línea" },
@@ -224,6 +234,7 @@ var I18N = {
   res_win:     { ko: "승리하셨습니다", en: "You won", ja: "勝ちました", zh: "你赢了", es: "Has ganado" },
   res_loss:    { ko: "패배하셨습니다", en: "You lost", ja: "負けました", zh: "你输了", es: "Has perdido" },
   res_draw:    { ko: "무승부입니다", en: "It's a draw", ja: "引き分けです", zh: "和棋", es: "Empate" },
+  og_turn_wait:{ ko: "매치를 시작하면 보드가 열립니다.", en: "Start a match to open the board.", ja: "マッチを開始すると盤が開きます。", zh: "开始对局后棋盘会打开。", es: "Empieza una partida para abrir el tablero." },
 };
 
 function t(key) {

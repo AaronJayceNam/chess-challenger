@@ -63,11 +63,29 @@ def _init_db() -> None:
             token TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
             created TEXT)""")
+        # recovery code (hashed) — lets a user reset a forgotten password without email
+        cur.execute("""CREATE TABLE IF NOT EXISTS recovery (
+            user_id TEXT PRIMARY KEY,
+            code_hash TEXT NOT NULL,
+            salt TEXT NOT NULL)""")
         con.commit()
 
 
 def _hash_pw(pw: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), 200_000).hex()
+
+
+# recovery codes: unambiguous alphabet (no 0/O/1/I), shown grouped, matched loosely
+_RCHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def _gen_recovery() -> str:
+    s = "".join(secrets.choice(_RCHARS) for _ in range(12))
+    return f"{s[0:4]}-{s[4:8]}-{s[8:12]}"
+
+
+def _norm_code(c: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", (c or "").upper())
 
 
 def _now() -> str:
@@ -106,6 +124,12 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     id: str
+    pw: str
+
+
+class ResetRequest(BaseModel):
+    id: str
+    code: str
     pw: str
 
 
@@ -156,17 +180,24 @@ def register_auth(app: FastAPI) -> None:
         uid = _norm_id(req.id)
         pw = _check_pw(req.pw)
         progress = _progress_json(req.progress)
+        rcode = _gen_recovery()
         with _connect() as con:
+            cur = con.cursor()
             if _get_user(con, uid) is not None:
                 raise HTTPException(409, "이미 사용 중인 아이디입니다.")
             salt = secrets.token_hex(16)
-            con.cursor().execute(
+            cur.execute(
                 f"INSERT INTO users (id, pw_hash, salt, progress, created) "
                 f"VALUES ({_ph()}, {_ph()}, {_ph()}, {_ph()}, {_ph()})",
                 (uid, _hash_pw(pw, salt), salt, progress, _now()))
+            rsalt = secrets.token_hex(16)
+            cur.execute(
+                f"INSERT INTO recovery (user_id, code_hash, salt) VALUES ({_ph()}, {_ph()}, {_ph()})",
+                (uid, _hash_pw(_norm_code(rcode), rsalt), rsalt))
             token = _issue_token(con, uid)
             con.commit()
-        return {"ok": True, "id": uid, "token": token, "progress": json.loads(progress)}
+        # `recovery` is returned ONCE, in plaintext, for the client to show & save
+        return {"ok": True, "id": uid, "token": token, "recovery": rcode, "progress": json.loads(progress)}
 
     @app.post("/api/auth/login")
     def auth_login(req: LoginRequest):
@@ -180,6 +211,34 @@ def register_auth(app: FastAPI) -> None:
             con.commit()
             return {"ok": True, "id": row[0], "token": token,
                     "progress": json.loads(row[3] or "{}")}
+
+    @app.post("/api/auth/reset")
+    def auth_reset(req: ResetRequest):
+        """Reset a forgotten password using the recovery code (no email needed)."""
+        uid = _norm_id(req.id)
+        newpw = _check_pw(req.pw)
+        code = _norm_code(req.code)
+        with _connect() as con:
+            cur = con.cursor()
+            cur.execute(f"SELECT code_hash, salt FROM recovery WHERE user_id = {_ph()}", (uid,))
+            row = cur.fetchone()
+            if row is None or _hash_pw(code, row[1]) != row[0]:
+                time.sleep(0.3)
+                raise HTTPException(401, "아이디 또는 복구 코드가 올바르지 않습니다.")
+            salt = secrets.token_hex(16)
+            cur.execute(f"UPDATE users SET pw_hash = {_ph()}, salt = {_ph()} WHERE id = {_ph()}",
+                        (_hash_pw(newpw, salt), salt, uid))
+            # rotate the recovery code so the old one can't be reused
+            rcode = _gen_recovery()
+            rsalt = secrets.token_hex(16)
+            cur.execute(f"UPDATE recovery SET code_hash = {_ph()}, salt = {_ph()} WHERE user_id = {_ph()}",
+                        (_hash_pw(_norm_code(rcode), rsalt), rsalt, uid))
+            cur.execute(f"DELETE FROM tokens WHERE user_id = {_ph()}", (uid,))   # log out other sessions
+            token = _issue_token(con, uid)
+            urow = _get_user(con, uid)
+            con.commit()
+        return {"ok": True, "id": uid, "token": token, "recovery": rcode,
+                "progress": json.loads(urow[3] or "{}")}
 
     @app.post("/api/auth/logout")
     def auth_logout(req: TokenRequest):
@@ -197,6 +256,7 @@ def register_auth(app: FastAPI) -> None:
                 raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인하세요.")
             cur = con.cursor()
             cur.execute(f"DELETE FROM tokens WHERE user_id = {_ph()}", (uid,))
+            cur.execute(f"DELETE FROM recovery WHERE user_id = {_ph()}", (uid,))
             cur.execute(f"DELETE FROM users WHERE id = {_ph()}", (uid,))
             con.commit()
         return {"ok": True}

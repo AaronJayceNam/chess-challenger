@@ -695,3 +695,13 @@ body.ingame .resultgate{ bottom:24px; }
 .histm-row .hm-delta{ min-width:34px; text-align:right; font-family:'Consolas','SF Mono',monospace; font-size:12.5px; }
 .histm-row .hm-delta.up{ color:var(--good-d); } .histm-row .hm-delta.down{ color:var(--bad); }
 .histm-row .hm-review{ padding:6px 12px; font-size:13px; }
+
+/* ============================================================
+   BOARD COORDINATES (a–h / 1–8) — colored per square for contrast
+   ============================================================ */
+.coordtag{ position:absolute; font-size:9px; font-weight:700; line-height:1; pointer-events:none; }
+.coordtag.rankco{ left:2px; top:1px; }
+.coordtag.fileco{ right:2px; bottom:1px; left:auto; top:auto; }
+.sq.light .coordtag{ color:rgba(70,80,55,.62); }
+.sq.dark  .coordtag{ color:rgba(255,255,255,.75); }
+@media (max-width:560px){ .coordtag{ font-size:8px; } }

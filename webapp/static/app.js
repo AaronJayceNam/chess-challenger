@@ -86,7 +86,58 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // --------------------------------------------------------------------------- //
 const SETTINGS = {
   showDots: localStorage.getItem("cc_showdots") !== "0",   // legal-move grey circles
+  sound: localStorage.getItem("cc_sound") !== "0",         // move/capture/check sound effects
+  coords: localStorage.getItem("cc_coords") !== "0",       // a–h / 1–8 board coordinates
 };
+
+// --------------------------------------------------------------------------- //
+// sound effects — synthesized with WebAudio (no audio files; works offline)
+// --------------------------------------------------------------------------- //
+const SFX = {
+  ctx: null,
+  _beep(freq, dur, type, gain) {
+    if (!SETTINGS.sound) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      if (!SFX.ctx) SFX.ctx = new AC();
+      if (SFX.ctx.state === "suspended") SFX.ctx.resume();
+      const o = SFX.ctx.createOscillator(), g = SFX.ctx.createGain(), now = SFX.ctx.currentTime;
+      o.type = type || "sine"; o.frequency.value = freq;
+      g.gain.setValueAtTime(gain || 0.05, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + (dur || 0.08));
+      o.connect(g); g.connect(SFX.ctx.destination);
+      o.start(now); o.stop(now + (dur || 0.08));
+    } catch (e) {}
+  },
+  move() { this._beep(330, 0.07, "triangle", 0.05); },
+  capture() { this._beep(170, 0.11, "square", 0.06); },
+  check() { this._beep(680, 0.14, "sawtooth", 0.05); },
+  win() { this._beep(523, 0.12, "sine", 0.07); setTimeout(() => this._beep(784, 0.18, "sine", 0.07), 130); },
+  lose() { this._beep(300, 0.22, "sine", 0.06); },
+};
+// pick the right sound from the just-played SAN (…x = capture, + = check, # = mate)
+function playMoveSfx(state) {
+  if (!SETTINGS.sound || !state || !state.san || !state.san.length) return;
+  const san = state.san[state.san.length - 1] || "";
+  if (san.includes("#")) return;                 // checkmate → the result screen sound covers it
+  if (san.includes("+")) SFX.check();
+  else if (san.includes("x")) SFX.capture();
+  else SFX.move();
+}
+
+// a–h / 1–8 coordinates: rank number on the left column, file letter on the
+// bottom row (orientation-aware via the caller's files/ranks arrays).
+function addCoords(div, f, rank, files, ranks) {
+  if (!SETTINGS.coords) return;
+  if (f === files[0]) {
+    const r = document.createElement("span"); r.className = "coordtag rankco"; r.textContent = rank;
+    div.appendChild(r);
+  }
+  if (rank === ranks[ranks.length - 1]) {
+    const c = document.createElement("span"); c.className = "coordtag fileco"; c.textContent = f;
+    div.appendChild(c);
+  }
+}
 
 // --------------------------------------------------------------------------- //
 // drag-to-move (works alongside click-to-move on every game board)
@@ -602,6 +653,7 @@ function showResult(o) {
     btn.onclick = () => { hideResult(); if (a.onClick) a.onClick(); };
     act.appendChild(btn);
   });
+  if (o.kind === "win") SFX.win(); else if (o.kind === "loss") SFX.lose();
   const conf = $("confetti"); conf.innerHTML = "";
   if (o.kind === "win") {
     const colors = ["#f5b301", "#6d5cff", "#3fb950", "#ff7a00", "#9ecbff", "#ff5c7a"];
@@ -655,6 +707,7 @@ function renderAiBoard() {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
+      addCoords(div, f, rank, files, ranks);
       div.dataset.sq = sq;
       div.onclick = () => onAiClick(sq);
       board.appendChild(div);
@@ -717,13 +770,15 @@ function renderAiPbars() {
 
 function updateAiTurn() {
   renderAiPbars();
-  const t = $("aiTurn"), st = AIG.state;
-  if (!st || !AIG.started) { t.innerHTML = '<span class="pill"></span>난이도와 색을 고르고 “새 대국 시작”을 누르세요.'; return; }
-  if (AIG.over) { t.innerHTML = "<b>대국 종료</b>"; return; }
-  if (AIG.thinking) { t.innerHTML = '<span class="pill b"></span>AI가 생각 중…'; return; }
+  const el = $("aiTurn"), st = AIG.state;   // NB: use 'el' — 't' is the i18n function
+  const T = (typeof t === "function") ? t : ((k) => k);
+  if (!st || !AIG.started) { el.innerHTML = '<span class="pill"></span>' + T("turn_start"); return; }
+  if (AIG.over) { el.innerHTML = "<b>" + T("turn_over") + "</b>"; return; }
+  if (AIG.thinking) { el.innerHTML = '<span class="pill b"></span>' + T("turn_thinking"); return; }
   const w = st.turn === "w", mine = st.turn === AIG.human;
-  t.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? "백" : "흑"} 차례` +
-    (mine ? " (당신)" : " (AI)") + (st.check ? " · <b style='color:#ff8a80'>체크!</b>" : "");
+  el.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? T("turn_white") : T("turn_black")}` +
+    (mine ? " " + T("turn_you") : " " + T("turn_ai")) +
+    (st.check ? ` · <b style='color:#ff8a80'>${T("turn_check")}</b>` : "");
 }
 
 function renderAiMoves() {
@@ -748,6 +803,7 @@ async function aiHumanMove(uci) {
   catch (e) { renderAiBoard(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "수 처리 오류: " + e.message, true); return; }
   AIG.moves = moves; AIG.state = st;
   renderAiBoard(); renderAiMoves(); updateAiTurn();   // authoritative — fixes any special move / check
+  playMoveSfx(st);
   if (st.gameOver) { aiEndGame(); return; }
   await aiReply();   // no artificial delay
 }
@@ -764,6 +820,7 @@ async function aiReply() {
   AIG.state = res;
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (res.move) animateMove($("aiBoard"), res.move.slice(0, 2), res.move.slice(2, 4), AIG.orient);
+  playMoveSfx(res);
   if (res.gameOver) aiEndGame();
 }
 
@@ -802,11 +859,12 @@ function aiEndGame() {
     { label: "🚪 나가기", onClick: () => exitImmersive() },
   ];
   const aiName = `AI ${aiTitle(lv)}`;
+  const T = (typeof t === "function") ? t : ((k) => k);
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: "승리하셨습니다", sub: `${aiName}를 이겼습니다`, badge, actions }
+    ? { kind, icon: "🏆", title: T("res_win"), sub: `${aiName}를 이겼습니다`, badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: "패배하셨습니다", sub: `${aiName}에게 졌습니다. 다시 도전!`, actions }
-      : { kind, icon: "🤝", title: "무승부입니다", sub: `${aiName}와 비겼습니다`, actions };
+      ? { kind, icon: "😢", title: T("res_loss"), sub: `${aiName}에게 졌습니다. 다시 도전!`, actions }
+      : { kind, icon: "🤝", title: T("res_draw"), sub: `${aiName}와 비겼습니다`, actions };
   presentResult(opts);
 }
 
@@ -964,6 +1022,7 @@ function renderPzBoard() {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
+      addCoords(div, f, rank, files, ranks);
       div.dataset.sq = sq;
       div.onclick = () => onPzClick(sq);
       board.appendChild(div);
@@ -1334,6 +1393,7 @@ function ogHandle(msg) {
       $("ogDrawPrompt").classList.add("hidden");   // a move voids any pending draw offer
       renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
       if (OG.lastUci) animateMove($("ogBoard"), OG.lastUci.slice(0, 2), OG.lastUci.slice(2, 4), OG.orient);
+      playMoveSfx(OG.state);
       break;
     case "draw_offered":
       $("ogDrawPrompt").classList.remove("hidden");
@@ -1383,6 +1443,7 @@ function renderOgBoard() {
         const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
         div.appendChild(d);
       }
+      addCoords(div, f, rank, files, ranks);
       div.dataset.sq = sq;
       div.onclick = () => onOgClick(sq);
       board.appendChild(div);
@@ -1426,13 +1487,14 @@ function renderOgMoves() {
 }
 
 function updateOgTurn() {
-  const t = $("ogTurn"), st = OG.state;
-  if (!OG.started || !st) { t.innerHTML = '<span class="pill"></span>매치를 시작하면 보드가 열립니다.'; return; }
-  if (OG.over) { t.innerHTML = "<b>대국 종료</b>"; return; }
+  const el = $("ogTurn"), st = OG.state;
+  const T = (typeof t === "function") ? t : ((k) => k);
+  if (!OG.started || !st) { el.innerHTML = '<span class="pill"></span>' + T("og_turn_wait"); return; }
+  if (OG.over) { el.innerHTML = "<b>" + T("turn_over") + "</b>"; return; }
   const w = st.turn === "w", mine = st.turn === OG.color;
-  t.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? "백" : "흑"} 차례` +
-    (mine ? " (당신)" : ` (${OG.opponent || "상대"})`) +
-    (st.check ? " · <b style='color:#ff8a80'>체크!</b>" : "");
+  el.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? T("turn_white") : T("turn_black")}` +
+    (mine ? " " + T("turn_you") : ` (${escapeHtml(OG.opponent || "상대")})`) +
+    (st.check ? ` · <b style='color:#ff8a80'>${T("turn_check")}</b>` : "");
 }
 
 function ogEnd(result, reason) {
@@ -1467,10 +1529,11 @@ function ogEnd(result, reason) {
     setTimeout(loadLeaderboard, 1600);   // after the debounced progress push lands
   }
 
+  const T = (typeof t === "function") ? t : ((k) => k);
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: "승리하셨습니다", sub: `${OG.opponent}님을 이겼습니다 (${reasonTxt})`, badge, actions }
+    ? { kind, icon: "🏆", title: T("res_win"), sub: `${OG.opponent}님을 이겼습니다 (${reasonTxt})`, badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: "패배하셨습니다", sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, badge, actions }
+      ? { kind, icon: "😢", title: T("res_loss"), sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, badge, actions }
       : { kind, icon: "🤝", title: "무승부입니다", sub: `${OG.opponent}님과 비겼습니다`, badge, actions };
   setStatus("ogStatus", `대국 종료 (${result}) — ${reasonTxt}`);
   presentResult(opts);
@@ -1666,13 +1729,35 @@ async function authSubmit(mode) {
     authSetSession(r.id, r.token, r.progress);
     $("authModal").classList.add("hidden");
     $("authPw").value = "";
+    if (mode === "register" && r.recovery) {
+      const T = (typeof t === "function") ? t : ((k) => k);
+      alert(T("recovery_saved") + "\n\n    " + r.recovery);
+    }
   } catch (e) {
     setStatus("authStatus", isOffline(e) ? OFFLINE_MSG : e.message, true);
   }
 }
 
+// forgot password → reset with the recovery code (no email needed)
+async function authReset() {
+  const T = (typeof t === "function") ? t : ((k) => k);
+  const id = (($("authId").value || "").trim() || prompt(T("reset_id")) || "").trim().normalize("NFC");
+  if (!id) return;
+  const code = prompt(T("reset_code")); if (!code) return;
+  const pw = prompt(T("reset_newpw")); if (!pw) return;
+  try {
+    const r = await api("/api/auth/reset", { id, code: code.trim(), pw: (pw || "").normalize("NFC") });
+    authSetSession(r.id, r.token, r.progress);
+    $("authModal").classList.add("hidden");
+    alert(T("reset_done") + "\n\n    " + (r.recovery || ""));
+  } catch (e) {
+    alert(isOffline(e) ? OFFLINE_MSG : (e.message || "재설정 실패"));
+  }
+}
+
 $("authLoginBtn").onclick = () => authSubmit("login");
 $("authRegisterBtn").onclick = () => authSubmit("register");
+$("authForgot").onclick = (e) => { e.preventDefault(); authReset(); };
 $("authCloseBtn").onclick = () => $("authModal").classList.add("hidden");
 $("authPw").addEventListener("keydown", (e) => { if (e.key === "Enter") authSubmit("login"); });
 
@@ -1919,6 +2004,8 @@ function rerenderBoards() {
 }
 $("settingsBtn").onclick = () => {
   $("setShowDots").checked = SETTINGS.showDots;
+  $("setSound").checked = SETTINGS.sound;
+  $("setCoords").checked = SETTINGS.coords;
   const row = $("setAccountRow"); if (row) row.style.display = (AUTH && AUTH.token) ? "flex" : "none";
   $("settingsModal").classList.remove("hidden");
 };
@@ -1958,6 +2045,16 @@ $("settingsModal").onclick = (e) => { if (e.target === $("settingsModal")) $("se
 $("setShowDots").onchange = (e) => {
   SETTINGS.showDots = e.target.checked;
   localStorage.setItem("cc_showdots", SETTINGS.showDots ? "1" : "0");
+  rerenderBoards();
+};
+$("setSound").onchange = (e) => {
+  SETTINGS.sound = e.target.checked;
+  localStorage.setItem("cc_sound", SETTINGS.sound ? "1" : "0");
+  if (SETTINGS.sound) SFX.move();   // little confirmation blip
+};
+$("setCoords").onchange = (e) => {
+  SETTINGS.coords = e.target.checked;
+  localStorage.setItem("cc_coords", SETTINGS.coords ? "1" : "0");
   rerenderBoards();
 };
 
@@ -2018,6 +2115,8 @@ function refreshDashboard() {
     if (typeof updateRankBadge === "function") updateRankBadge();
     const ll = document.getElementById("aiLevelLabel"), lv = document.getElementById("aiLevel");
     if (ll && lv && typeof aiLevelText === "function") ll.textContent = aiLevelText(lv.value);
+    if (typeof updateAiTurn === "function") updateAiTurn();   // re-translate live turn text on language change
+    if (typeof updateOgTurn === "function") updateOgTurn();
   } catch (e) {}
 }
 refreshDashboard();
