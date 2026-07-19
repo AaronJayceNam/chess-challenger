@@ -46,7 +46,9 @@ _RESEND_FROM = os.environ.get("RESEND_FROM", "").strip() or "Matevio <onboarding
 _SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 _SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
 _SMTP_USER = os.environ.get("SMTP_USER", "").strip()
-_SMTP_PASS = os.environ.get("SMTP_PASS", "")
+# Google shows app passwords as "abcd efgh ijkl mnop"; strip spaces so a
+# copy-paste with the display spaces still logs in.
+_SMTP_PASS = os.environ.get("SMTP_PASS", "").replace(" ", "")
 _SMTP_FROM = os.environ.get("SMTP_FROM", "").strip() or _SMTP_USER
 _EMAIL_ENABLED = bool(_RESEND_KEY) or bool(_SMTP_USER and _SMTP_PASS)
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
