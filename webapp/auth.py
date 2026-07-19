@@ -98,14 +98,30 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
     return True
 
 
+_last_email_error = ""  # TEMP diagnostic — remembers why the last send failed
+
+
 def _send_email(to_addr: str, subject: str, body: str) -> bool:
+    global _last_email_error
     if not _EMAIL_ENABLED:
+        _last_email_error = "email disabled (no RESEND_API_KEY and no SMTP creds)"
         return False
     try:
         if _RESEND_KEY:
-            return _send_via_resend(to_addr, subject, body)
-        return _send_via_smtp(to_addr, subject, body)
-    except Exception:
+            ok = _send_via_resend(to_addr, subject, body)
+        else:
+            ok = _send_via_smtp(to_addr, subject, body)
+        _last_email_error = "" if ok else "provider returned non-2xx"
+        return ok
+    except Exception as e:
+        detail = ""
+        try:
+            import urllib.error
+            if isinstance(e, urllib.error.HTTPError):
+                detail = " body=" + e.read().decode("utf-8", "replace")[:300]
+        except Exception:
+            pass
+        _last_email_error = f"{type(e).__name__}: {e}{detail}"
         return False
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -313,6 +329,25 @@ def register_auth(app: FastAPI) -> None:
             con.commit()
             return {"ok": True, "id": row[0], "token": token,
                     "progress": json.loads(row[3] or "{}")}
+
+    @app.post("/api/auth/_debug_email")
+    def _debug_email(req: dict):
+        # TEMP diagnostic — gated by a secret; remove after debugging.
+        if not isinstance(req, dict) or req.get("secret") != "matevio-debug-2026":
+            raise HTTPException(404, "not found")
+        to = (req.get("to") or "").strip()
+        sent = None
+        if to:
+            sent = _send_email(to, "Matevio test", "This is a Matevio test email.")
+        return {
+            "resend_key_set": bool(_RESEND_KEY),
+            "resend_key_prefix": (_RESEND_KEY[:3] if _RESEND_KEY else ""),
+            "resend_from": _RESEND_FROM,
+            "smtp_set": bool(_SMTP_USER and _SMTP_PASS),
+            "email_enabled": _EMAIL_ENABLED,
+            "sent": sent,
+            "last_error": _last_email_error,
+        }
 
     @app.post("/api/auth/request_reset")
     def auth_request_reset(req: IdRequest):
