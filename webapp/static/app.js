@@ -1654,8 +1654,10 @@ function renderAuthArea() {
 }
 
 async function authSubmit(mode) {
-  const id = ($("authId").value || "").trim();
-  const pw = $("authPw").value || "";
+  // NFC-normalize so Korean typed as decomposed jamo (iOS/macOS) matches what
+  // was stored at registration — otherwise a correct id/pw can be rejected.
+  const id = ($("authId").value || "").trim().normalize("NFC");
+  const pw = ($("authPw").value || "").normalize("NFC");
   if (!id || !pw) { setStatus("authStatus", "아이디와 비밀번호를 입력하세요.", true); return; }
   setStatus("authStatus", mode === "register" ? "계정을 만드는 중…" : "로그인 중…");
   try {

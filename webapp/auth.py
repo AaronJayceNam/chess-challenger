@@ -19,6 +19,7 @@ import os
 import re
 import secrets
 import time
+import unicodedata
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
@@ -117,15 +118,24 @@ class SaveRequest(BaseModel):
     progress: dict
 
 
+# Korean text can arrive either precomposed (NFC) or decomposed (NFD, common on
+# iOS/macOS keyboards). Without normalization the *same* id/password produces a
+# different byte string → different hash → "wrong password" even when it's right.
+# Normalize both to NFC everywhere so register and login always agree.
 def _norm_id(raw: str) -> str:
-    uid = (raw or "").strip()
+    uid = unicodedata.normalize("NFC", raw or "").strip()
     if not _ID_RE.match(uid):
         raise HTTPException(400, "아이디는 2~20자의 한글/영문/숫자/_/- 만 가능합니다.")
     return uid.lower() if uid.isascii() else uid
 
 
+def _norm_pw(pw: str) -> str:
+    return unicodedata.normalize("NFC", pw if isinstance(pw, str) else "")
+
+
 def _check_pw(pw: str) -> str:
-    if not isinstance(pw, str) or not (4 <= len(pw) <= 64):
+    pw = _norm_pw(pw)
+    if not (4 <= len(pw) <= 64):
         raise HTTPException(400, "비밀번호는 4자 이상이어야 합니다.")
     return pw
 
@@ -163,7 +173,7 @@ def register_auth(app: FastAPI) -> None:
         uid = _norm_id(req.id)
         with _connect() as con:
             row = _get_user(con, uid)
-            if row is None or _hash_pw(req.pw or "", row[2]) != row[1]:
+            if row is None or _hash_pw(_norm_pw(req.pw), row[2]) != row[1]:
                 time.sleep(0.3)          # slow brute-force attempts
                 raise HTTPException(401, "아이디 또는 비밀번호가 올바르지 않습니다.")
             token = _issue_token(con, uid)

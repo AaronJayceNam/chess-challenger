@@ -24,17 +24,17 @@ var I18N = {
   navs_ai:     { ko: "AI", en: "AI", ja: "AI", zh: "人机", es: "IA" },
   navs_online: { ko: "온라인", en: "Online", ja: "対戦", zh: "在线", es: "Online" },
   navs_puzzle: { ko: "퍼즐", en: "Puzzle", ja: "パズル", zh: "谜题", es: "Puzzle" },
-  navs_growth: { ko: "성장", en: "Progress", ja: "成長", zh: "成长", es: "Nivel" },
+  navs_growth: { ko: "성장", en: "Progress", ja: "成長", zh: "成长", es: "Progreso" },
   navs_learn:  { ko: "배우기", en: "Learn", ja: "学ぶ", zh: "学习", es: "Aprender" },
   navs_review: { ko: "리뷰", en: "Review", ja: "レビュー", zh: "复盘", es: "Análisis" },
   // ----- heros -----
   hero_ai_t: { ko: "AI와 대국", en: "Play the Computer", ja: "AIと対局", zh: "与电脑对弈", es: "Juega contra la IA" },
   hero_ai_p: {
-    ko: "난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.",
-    en: "Levels 1–15 plus famous-player styles — take on the Stockfish engine. When the game ends, the AI reviews every move automatically.",
-    ja: "レベル1〜15、名選手のスタイルまで — Stockfishエンジンと対戦。対局後はAIが自動で振り返ります。",
-    zh: "1–15 级，还有名家风格——挑战 Stockfish 引擎。对局结束后 AI 会自动复盘每一步。",
-    es: "Niveles 1–15 y estilos de grandes maestros: enfréntate al motor Stockfish. Al terminar, la IA analiza cada jugada.",
+    ko: "난이도 1~10, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 AI 복기도 볼 수 있어요.",
+    en: "Levels 1–10 plus famous-player styles — take on the Stockfish engine. After the game you can get an AI review of every move.",
+    ja: "レベル1〜10、名選手のスタイルまで — Stockfishエンジンと対戦。対局後はAIのレビューも見られます。",
+    zh: "1–10 级，还有名家风格——挑战 Stockfish 引擎。对局结束后还可查看 AI 复盘。",
+    es: "Niveles 1–10 y estilos de grandes maestros: enfréntate al motor Stockfish. Al terminar, puedes ver el análisis de la IA de cada jugada.",
   },
   hero_online_t: { ko: "온라인 대국", en: "Online Games", ja: "オンライン対局", zh: "在线对弈", es: "Partidas en línea" },
   hero_online_p: {
