@@ -18,6 +18,15 @@ services:
       # accounts kept resetting. Leave unset to fall back to ephemeral SQLite.
       - key: DATABASE_URL
         sync: false
+      # SMTP for password-reset emails (values set in the dashboard, kept via
+      # sync:false). Leave unset to disable email (recovery codes still work).
+      # For Naver: SMTP_USER=you@naver.com, SMTP_PASS=<app password>.
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
       # Sized to fit the 512MB free tier (0.1 shared CPU). A single small engine
       # avoids the out-of-memory crash during analysis.
       - key: CC_WORKERS
