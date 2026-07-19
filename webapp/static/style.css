@@ -705,3 +705,9 @@ body.ingame .resultgate{ bottom:24px; }
 .sq.light .coordtag{ color:rgba(70,80,55,.62); }
 .sq.dark  .coordtag{ color:rgba(255,255,255,.75); }
 @media (max-width:560px){ .coordtag{ font-size:8px; } }
+
+/* ============================================================
+   Modals (settings/auth/history) scroll internally when tall
+   ============================================================ */
+.auth-box{ max-height:88vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+.overlay{ padding:16px; }
