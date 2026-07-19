@@ -18,12 +18,60 @@ import json
 import os
 import re
 import secrets
+import smtplib
+import ssl
 import time
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+# --------------------------------------------------------------------------- #
+# email (optional) — send password-reset codes. Configured via env vars; if
+# unset, email is simply disabled and accounts fall back to the recovery code.
+#   SMTP_HOST (default smtp.naver.com), SMTP_PORT (465), SMTP_USER, SMTP_PASS,
+#   SMTP_FROM (default = SMTP_USER)
+# --------------------------------------------------------------------------- #
+_SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.naver.com").strip()
+_SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
+_SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+_SMTP_PASS = os.environ.get("SMTP_PASS", "")
+_SMTP_FROM = os.environ.get("SMTP_FROM", "").strip() or _SMTP_USER
+_EMAIL_ENABLED = bool(_SMTP_USER and _SMTP_PASS)
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _valid_email(e: str | None):
+    e = (e or "").strip()
+    return e if (_EMAIL_RE.match(e) and len(e) <= 120) else None
+
+
+def _mask_email(e: str) -> str:
+    try:
+        name, dom = e.split("@", 1)
+        head = name[:2] if len(name) > 2 else name[:1]
+        return f"{head}{'*' * max(2, len(name) - len(head))}@{dom}"
+    except Exception:
+        return "***"
+
+
+def _send_email(to_addr: str, subject: str, body: str) -> bool:
+    if not _EMAIL_ENABLED:
+        return False
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = _SMTP_FROM
+        msg["To"] = to_addr
+        msg.set_content(body)
+        with smtplib.SMTP_SSL(_SMTP_HOST, _SMTP_PORT, context=ssl.create_default_context(), timeout=15) as s:
+            s.login(_SMTP_USER, _SMTP_PASS)
+            s.send_message(msg)
+        return True
+    except Exception:
+        return False
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SQLITE_PATH = os.path.join(os.path.dirname(_HERE), "data", "users.db")
@@ -68,6 +116,16 @@ def _init_db() -> None:
             user_id TEXT PRIMARY KEY,
             code_hash TEXT NOT NULL,
             salt TEXT NOT NULL)""")
+        # optional email (for emailed reset codes)
+        cur.execute("""CREATE TABLE IF NOT EXISTS user_email (
+            user_id TEXT PRIMARY KEY,
+            email TEXT NOT NULL)""")
+        # short-lived emailed reset codes
+        cur.execute("""CREATE TABLE IF NOT EXISTS reset_codes (
+            user_id TEXT PRIMARY KEY,
+            code_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            expires TEXT NOT NULL)""")
         con.commit()
 
 
@@ -119,7 +177,12 @@ def _issue_token(con, uid: str) -> str:
 class RegisterRequest(BaseModel):
     id: str
     pw: str
+    email: str | None = None
     progress: dict | None = None
+
+
+class IdRequest(BaseModel):
+    id: str
 
 
 class LoginRequest(BaseModel):
@@ -181,6 +244,7 @@ def register_auth(app: FastAPI) -> None:
         pw = _check_pw(req.pw)
         progress = _progress_json(req.progress)
         rcode = _gen_recovery()
+        email = _valid_email(req.email)
         with _connect() as con:
             cur = con.cursor()
             if _get_user(con, uid) is not None:
@@ -194,10 +258,13 @@ def register_auth(app: FastAPI) -> None:
             cur.execute(
                 f"INSERT INTO recovery (user_id, code_hash, salt) VALUES ({_ph()}, {_ph()}, {_ph()})",
                 (uid, _hash_pw(_norm_code(rcode), rsalt), rsalt))
+            if email:
+                cur.execute(f"INSERT INTO user_email (user_id, email) VALUES ({_ph()}, {_ph()})", (uid, email))
             token = _issue_token(con, uid)
             con.commit()
-        # `recovery` is returned ONCE, in plaintext, for the client to show & save
-        return {"ok": True, "id": uid, "token": token, "recovery": rcode, "progress": json.loads(progress)}
+        # `recovery` returned ONCE; the client shows it only if no email was given
+        return {"ok": True, "id": uid, "token": token, "recovery": rcode,
+                "hasEmail": bool(email), "progress": json.loads(progress)}
 
     @app.post("/api/auth/login")
     def auth_login(req: LoginRequest):
@@ -212,33 +279,69 @@ def register_auth(app: FastAPI) -> None:
             return {"ok": True, "id": row[0], "token": token,
                     "progress": json.loads(row[3] or "{}")}
 
-    @app.post("/api/auth/reset")
-    def auth_reset(req: ResetRequest):
-        """Reset a forgotten password using the recovery code (no email needed)."""
+    @app.post("/api/auth/request_reset")
+    def auth_request_reset(req: IdRequest):
+        """Email a short-lived reset code to the account's email (if any)."""
         uid = _norm_id(req.id)
-        newpw = _check_pw(req.pw)
-        code = _norm_code(req.code)
         with _connect() as con:
             cur = con.cursor()
-            cur.execute(f"SELECT code_hash, salt FROM recovery WHERE user_id = {_ph()}", (uid,))
+            if _get_user(con, uid) is None:
+                return {"ok": True, "emailed": False}    # don't leak which ids exist
+            cur.execute(f"SELECT email FROM user_email WHERE user_id = {_ph()}", (uid,))
             row = cur.fetchone()
-            if row is None or _hash_pw(code, row[1]) != row[0]:
+            email = row[0] if row else None
+            if not (email and _EMAIL_ENABLED):
+                return {"ok": True, "emailed": False}    # fall back to the recovery code
+            code = f"{secrets.randbelow(1000000):06d}"
+            salt = secrets.token_hex(16)
+            expires = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+            cur.execute(f"DELETE FROM reset_codes WHERE user_id = {_ph()}", (uid,))
+            cur.execute(
+                f"INSERT INTO reset_codes (user_id, code_hash, salt, expires) VALUES ({_ph()}, {_ph()}, {_ph()}, {_ph()})",
+                (uid, _hash_pw(code, salt), salt, expires))
+            con.commit()
+        sent = _send_email(
+            email, "Matevio 비밀번호 재설정 코드",
+            f"Matevio 비밀번호 재설정 코드는 [ {code} ] 입니다.\n\n앱에서 15분 안에 입력하세요.\n"
+            f"본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다.")
+        return {"ok": True, "emailed": bool(sent), "email_hint": _mask_email(email)}
+
+    @app.post("/api/auth/reset")
+    def auth_reset(req: ResetRequest):
+        """Reset a forgotten password with an emailed code OR the recovery code."""
+        uid = _norm_id(req.id)
+        newpw = _check_pw(req.pw)
+        raw = req.code or ""
+        ok = False
+        with _connect() as con:
+            cur = con.cursor()
+            # 1) emailed reset code (6 digits, time-limited)
+            cur.execute(f"SELECT code_hash, salt, expires FROM reset_codes WHERE user_id = {_ph()}", (uid,))
+            rc = cur.fetchone()
+            if rc and rc[2] and _now() <= rc[2] and _hash_pw(re.sub(r"\s", "", raw), rc[1]) == rc[0]:
+                ok = True
+            # 2) recovery code (from sign-up)
+            if not ok:
+                cur.execute(f"SELECT code_hash, salt FROM recovery WHERE user_id = {_ph()}", (uid,))
+                rr = cur.fetchone()
+                if rr and _hash_pw(_norm_code(raw), rr[1]) == rr[0]:
+                    ok = True
+            if not ok:
                 time.sleep(0.3)
-                raise HTTPException(401, "아이디 또는 복구 코드가 올바르지 않습니다.")
+                raise HTTPException(401, "아이디 또는 코드가 올바르지 않습니다.")
             salt = secrets.token_hex(16)
             cur.execute(f"UPDATE users SET pw_hash = {_ph()}, salt = {_ph()} WHERE id = {_ph()}",
                         (_hash_pw(newpw, salt), salt, uid))
-            # rotate the recovery code so the old one can't be reused
             rcode = _gen_recovery()
             rsalt = secrets.token_hex(16)
             cur.execute(f"UPDATE recovery SET code_hash = {_ph()}, salt = {_ph()} WHERE user_id = {_ph()}",
                         (_hash_pw(_norm_code(rcode), rsalt), rsalt, uid))
+            cur.execute(f"DELETE FROM reset_codes WHERE user_id = {_ph()}", (uid,))
             cur.execute(f"DELETE FROM tokens WHERE user_id = {_ph()}", (uid,))   # log out other sessions
             token = _issue_token(con, uid)
             urow = _get_user(con, uid)
             con.commit()
-        return {"ok": True, "id": uid, "token": token, "recovery": rcode,
-                "progress": json.loads(urow[3] or "{}")}
+        return {"ok": True, "id": uid, "token": token, "progress": json.loads(urow[3] or "{}")}
 
     @app.post("/api/auth/logout")
     def auth_logout(req: TokenRequest):
@@ -257,6 +360,8 @@ def register_auth(app: FastAPI) -> None:
             cur = con.cursor()
             cur.execute(f"DELETE FROM tokens WHERE user_id = {_ph()}", (uid,))
             cur.execute(f"DELETE FROM recovery WHERE user_id = {_ph()}", (uid,))
+            cur.execute(f"DELETE FROM user_email WHERE user_id = {_ph()}", (uid,))
+            cur.execute(f"DELETE FROM reset_codes WHERE user_id = {_ph()}", (uid,))
             cur.execute(f"DELETE FROM users WHERE id = {_ph()}", (uid,))
             con.commit()
         return {"ok": True}

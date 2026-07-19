@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=37">
+<link rel="stylesheet" href="/static/style.css?v=38">
 </head>
 <body>
 
@@ -494,6 +494,8 @@
     <input type="text" id="authId" maxlength="20" autocomplete="username">
     <label class="field" data-i18n="auth_pw_label">비밀번호 (4자 이상)</label>
     <input type="password" id="authPw" maxlength="64" autocomplete="current-password">
+    <label class="field" data-i18n="auth_email_label">이메일 (선택 · 비밀번호 찾기용)</label>
+    <input type="email" id="authEmail" maxlength="120" autocomplete="email" placeholder="you@example.com">
     <div class="status" id="authStatus"></div>
     <div class="auth-actions">
       <button class="primary" id="authLoginBtn" data-i18n="auth_login">로그인</button>
@@ -527,8 +529,8 @@
   <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=37"></script>
-<script src="/static/app.js?v=37"></script>
+<script src="/static/i18n.js?v=38"></script>
+<script src="/static/app.js?v=38"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

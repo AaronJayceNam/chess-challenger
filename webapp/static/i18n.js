@@ -167,7 +167,10 @@ var I18N = {
   reset_id:      { ko: "아이디를 입력하세요", en: "Enter your username", ja: "ユーザー名を入力", zh: "输入用户名", es: "Introduce tu usuario" },
   reset_code:    { ko: "복구 코드를 입력하세요 (가입 때 받은 코드)", en: "Enter your recovery code (from sign-up)", ja: "復旧コードを入力(登録時のコード)", zh: "输入恢复码(注册时获得)", es: "Introduce tu código de recuperación (del registro)" },
   reset_newpw:   { ko: "새 비밀번호를 입력하세요 (4자 이상)", en: "Enter a new password (4+ chars)", ja: "新しいパスワードを入力(4文字以上)", zh: "输入新密码(4位以上)", es: "Introduce una nueva contraseña (4+ caracteres)" },
-  reset_done:    { ko: "비밀번호가 재설정되었습니다. 새 복구 코드:", en: "Password reset. Your new recovery code:", ja: "パスワードを再設定しました。新しい復旧コード:", zh: "密码已重置。新的恢复码:", es: "Contraseña restablecida. Tu nuevo código de recuperación:" },
+  reset_done:    { ko: "비밀번호가 재설정되었습니다.", en: "Your password has been reset.", ja: "パスワードを再設定しました。", zh: "密码已重置。", es: "Tu contraseña ha sido restablecida." },
+  auth_email_label:{ ko: "이메일 (선택 · 비밀번호 찾기용)", en: "Email (optional · for password recovery)", ja: "メール(任意・パスワード復旧用)", zh: "邮箱(可选 · 用于找回密码)", es: "Correo (opcional · para recuperar contraseña)" },
+  reset_email_prompt:{ ko: "이메일로 보낸 6자리 코드를 입력하세요 (받은 편지함을 확인하세요)", en: "Enter the 6-digit code we emailed you (check your inbox)", ja: "メールに送った6桁のコードを入力してください(受信箱を確認)", zh: "请输入我们邮件发送的6位验证码(请查收邮箱)", es: "Introduce el código de 6 dígitos que te enviamos por correo (revisa tu bandeja)" },
+  reset_sending: { ko: "확인 중…", en: "Checking…", ja: "確認中…", zh: "确认中…", es: "Comprobando…" },
 
   // ----- online tab -----
   og_match_title:{ ko: "온라인 매치", en: "Online match", ja: "オンライン対戦", zh: "在线对战", es: "Partida en línea" },

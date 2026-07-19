@@ -1766,12 +1766,14 @@ async function authSubmit(mode) {
   if (!id || !pw) { setStatus("authStatus", "아이디와 비밀번호를 입력하세요.", true); return; }
   setStatus("authStatus", mode === "register" ? "계정을 만드는 중…" : "로그인 중…");
   try {
-    const body = mode === "register" ? { id, pw, progress: collectProgress() } : { id, pw };
+    const email = ($("authEmail") ? ($("authEmail").value || "").trim() : "");
+    const body = mode === "register" ? { id, pw, email, progress: collectProgress() } : { id, pw };
     const r = await api("/api/auth/" + mode, body);
     authSetSession(r.id, r.token, r.progress);
     $("authModal").classList.add("hidden");
     $("authPw").value = "";
-    if (mode === "register" && r.recovery) {
+    // show the recovery code to save ONLY when no email was given (email is the recovery path)
+    if (mode === "register" && r.recovery && !r.hasEmail) {
       const T = (typeof t === "function") ? t : ((k) => k);
       alert(T("recovery_saved") + "\n\n    " + r.recovery);
     }
@@ -1780,18 +1782,24 @@ async function authSubmit(mode) {
   }
 }
 
-// forgot password → reset with the recovery code (no email needed)
+// forgot password → email a code to the account's email; fall back to recovery code
 async function authReset() {
   const T = (typeof t === "function") ? t : ((k) => k);
   const id = (($("authId").value || "").trim() || prompt(T("reset_id")) || "").trim().normalize("NFC");
   if (!id) return;
-  const code = prompt(T("reset_code")); if (!code) return;
+  let emailed = false;
+  try {
+    const rr = await api("/api/auth/request_reset", { id });
+    emailed = !!rr.emailed;
+  } catch (e) {}
+  const code = prompt(emailed ? T("reset_email_prompt") : T("reset_code"));
+  if (!code) return;
   const pw = prompt(T("reset_newpw")); if (!pw) return;
   try {
     const r = await api("/api/auth/reset", { id, code: code.trim(), pw: (pw || "").normalize("NFC") });
     authSetSession(r.id, r.token, r.progress);
     $("authModal").classList.add("hidden");
-    alert(T("reset_done") + "\n\n    " + (r.recovery || ""));
+    alert(T("reset_done"));
   } catch (e) {
     alert(isOffline(e) ? OFFLINE_MSG : (e.message || "재설정 실패"));
   }
