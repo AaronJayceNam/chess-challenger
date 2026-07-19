@@ -267,6 +267,20 @@ def index():
                                  "Pragma": "no-cache", "Expires": "0"})
 
 
+@app.get("/manifest.webmanifest")
+def manifest():
+    return FileResponse(os.path.join(STATIC, "manifest.webmanifest"),
+                        media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    # served from the root so its scope covers the whole app (not just /static)
+    return FileResponse(os.path.join(STATIC, "sw.js"),
+                        media_type="application/javascript",
+                        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+
 @app.get("/api/health")
 def health():
     cfg = EngineConfig()
