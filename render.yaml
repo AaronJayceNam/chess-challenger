@@ -20,7 +20,7 @@ services:
         sync: false
       # SMTP for password-reset emails (values set in the dashboard, kept via
       # sync:false). Leave unset to disable email (recovery codes still work).
-      # For Naver: SMTP_USER=you@naver.com, SMTP_PASS=<app password>.
+      # For Gmail: SMTP_USER=you@gmail.com, SMTP_PASS=<Google app password>.
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS

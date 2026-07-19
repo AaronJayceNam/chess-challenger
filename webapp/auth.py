@@ -31,10 +31,10 @@ from pydantic import BaseModel
 # --------------------------------------------------------------------------- #
 # email (optional) — send password-reset codes. Configured via env vars; if
 # unset, email is simply disabled and accounts fall back to the recovery code.
-#   SMTP_HOST (default smtp.naver.com), SMTP_PORT (465), SMTP_USER, SMTP_PASS,
+#   SMTP_HOST (default smtp.gmail.com), SMTP_PORT (465), SMTP_USER, SMTP_PASS,
 #   SMTP_FROM (default = SMTP_USER)
 # --------------------------------------------------------------------------- #
-_SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.naver.com").strip()
+_SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
 _SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
 _SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 _SMTP_PASS = os.environ.get("SMTP_PASS", "")
