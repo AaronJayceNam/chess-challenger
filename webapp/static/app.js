@@ -88,7 +88,23 @@ const SETTINGS = {
   showDots: localStorage.getItem("cc_showdots") !== "0",   // legal-move grey circles
   sound: localStorage.getItem("cc_sound") !== "0",         // move/capture/check sound effects
   coords: localStorage.getItem("cc_coords") !== "0",       // a–h / 1–8 board coordinates
+  boardTheme: localStorage.getItem("cc_board") || "green", // board color theme
 };
+
+// board color themes — applied by overriding the --light / --dark CSS vars
+const BOARD_THEMES = {
+  green: { light: "#ebecd0", dark: "#779556" },
+  wood:  { light: "#f0d9b5", dark: "#b58863" },
+  blue:  { light: "#dee3e6", dark: "#8ca2ad" },
+  gray:  { light: "#e8e8e8", dark: "#9a9a9a" },
+  coral: { light: "#fde3da", dark: "#d38068" },
+};
+function applyBoardTheme(name) {
+  const th = BOARD_THEMES[name] || BOARD_THEMES.green;
+  document.documentElement.style.setProperty("--light", th.light);
+  document.documentElement.style.setProperty("--dark", th.dark);
+}
+applyBoardTheme(SETTINGS.boardTheme);   // apply saved theme at startup
 
 // --------------------------------------------------------------------------- //
 // sound effects — synthesized with WebAudio (no audio files; works offline)
@@ -109,9 +125,35 @@ const SFX = {
       o.start(now); o.stop(now + (dur || 0.08));
     } catch (e) {}
   },
-  move() { this._beep(330, 0.07, "triangle", 0.05); },
-  capture() { this._beep(170, 0.11, "square", 0.06); },
-  check() { this._beep(680, 0.14, "sawtooth", 0.05); },
+  // a "wooden knock": short filtered-noise burst + a low body tock, fast decay
+  _wood(freq, dur, gain) {
+    if (!SETTINGS.sound) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      if (!SFX.ctx) SFX.ctx = new AC();
+      const ctx = SFX.ctx; if (ctx.state === "suspended") ctx.resume();
+      const now = ctx.currentTime; dur = dur || 0.09;
+      const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate), ch = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);   // noise with built-in decay
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = freq || 850; bp.Q.value = 5;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(gain || 0.5, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+      src.start(now); src.stop(now + dur);
+      const o = ctx.createOscillator(), og = ctx.createGain();   // warm low "tock" body
+      o.type = "triangle"; o.frequency.value = (freq || 850) * 0.45;
+      og.gain.setValueAtTime((gain || 0.5) * 0.6, now);
+      og.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.85);
+      o.connect(og); og.connect(ctx.destination);
+      o.start(now); o.stop(now + dur);
+    } catch (e) {}
+  },
+  move() { this._wood(900, 0.075, 0.5); },
+  capture() { this._wood(520, 0.12, 0.7); },
+  check() { this._wood(1300, 0.09, 0.5); },
   win() { this._beep(523, 0.12, "sine", 0.07); setTimeout(() => this._beep(784, 0.18, "sine", 0.07), 130); },
   lose() { this._beep(300, 0.22, "sine", 0.06); },
 };
@@ -2006,6 +2048,7 @@ $("settingsBtn").onclick = () => {
   $("setShowDots").checked = SETTINGS.showDots;
   $("setSound").checked = SETTINGS.sound;
   $("setCoords").checked = SETTINGS.coords;
+  $("setBoard").value = SETTINGS.boardTheme;
   const row = $("setAccountRow"); if (row) row.style.display = (AUTH && AUTH.token) ? "flex" : "none";
   $("settingsModal").classList.remove("hidden");
 };
@@ -2056,6 +2099,11 @@ $("setCoords").onchange = (e) => {
   SETTINGS.coords = e.target.checked;
   localStorage.setItem("cc_coords", SETTINGS.coords ? "1" : "0");
   rerenderBoards();
+};
+$("setBoard").onchange = (e) => {
+  SETTINGS.boardTheme = e.target.value;
+  localStorage.setItem("cc_board", SETTINGS.boardTheme);
+  applyBoardTheme(SETTINGS.boardTheme);
 };
 
 // boot
