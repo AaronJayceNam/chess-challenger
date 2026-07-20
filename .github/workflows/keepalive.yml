@@ -1,0 +1,29 @@
+name: keep-alive
+
+# Pings the app so Render's free tier (which sleeps after ~15 min idle) stays
+# awake — no more cold-start wait. GitHub's cron can be delayed a few minutes
+# under load, so we ping every 10 min to keep a safety margin under the 15 min.
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (UTC)
+  workflow_dispatch:          # lets you run it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          # If the server was asleep, the first hit wakes it (can take 15-50s),
+          # so retry a few times before giving up.
+          for i in 1 2 3 4; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 70 https://matevio.com/api/health || echo 000)
+            echo "attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "server is awake"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "server did not respond 200 after retries"
+          exit 1

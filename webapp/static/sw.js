@@ -2,7 +2,7 @@
    updates instant. The API and WebSocket always go straight to the network;
    the HTML is network-first (so a new deploy's ?v= assets load immediately),
    and versioned static assets are cache-first. Bump CACHE to purge old caches. */
-const CACHE = "matevio-v3";
+const CACHE = "matevio-v4";
 const SHELL = [
   "/",
   "/static/style.css",
@@ -33,25 +33,14 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET" || url.origin !== location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname === "/ws" || url.pathname === "/sw.js") return;
 
-  // HTML navigations: network-first, but only wait ~3.5s. If the server is cold
-  // (Render free tier sleeps after ~15min and takes ~15s+ to wake), show the
-  // cached app INSTANTLY instead of a blank loading screen; the fresh page is
-  // still fetched and cached for next time. Falls back to cache when offline too.
+  // HTML navigations: network-first so the newest page (and its ?v= links) win,
+  // and live data is never stale; fall back to the cached shell only when offline.
   if (req.mode === "navigate") {
-    e.respondWith((async () => {
-      const cached = await caches.match("/");
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 3500);
-        const r = await fetch(req, { signal: controller.signal });
-        clearTimeout(timer);
-        const copy = r.clone(); caches.open(CACHE).then((c) => c.put("/", copy));
-        return r;
-      } catch (err) {
-        // timed out (cold start) or offline → serve cached shell if we have it
-        return cached || fetch(req);
-      }
-    })());
+    e.respondWith(
+      fetch(req)
+        .then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put("/", copy)); return r; })
+        .catch(() => caches.match("/"))
+    );
     return;
   }
 
