@@ -1731,6 +1731,7 @@ function authClearSession() {
 
 function authSetSession(id, token, progress) {
   AUTH.id = id; AUTH.token = token;
+  if (typeof hideLoginGate === "function") hideLoginGate();
   localStorage.setItem("cc_token", token); localStorage.setItem("cc_uid", id);
   applyProgress(progress);
   const nick = $("ogName"); if (nick) nick.value = id;   // nickname = account id
@@ -1811,6 +1812,16 @@ $("authForgot").onclick = (e) => { e.preventDefault(); authReset(); };
 $("authCloseBtn").onclick = () => $("authModal").classList.add("hidden");
 $("authPw").addEventListener("keydown", (e) => { if (e.key === "Enter") authSubmit("login"); });
 
+// ---- first-open login gate: sign in, or continue as guest ----
+function hideLoginGate() { const g = $("loginGate"); if (g) g.classList.add("hidden"); }
+function maybeShowLoginGate() {
+  if (AUTH.token) return;                                    // already signed in
+  if (sessionStorage.getItem("cc_guest") === "1") return;    // chose guest this session
+  const g = $("loginGate"); if (g) g.classList.remove("hidden");
+}
+if ($("gateGuestBtn")) $("gateGuestBtn").onclick = () => { sessionStorage.setItem("cc_guest", "1"); hideLoginGate(); };
+if ($("gateLoginBtn")) $("gateLoginBtn").onclick = () => { hideLoginGate(); openAuth(); };
+
 // =========================================================================== //
 // LEADERBOARD — top registered accounts by rating (server-computed)
 // =========================================================================== //
@@ -1839,7 +1850,7 @@ async function loadLeaderboard() {
 async function authBoot() {
   renderAuthArea();
   updateOgAuthGate();
-  if (!AUTH.token) return;
+  if (!AUTH.token) { maybeShowLoginGate(); return; }
   try {
     const r = await api("/api/auth/load", { token: AUTH.token });
     AUTH.id = r.id; localStorage.setItem("cc_uid", r.id);

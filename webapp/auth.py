@@ -107,12 +107,19 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
 def _send_email(to_addr: str, subject: str, body: str) -> bool:
     if not _EMAIL_ENABLED:
         return False
-    try:
-        if _RESEND_KEY:
-            return _send_via_resend(to_addr, subject, body)
-        return _send_via_smtp(to_addr, subject, body)
-    except Exception:
-        return False
+    # Retry a couple of times: Resend sits behind Cloudflare, which occasionally
+    # throws a transient challenge/5xx even for a valid request.
+    attempts = 3 if _RESEND_KEY else 1
+    for i in range(attempts):
+        try:
+            if _RESEND_KEY:
+                return _send_via_resend(to_addr, subject, body)
+            return _send_via_smtp(to_addr, subject, body)
+        except Exception:
+            if i == attempts - 1:
+                return False
+            time.sleep(1.0)
+    return False
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SQLITE_PATH = os.path.join(os.path.dirname(_HERE), "data", "users.db")
