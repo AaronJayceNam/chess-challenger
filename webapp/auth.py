@@ -90,7 +90,7 @@ def _send_via_resend(to_addr: str, subject: str, body: str) -> bool:
             "Content-Type": "application/json",
             # Cloudflare in front of api.resend.com blocks the default
             # "Python-urllib" UA (error 1010); send a normal UA instead.
-            "User-Agent": "Matevio/1.0 (+https://matevio-chess.onrender.com)",
+            "User-Agent": "Matevio/1.0 (+https://matevio.com)",
             "Accept": "application/json",
         },
         method="POST",
