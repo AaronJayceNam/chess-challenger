@@ -29,15 +29,15 @@ import chess.engine
 #   rand = probability of a random legal move   elo = UCI_Elo (None = full)
 _LADDER = {
     1:  {"rand": 0.90, "elo": 1320},   # ~200
-    2:  {"rand": 0.78, "elo": 1320},   # ~400
-    3:  {"rand": 0.62, "elo": 1320},   # ~600
-    4:  {"rand": 0.45, "elo": 1320},   # ~800
-    5:  {"rand": 0.30, "elo": 1320},   # ~1000
-    6:  {"rand": 0.16, "elo": 1350},   # ~1200
-    7:  {"rand": 0.05, "elo": 1500},   # ~1500
-    8:  {"rand": 0.00, "elo": 1750},   # ~1750
-    9:  {"rand": 0.00, "elo": 2000},   # ~2000
-    10: {"rand": 0.00, "elo": None},   # full strength
+    2:  {"rand": 0.80, "elo": 1320},   # ~400
+    3:  {"rand": 0.66, "elo": 1320},   # ~600
+    4:  {"rand": 0.50, "elo": 1320},   # ~800
+    5:  {"rand": 0.28, "elo": 1350},   # ~1100  (raised: 5-10 are noticeably stronger)
+    6:  {"rand": 0.12, "elo": 1500},   # ~1400
+    7:  {"rand": 0.03, "elo": 1750},   # ~1700
+    8:  {"rand": 0.00, "elo": 2050},   # ~2000
+    9:  {"rand": 0.00, "elo": 2400},   # ~2300
+    10: {"rand": 0.00, "elo": None},   # full strength (~2850+)
 }
 _MAX_LEVEL = 10
 
@@ -156,7 +156,9 @@ class Engine:
                 self._engine.configure({"UCI_LimitStrength": False})
         except chess.engine.EngineError:
             pass  # option unsupported -> just play full strength
-        movetime = 1200 if cfg["elo"] is None else 160
+        # Give the stronger levels more thinking time so they actually play up to
+        # their Elo cap (the lower levels stay snappy).
+        movetime = 1500 if cfg["elo"] is None else 180 + level * 35
         result = self._engine.play(board, chess.engine.Limit(time=movetime / 1000.0))
         return result.move
 

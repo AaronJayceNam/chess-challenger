@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=44">
+<link rel="stylesheet" href="/static/style.css?v=45">
 </head>
 <body>
 
@@ -247,22 +247,22 @@
       <div class="card">
         <h3 data-i18n="h_newgame">새 대국 설정</h3>
         <div class="rankbadge" id="aiRank">내 최고 기록: -</div>
-        <label class="field" data-i18n="lbl_difficulty">난이도 — 1(왕초보) ~ 10(그랜드마스터)</label>
+        <label class="field" data-i18n="lbl_difficulty">AI 레이팅 — 200(입문) ~ 2850(최강)</label>
         <input type="range" id="aiLevel" min="1" max="10" value="3" step="1" style="accent-color:var(--accent)">
-        <div id="aiLevelLabel" class="status" style="font-size:14px">레벨 3 · 입문</div>
+        <div id="aiLevelLabel" class="status" style="font-size:14px">레이팅 600 · 아마추어</div>
         <label class="field" data-i18n="lbl_style">AI 스타일 (유명 선수처럼 두기)</label>
         <select id="aiStyle">
-          <option value="default">기본 (난이도대로)</option>
-          <option value="tal">탈 — 공격·희생형 ⚔️</option>
-          <option value="fischer">피셔 — 정확·고전형 🎯</option>
-          <option value="carlsen">카를센 — 실리·엔드게임형 ♟️</option>
-          <option value="petrosian">페트로시안 — 수비형 🛡️</option>
+          <option value="default" data-i18n="opt_style_default">기본 (레이팅대로)</option>
+          <option value="tal" data-i18n="opt_style_tal">탈 — 공격·희생형 ⚔️</option>
+          <option value="fischer" data-i18n="opt_style_fischer">피셔 — 정확·고전형 🎯</option>
+          <option value="carlsen" data-i18n="opt_style_carlsen">카를센 — 실리·엔드게임형 ♟️</option>
+          <option value="petrosian" data-i18n="opt_style_petrosian">페트로시안 — 수비형 🛡️</option>
         </select>
-        <div class="setdesc" id="aiStyleNote" style="display:none">스타일 선택 시 AI는 <b>최고 강함</b>으로, 그 선수 성향으로 둡니다(난이도 무시).</div>
+        <div class="setdesc" id="aiStyleNote" data-i18n="ai_style_note" style="display:none">스타일 선택 시 AI는 <b>최고 강함</b>으로, 그 선수 성향으로 둡니다(레이팅 무시).</div>
         <label class="field" data-i18n="lbl_color">내 색</label>
         <select id="aiColor">
-          <option value="w">백 (내가 선공)</option>
-          <option value="b">흑 (AI가 선공)</option>
+          <option value="w" data-i18n="opt_color_white">백 (내가 선공)</option>
+          <option value="b" data-i18n="opt_color_black">흑 (AI가 선공)</option>
         </select>
         <div style="margin-top:14px;"><button class="primary" id="aiStart" data-i18n="btn_newgame">▶ 새 대국 시작</button></div>
         <div class="status" id="aiStatus"></div>
@@ -528,6 +528,21 @@
   </div>
 </div>
 
+<!-- first-signup onboarding: pick a skill level → sets the starting rating -->
+<div class="overlay hidden" id="skillModal">
+  <div class="auth-box gate-box">
+    <div class="gate-badge">♟</div>
+    <h2 data-i18n="skill_title">실력이 어느 정도세요?</h2>
+    <p class="gate-lead" data-i18n="skill_lead">시작 레이팅을 정하는 데 쓰여요. 언제든 대국을 하면서 조정됩니다.</p>
+    <div class="gate-actions">
+      <button class="ghost skill-opt" data-rating="200"><b data-i18n="skill_new">체스가 처음이에요</b><span data-i18n="skill_new_sub">규칙을 배우는 중 · 레이팅 200</span></button>
+      <button class="ghost skill-opt" data-rating="600"><b data-i18n="skill_beg">가끔 둬요</b><span data-i18n="skill_beg_sub">기물 움직임은 알아요 · 레이팅 600</span></button>
+      <button class="ghost skill-opt" data-rating="900"><b data-i18n="skill_mid">어느 정도 둬요</b><span data-i18n="skill_mid_sub">전술을 조금 알아요 · 레이팅 900</span></button>
+      <button class="ghost skill-opt" data-rating="1250"><b data-i18n="skill_adv">잘 둬요</b><span data-i18n="skill_adv_sub">오프닝·전략을 알아요 · 레이팅 1250</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- win / loss / draw result window — floats over the game screen, closeable -->
 <div class="result-overlay hidden" id="resultOverlay">
   <div class="result-box" id="resultBox">
@@ -549,8 +564,8 @@
   <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=44"></script>
-<script src="/static/app.js?v=44"></script>
+<script src="/static/i18n.js?v=45"></script>
+<script src="/static/app.js?v=45"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {
