@@ -430,7 +430,17 @@ input[type=range]{ accent-color:var(--accent); }
 
 /* full-screen takeover when signed out (not a small modal) */
 #loginGate{ background:linear-gradient(165deg,#0f5132 0%,#2f7d4d 48%,#3f9d63 100%);
-  backdrop-filter:none; padding:28px; z-index:60; }
+  backdrop-filter:none; padding:28px; z-index:60; overflow:hidden; }
+/* faint tilted chessboard behind the content */
+#loginGate::before{ content:""; position:absolute; inset:-20%; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,.06) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.06) 75%),
+    linear-gradient(45deg, rgba(255,255,255,.06) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.06) 75%);
+  background-size:84px 84px; background-position:0 0, 42px 42px; transform:rotate(-9deg); }
+#loginGate .gate-box{ position:relative; z-index:1; }
+.gate-wordmark{ font-size:15px; font-weight:800; letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(255,255,255,.92); margin:2px 0 2px; }
+.gate-tag{ font-size:13px; color:rgba(255,255,255,.72); margin:0 0 16px; letter-spacing:.01em; }
 #loginGate .gate-box{ width:min(440px,92vw); max-height:none; background:transparent;
   border:none; box-shadow:none; color:#fff; padding:0; animation:fadeUp .45s ease both; }
 #loginGate .gate-badge{ width:76px; height:76px; font-size:40px; border-radius:22px;
