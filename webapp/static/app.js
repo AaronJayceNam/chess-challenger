@@ -1727,6 +1727,10 @@ function authClearSession() {
   renderAuthArea();
   updateRatingChip();
   if (typeof updateOgAuthGate === "function") updateOgAuthGate();
+  // now signed out — offer the login gate again (clear the "guest this session"
+  // suppression so it actually reappears after an explicit logout).
+  sessionStorage.removeItem("cc_guest");
+  if (typeof maybeShowLoginGate === "function") maybeShowLoginGate();
 }
 
 function authSetSession(id, token, progress) {
