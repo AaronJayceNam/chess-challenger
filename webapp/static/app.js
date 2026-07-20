@@ -2079,6 +2079,7 @@ $("setDeleteBtn").onclick = async () => {
   if (!AUTH || !AUTH.token) return;
   const T = (typeof t === "function") ? t : ((k) => k);
   if (!confirm(T("del_confirm"))) return;
+  if (!confirm(T("del_confirm2"))) return;   // second, final confirmation
   try {
     await api("/api/auth/delete", { token: AUTH.token });
     authClearSession();

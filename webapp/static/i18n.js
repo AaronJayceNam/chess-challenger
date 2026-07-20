@@ -151,6 +151,7 @@ var I18N = {
   set_del_desc:  { ko: "계정과 서버에 저장된 모든 데이터(레이팅·기록·퍼즐)를 영구 삭제합니다. 되돌릴 수 없습니다.", en: "Permanently delete your account and all server-stored data (rating, history, puzzles). This cannot be undone.", ja: "アカウントとサーバー上の全データ(レート・履歴・パズル)を完全に削除します。取り消せません。", zh: "永久删除您的账号及服务器上的所有数据(等级分·记录·谜题)，不可恢复。", es: "Elimina permanentemente tu cuenta y todos los datos del servidor (rating, historial, puzzles). No se puede deshacer." },
   set_del_btn:   { ko: "계정 삭제", en: "Delete", ja: "削除", zh: "删除", es: "Eliminar" },
   del_confirm:   { ko: "정말 계정을 삭제할까요? 서버에 저장된 레이팅·기록·퍼즐이 모두 사라지며 되돌릴 수 없습니다.", en: "Really delete your account? Your rating, history, and puzzles on the server will be gone permanently.", ja: "本当にアカウントを削除しますか? サーバー上のレート・履歴・パズルは完全に消え、元に戻せません。", zh: "确定要删除账号吗？服务器上的等级分、记录和谜题将永久消失，无法恢复。", es: "¿Seguro que quieres eliminar tu cuenta? Tu rating, historial y puzzles del servidor se perderán para siempre." },
+  del_confirm2:  { ko: "마지막 확인입니다. 정말로 계정을 영구 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.", en: "Final confirmation. Permanently delete your account? This cannot be undone.", ja: "最終確認です。本当にアカウントを完全に削除しますか? この操作は元に戻せません。", zh: "最后确认。确定要永久删除账号吗？此操作无法撤销。", es: "Confirmación final. ¿Eliminar tu cuenta permanentemente? Esto no se puede deshacer." },
   del_done:      { ko: "계정이 삭제되었습니다.", en: "Your account has been deleted.", ja: "アカウントを削除しました。", zh: "账号已删除。", es: "Tu cuenta ha sido eliminada." },
 
   // ----- auth modal -----
