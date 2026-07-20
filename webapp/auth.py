@@ -50,7 +50,14 @@ _SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 # copy-paste with the display spaces still logs in.
 _SMTP_PASS = os.environ.get("SMTP_PASS", "").replace(" ", "")
 _SMTP_FROM = os.environ.get("SMTP_FROM", "").strip() or _SMTP_USER
-_EMAIL_ENABLED = bool(_RESEND_KEY) or bool(_SMTP_USER and _SMTP_PASS)
+
+# Brevo (HTTP API) — no domain needed: verify a single sender email, then send
+# to anyone. BREVO_FROM must be that verified sender address.
+_BREVO_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+_BREVO_FROM = os.environ.get("BREVO_FROM", "").strip() or _SMTP_FROM
+_BREVO_FROM_NAME = os.environ.get("BREVO_FROM_NAME", "").strip() or "Matevio"
+
+_EMAIL_ENABLED = bool(_BREVO_KEY) or bool(_RESEND_KEY) or bool(_SMTP_USER and _SMTP_PASS)
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -92,6 +99,28 @@ def _send_via_resend(to_addr: str, subject: str, body: str) -> bool:
         return 200 <= resp.status < 300
 
 
+def _send_via_brevo(to_addr: str, subject: str, body: str) -> bool:
+    payload = json.dumps({
+        "sender": {"email": _BREVO_FROM, "name": _BREVO_FROM_NAME},
+        "to": [{"email": to_addr}],
+        "subject": subject,
+        "textContent": body,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=payload,
+        headers={
+            "api-key": _BREVO_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Matevio/1.0",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return 200 <= resp.status < 300
+
+
 def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -107,14 +136,17 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
 def _send_email(to_addr: str, subject: str, body: str) -> bool:
     if not _EMAIL_ENABLED:
         return False
-    # Retry a couple of times: Resend sits behind Cloudflare, which occasionally
-    # throws a transient challenge/5xx even for a valid request.
-    attempts = 3 if _RESEND_KEY else 1
+    # Provider priority: Brevo → Resend → SMTP. Retry the HTTP providers a couple
+    # of times to ride out transient 5xx / edge challenges.
+    if _BREVO_KEY:
+        provider, attempts = _send_via_brevo, 3
+    elif _RESEND_KEY:
+        provider, attempts = _send_via_resend, 3
+    else:
+        provider, attempts = _send_via_smtp, 1
     for i in range(attempts):
         try:
-            if _RESEND_KEY:
-                return _send_via_resend(to_addr, subject, body)
-            return _send_via_smtp(to_addr, subject, body)
+            return provider(to_addr, subject, body)
         except Exception:
             if i == attempts - 1:
                 return False

@@ -22,10 +22,20 @@ services:
       # dashboard (values kept via sync:false). Leave all unset to disable email
       # (the one-time recovery code still works).
       #
-      # Option A — Resend (easiest, no app password):
-      #   RESEND_API_KEY=<key from resend.com>
-      #   RESEND_FROM="Matevio <onboarding@resend.dev>"  (until a domain is verified,
-      #     Resend only delivers to your own Resend account email)
+      # Option A — Brevo (recommended, no domain needed). Verify a single sender
+      # email in Brevo, then send to anyone. Free ~300/day.
+      #   BREVO_API_KEY=<v3 API key, "xkeysib-...">
+      #   BREVO_FROM=<your verified sender email>
+      #   BREVO_FROM_NAME=Matevio   (optional display name)
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM
+        sync: false
+      - key: BREVO_FROM_NAME
+        sync: false
+      # Option B — Resend (no app password, but the free shared sender
+      # onboarding@resend.dev often lands in spam without a verified domain):
+      #   RESEND_API_KEY=<key from resend.com>, RESEND_FROM="Matevio <...>"
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
