@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=45">
+<link rel="stylesheet" href="/static/style.css?v=46">
 </head>
 <body>
 
@@ -32,8 +32,8 @@
 
 <!-- shown only inside in-app browsers (KakaoTalk/Naver/etc.), where PWA install & some features are blocked -->
 <div id="inappBanner" class="hidden" style="align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#fff3cd;color:#664d03;font-size:12.5px;line-height:1.4;border-bottom:1px solid #ffe69c">
-  <span>앱 안의 브라우저예요 — <b>Chrome·네이버 웨일 등 기본 브라우저로 열면</b> 설치와 모든 기능을 쓸 수 있어요.</span>
-  <button id="inappCopy" style="border:1px solid #d6b400;background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap">링크 복사</button>
+  <span><span data-i18n="inapp_a">앱 안의 브라우저예요 — </span><b data-i18n="inapp_b">Chrome·네이버 웨일 등 기본 브라우저로 열면</b><span data-i18n="inapp_c"> 설치와 모든 기능을 쓸 수 있어요.</span></span>
+  <button id="inappCopy" data-i18n="inapp_copy" style="border:1px solid #d6b400;background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap">링크 복사</button>
   <button id="inappClose" aria-label="닫기" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;color:#664d03">×</button>
 </div>
 
@@ -41,7 +41,7 @@
   <h1>Matevio</h1>
   <div class="rating-chip hidden" id="ratingChip">레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
-  <button id="installBtn" class="hidden" title="앱 설치" style="order:2;padding:7px 13px;border-radius:999px;border:none;background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px -5px var(--accent)">📲 앱 설치</button>
+  <button id="installBtn" class="hidden" title="앱 설치" data-i18n="install_btn" style="order:2;padding:7px 13px;border-radius:999px;border:none;background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px -5px var(--accent)">📲 앱 설치</button>
   <button class="iconbtn" id="historyBtn" title="게임 기록">📋</button>
   <button class="iconbtn" id="settingsBtn" title="설정">⚙️</button>
   <div class="auth-area" id="authArea"></div>
@@ -87,7 +87,7 @@
       <div class="pbar hidden" id="ogTopBar"></div>
       <div class="boardwrap"><div class="boardstack"><div class="cboard" id="ogBoard"></div></div></div>
       <div class="pbar hidden" id="ogBottomBar"></div>
-      <div class="turn" id="ogTurn"><span class="pill"></span>매치를 시작하면 보드가 열립니다.</div>
+      <div class="turn" id="ogTurn"><span class="pill"></span><span data-i18n="og_turn_wait">매치를 시작하면 보드가 열립니다.</span></div>
       <div class="controls">
         <button class="ghost" id="ogResign" data-i18n="og_resign">🏳️ 기권</button>
         <button class="ghost" id="ogDraw" data-i18n="og_draw">🤝 무승부 제안</button>
@@ -95,17 +95,17 @@
         <button class="ghost" id="ogChatToggle" data-i18n="og_chat_btn">💬 채팅</button>
       </div>
       <div class="og-draw hidden" id="ogDrawPrompt">
-        <b>상대가 무승부를 제안했습니다.</b>
+        <b data-i18n="og_draw_offer">상대가 무승부를 제안했습니다.</b>
         <div class="row">
-          <button class="primary" id="ogDrawAccept">수락</button>
-          <button class="ghost" id="ogDrawDecline">거절</button>
+          <button class="primary" id="ogDrawAccept" data-i18n="og_accept">수락</button>
+          <button class="ghost" id="ogDrawDecline" data-i18n="og_decline">거절</button>
         </div>
       </div>
       <div class="status" id="ogStatus"></div>
       <div class="ogchat hidden" id="ogChat">
         <div class="ogchat-log" id="ogChatLog"></div>
         <div class="ogchat-in">
-          <input type="text" id="ogChatInput" maxlength="300" placeholder="상대에게 메시지…" autocomplete="off">
+          <input type="text" id="ogChatInput" maxlength="300" placeholder="상대에게 메시지…" data-i18n-ph="og_chat_ph" autocomplete="off">
           <button class="ghost" id="ogChatSend" data-i18n="og_send">보내기</button>
         </div>
       </div>
@@ -122,7 +122,7 @@
         </div>
         <div id="ogMatchBody">
           <div class="og-rating"><span data-i18n="og_rating_label">내 레이팅</span> <b id="ogRating">400</b>
-            <span class="small">400에서 시작(0 밑으로는 안 내려감) · 2000점 ≈ 프로 · 상대 레이팅에 따라 변동 폭이 달라집니다</span></div>
+            <span class="small" data-i18n="og_rating_note">400에서 시작(0 밑으로는 안 내려감) · 2000점 ≈ 프로 · 상대 레이팅에 따라 변동 폭이 달라집니다</span></div>
           <label class="field" data-i18n="og_nick_label">닉네임 (계정 아이디)</label>
           <input type="text" id="ogName" value="플레이어" maxlength="20" readonly>
           <div style="margin-top:14px;">
@@ -135,10 +135,10 @@
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="ghost" id="ogCreate" data-i18n="og_create">🔗 초대 코드 만들기</button>
           </div>
-          <div class="og-code hidden" id="ogCodeBox">코드: <b id="ogCode"></b> <span class="small">— 친구에게 알려주세요</span></div>
+          <div class="og-code hidden" id="ogCodeBox"><span data-i18n="og_code_label">코드: </span><b id="ogCode"></b> <span class="small" data-i18n="og_code_hint">— 친구에게 알려주세요</span></div>
           <label class="field" data-i18n="og_join_label">친구가 준 코드 입력</label>
           <div style="display:flex; gap:8px;">
-            <input type="text" id="ogJoinCode" placeholder="예: AB3C" maxlength="4" style="text-transform:uppercase; flex:1">
+            <input type="text" id="ogJoinCode" placeholder="예: AB3C" data-i18n-ph="og_join_ph" maxlength="4" style="text-transform:uppercase; flex:1">
             <button class="ghost" id="ogJoin" data-i18n="og_join">참가</button>
           </div>
         </div>
@@ -150,11 +150,11 @@
       </div>
       <div class="card">
         <h3 data-i18n="h_moves">기보</h3>
-        <div class="movelist" id="ogMoves"><span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
+        <div class="movelist" id="ogMoves"><span class="num" data-i18n="og_moves_empty">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
       </div>
       <div class="card">
         <h3><span data-i18n="h_leaderboard">🏆 리더보드</span> <span id="lbTotal" style="color:var(--muted);font-weight:400"></span></h3>
-        <div class="lb" id="lbList"><div class="hist-empty">불러오는 중…</div></div>
+        <div class="lb" id="lbList"><div class="hist-empty" data-i18n="lb_loading">불러오는 중…</div></div>
         <p class="auth-hint" style="margin-top:10px" data-i18n="og_lb_hint">로그인한 플레이어만 순위에 올라갑니다.</p>
       </div>
       <div class="card">
@@ -192,8 +192,8 @@
         <button data-topic="promotion" data-i18n="pc_promo">승격</button>
       </div>
       <div class="legend" style="margin-top:10px">
-        <span><span class="lg move"></span> 이동 가능</span>
-        <span><span class="lg cap"></span> 잡기 (상대 기물이 있을 때)</span>
+        <span><span class="lg move"></span> <span data-i18n="learn_lg_move">이동 가능</span></span>
+        <span><span class="lg cap"></span> <span data-i18n="learn_lg_cap">잡기 (상대 기물이 있을 때)</span></span>
       </div>
     </div>
     <div style="flex:1; min-width:300px; max-width:480px;">
@@ -204,14 +204,14 @@
       <div class="card">
         <h3 data-i18n="learn_rules_title">체스의 기본 규칙</h3>
         <div class="learn-rules">
-          <p><b>🎯 목표</b> — 상대 <b>킹</b>을 빠져나갈 수 없게 가두면(체크메이트) 이깁니다. 킹은 실제로 잡지 않습니다.</p>
-          <p><b>▶ 차례</b> — <b>백이 먼저</b> 두고, 한 수씩 번갈아 둡니다.</p>
-          <p><b>＋ 체크</b> — 킹이 공격받는 상태. 그 수에 <b>반드시</b> 체크를 벗어나야 합니다(막기·피하기·잡기).</p>
-          <p><b>＃ 체크메이트</b> — 체크를 어떤 방법으로도 벗어날 수 없으면 게임 종료(패배).</p>
-          <p><b>＝ 스테일메이트</b> — 둘 수 있는 합법 수가 없는데 <b>체크는 아닌</b> 경우 → <b>무승부</b>.</p>
-          <p><b>🤝 무승부</b> — 스테일메이트, 기물 부족, 같은 자리 3회 반복, 50수 동안 잡기·폰 진행 없음, 합의.</p>
-          <p><b>⚖ 기물 가치(참고)</b> — 폰 1 · 나이트·비숍 3 · 룩 5 · 퀸 9 · 킹 ∞</p>
-          <p style="color:var(--muted)">위 버튼으로 캐슬링·앙파상·승격 같은 특수 규칙도 보드에서 직접 확인하세요.</p>
+          <p><b data-i18n="rule_goal_t">🎯 목표</b><span data-i18n="rule_goal_d"> — 상대 킹을 빠져나갈 수 없게 가두면(체크메이트) 이깁니다. 킹은 실제로 잡지 않습니다.</span></p>
+          <p><b data-i18n="rule_turn_t">▶ 차례</b><span data-i18n="rule_turn_d"> — 백이 먼저 두고, 한 수씩 번갈아 둡니다.</span></p>
+          <p><b data-i18n="rule_check_t">＋ 체크</b><span data-i18n="rule_check_d"> — 킹이 공격받는 상태. 그 수에 반드시 체크를 벗어나야 합니다(막기·피하기·잡기).</span></p>
+          <p><b data-i18n="rule_mate_t">＃ 체크메이트</b><span data-i18n="rule_mate_d"> — 체크를 어떤 방법으로도 벗어날 수 없으면 게임 종료(패배).</span></p>
+          <p><b data-i18n="rule_stale_t">＝ 스테일메이트</b><span data-i18n="rule_stale_d"> — 둘 수 있는 합법 수가 없는데 체크는 아닌 경우 → 무승부.</span></p>
+          <p><b data-i18n="rule_draw_t">🤝 무승부</b><span data-i18n="rule_draw_d"> — 스테일메이트, 기물 부족, 같은 자리 3회 반복, 50수 동안 잡기·폰 진행 없음, 합의.</span></p>
+          <p><b data-i18n="rule_value_t">⚖ 기물 가치(참고)</b><span data-i18n="rule_value_d"> — 폰 1 · 나이트·비숍 3 · 룩 5 · 퀸 9 · 킹 ∞</span></p>
+          <p style="color:var(--muted)" data-i18n="rule_special">위 버튼으로 캐슬링·앙파상·승격 같은 특수 규칙도 보드에서 직접 확인하세요.</p>
         </div>
       </div>
     </div>
@@ -237,7 +237,7 @@
         <div class="boardstack"><div class="cboard" id="aiBoard"></div></div>
       </div>
       <div class="pbar hidden" id="aiBottomBar"></div>
-      <div class="turn" id="aiTurn"><span class="pill"></span>새 대국을 시작하세요.</div>
+      <div class="turn" id="aiTurn"><span class="pill"></span><span data-i18n="turn_start">새 대국을 시작하세요.</span></div>
       <div class="controls">
         <button class="ghost" id="aiResign" data-i18n="btn_resign_ai">🏳️ 기권하고 평가받기</button>
         <button class="ghost" id="aiFlip" data-i18n="btn_flip">⇅ 보드 뒤집기</button>
@@ -269,13 +269,13 @@
       </div>
       <div class="card">
         <h3 data-i18n="h_moves">기보</h3>
-        <div class="movelist" id="aiMoves"><span class="num">대국을 시작하면 여기에 기보가 쌓입니다.</span></div>
+        <div class="movelist" id="aiMoves"><span class="num" data-i18n="ai_moves_empty">대국을 시작하면 여기에 기보가 쌓입니다.</span></div>
       </div>
       <div class="card">
         <h3 data-i18n="h_after">경기 종료 후</h3>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 8px">
-          대국이 끝나면 <b>자동으로 AI가 모든 수를 평가</b>하고 리뷰 화면으로 넘어갑니다.</p>
-        <button class="ghost hidden" id="aiAnalyze">🤖 평가 다시 보기</button>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 8px" data-i18n="ai_after_desc">
+          대국이 끝나면 자동으로 AI가 모든 수를 평가하고 리뷰 화면으로 넘어갑니다.</p>
+        <button class="ghost hidden" id="aiAnalyze" data-i18n="ai_reeval">🤖 평가 다시 보기</button>
       </div>
     </div>
   </div>
@@ -292,7 +292,7 @@
     <div>
       <div class="boardwrap"><div class="boardstack" id="pzStack">
         <div class="cboard" id="pzBoard"></div>
-        <div class="pz-flash" id="pzFlash">오답!</div>
+        <div class="pz-flash" id="pzFlash" data-i18n="pz_wrong">오답!</div>
       </div></div>
       <div class="turn" id="pzPrompt">퍼즐을 불러오는 중…</div>
       <div class="status" id="pzFeedback" style="font-size:15px; min-height:22px;"></div>
@@ -340,12 +340,12 @@
     </div>
     <div class="card">
       <h3 data-i18n="gr_chart">레이팅 성장 그래프</h3>
-      <div id="grChartBox"><div class="hist-empty">온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.</div></div>
+      <div id="grChartBox"><div class="hist-empty" data-i18n="gr_chart_empty">온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.</div></div>
       <div class="grstats" id="grStats"></div>
     </div>
     <div class="card">
       <h3 data-i18n="gr_proj">미래 레이팅 예측</h3>
-      <div id="grProjection"><div class="hist-empty">최근 대국 데이터가 쌓이면 예측이 표시됩니다.</div></div>
+      <div id="grProjection"><div class="hist-empty" data-i18n="gr_proj_empty">최근 대국 데이터가 쌓이면 예측이 표시됩니다.</div></div>
       <p class="setdesc" style="margin-top:8px" data-i18n="gr_proj_note">최근 온라인 대국 추세를 단순 연장한 추정치입니다 — 참고용이에요.</p>
     </div>
   </div>
@@ -389,27 +389,27 @@
         <input type="range" id="rvSlider" min="0" value="0">
       </div>
       <div class="legend">
-        <span style="color:#15781b">▮ 추천 수(녹색 화살표)</span>
-        <span style="color:#2e7d32">● 최선</span>
-        <span style="color:#c9a227">● 부정확</span>
-        <span style="color:#e07a1f">● 실수</span>
-        <span style="color:#c62828">● 블런더</span>
+        <span style="color:#15781b">▮ <span data-i18n="rv_lg_reco">추천 수(녹색 화살표)</span></span>
+        <span style="color:#2e7d32">● <span data-i18n="cls_best">최선</span></span>
+        <span style="color:#c9a227">● <span data-i18n="cls_inaccuracy">부정확</span></span>
+        <span style="color:#e07a1f">● <span data-i18n="cls_mistake">실수</span></span>
+        <span style="color:#c62828">● <span data-i18n="cls_blunder">블런더</span></span>
       </div>
     </div>
 
     <div style="flex:1; min-width:320px; max-width:520px;">
       <div class="card"><svg class="graph" id="rvGraph" preserveAspectRatio="none"></svg></div>
       <div class="card detail" id="rvDetail"></div>
-      <div class="card"><h3>기보</h3><div class="movelist" id="rvMoves"></div></div>
+      <div class="card"><h3 data-i18n="h_moves">기보</h3><div class="movelist" id="rvMoves"></div></div>
       <div class="card">
         <h3 data-i18n="rv_share_title">공유 / 내보내기</h3>
-        <p style="font-size:13px;color:#9aa0a6;margin:0 0 10px">
+        <p style="font-size:13px;color:#9aa0a6;margin:0 0 10px" data-i18n="rv_share_desc">
           AI가 만든 수별 해설이 담긴 공유본을 만듭니다. 보드의 화살표/강조도 함께 들어갑니다.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="primary" id="rvShare">🔗 AI 해설 공유본(HTML) 저장</button>
-          <button class="ghost" id="rvExport">⬇ 주석 PGN</button>
+          <button class="primary" id="rvShare" data-i18n="rv_share_btn">🔗 AI 해설 공유본(HTML) 저장</button>
+          <button class="ghost" id="rvExport" data-i18n="rv_export_btn">⬇ 주석 PGN</button>
         </div>
-        <div class="status" id="rvShareStatus">공유본은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.</div>
+        <div class="status" id="rvShareStatus" data-i18n="rv_share_status">공유본은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.</div>
       </div>
       <div class="card">
         <h3 data-i18n="rv_coach_title">코치 평 (LLM, 선택)</h3>
@@ -424,7 +424,7 @@
 </div><!-- /.shell -->
 
 <div class="overlay hidden" id="overlay">
-  <div class="box"><div class="spin"></div><div id="overlayMsg">엔진이 분석 중입니다…</div></div>
+  <div class="box"><div class="spin"></div><div id="overlayMsg" data-i18n="overlay_analyzing">엔진이 분석 중입니다…</div></div>
 </div>
 
 <!-- settings modal -->
@@ -557,15 +557,15 @@
 </div>
 
 <footer class="appfoot">
-  체스 엔진 <a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener noreferrer">Stockfish</a> ·
+  <span data-i18n="foot_engine">체스 엔진</span> <a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener noreferrer">Stockfish</a> ·
   <a href="https://github.com/niklasf/python-chess" target="_blank" rel="noopener noreferrer">python-chess</a> ·
-  <b>GPL v3</b> (수정 없이 사용) ·
-  <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer">소스 코드</a> ·
-  <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>
+  <b>GPL v3</b> <span data-i18n="foot_unmod">(수정 없이 사용)</span> ·
+  <a href="https://github.com/AaronJayceNam/chess-challenger" target="_blank" rel="noopener noreferrer" data-i18n="foot_source">소스 코드</a> ·
+  <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=45"></script>
-<script src="/static/app.js?v=45"></script>
+<script src="/static/i18n.js?v=46"></script>
+<script src="/static/app.js?v=46"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {
@@ -601,7 +601,7 @@
     });
     if (btn) btn.addEventListener("click", function () {
       if (!deferred) {
-        alert("이미 설치되어 있거나, 브라우저 메뉴(⋮ → ‘앱 설치’ / 홈 화면에 추가)에서 설치할 수 있어요. 아이폰은 사파리 공유 → ‘홈 화면에 추가’.");
+        alert(typeof t === "function" ? t("install_hint") : "이미 설치되어 있거나, 브라우저 메뉴(⋮ → ‘앱 설치’ / 홈 화면에 추가)에서 설치할 수 있어요. 아이폰은 사파리 공유 → ‘홈 화면에 추가’.");
         return;
       }
       deferred.prompt();
@@ -621,7 +621,7 @@
     var c = document.getElementById("inappClose"); if (c) c.onclick = function () { b.style.display = "none"; };
     var cp = document.getElementById("inappCopy");
     if (cp) cp.onclick = function () {
-      try { navigator.clipboard.writeText(location.href); cp.textContent = "복사됨 ✓"; }
+      try { navigator.clipboard.writeText(location.href); cp.textContent = (typeof t === "function" ? t("inapp_copied") : "복사됨 ✓"); }
       catch (e) { cp.textContent = location.href; }
     };
   })();

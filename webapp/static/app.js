@@ -305,16 +305,16 @@ document.querySelectorAll("[data-goto]").forEach((b) => {
 // --------------------------------------------------------------------------- //
 (async () => {
   try {
+    { const _el = $("sfStatus"); if (_el) _el.textContent = t("sf_checking"); }
     const h = await (await fetch("/api/health")).json();
     const el = $("sfStatus");
     if (h.stockfish) {
-      el.innerHTML = "엔진: <b>Stockfish 연결됨</b>" +
-        (h.coaching ? " · LLM 코칭 가능" : " · LLM 코칭 비활성(키 없음)");
+      el.innerHTML = t("sf_connected") + (h.coaching ? t("sf_coach_on") : t("sf_coach_off"));
     } else {
       el.className = "sf bad";
-      el.innerHTML = "엔진: <b>Stockfish 없음</b> — STOCKFISH_PATH 설정 필요";
+      el.innerHTML = t("sf_missing");
     }
-  } catch (e) { $("sfStatus").textContent = "상태 확인 실패: " + e.message; }
+  } catch (e) { $("sfStatus").textContent = t("sf_check_fail") + e.message; }
 })();
 
 // =========================================================================== //
@@ -367,7 +367,7 @@ function setStatus(id, msg, err) {
 function isOffline(e) {
   return /failed to fetch|networkerror|load failed|connection refused/i.test((e && e.message) || "");
 }
-const OFFLINE_MSG = "서버에 연결할 수 없습니다. 잠시 후 이 페이지를 새로고침(F5)하세요.";
+// Network-error message (translated live via t("offline_msg")).
 
 // =========================================================================== //
 // RATING + GAME HISTORY — per device (localStorage).
@@ -421,7 +421,7 @@ function updateRatingChip() {
   const loggedIn = !!(typeof AUTH !== "undefined" && AUTH && AUTH.token);
   if (el) {
     el.classList.toggle("hidden", !loggedIn);   // no rating shown when logged out
-    if (loggedIn) el.innerHTML = `레이팅 <b>${ratingHTML(myRating())}</b>`;
+    if (loggedIn) el.innerHTML = `${t("word_rating")} <b>${ratingHTML(myRating())}</b>`;
   }
   const og = $("ogRating"); if (og && loggedIn) og.innerHTML = ratingHTML(myRating());
   if (typeof refreshDashboard === "function") refreshDashboard();
@@ -441,9 +441,9 @@ function addHistory(entry) {
 function renderHistory() {
   const el = $("ogHistory"); if (!el) return;
   const h = gameHistory();
-  if (!h.length) { el.innerHTML = '<div class="hist-empty">아직 기록된 대국이 없습니다.</div>'; return; }
+  if (!h.length) { el.innerHTML = `<div class="hist-empty">${t("hist_empty")}</div>`; return; }
   el.innerHTML = h.slice(0, 12).map((g) => {
-    const res = g.result === "win" ? '<b class="w">승</b>' : g.result === "loss" ? '<b class="l">패</b>' : '<b class="d">무</b>';
+    const res = g.result === "win" ? `<b class="w">${t("res_short_win")}</b>` : g.result === "loss" ? `<b class="l">${t("res_short_loss")}</b>` : `<b class="d">${t("res_short_draw")}</b>`;
     const delta = (g.ratingDelta === null || g.ratingDelta === undefined) ? '<span class="dim">—</span>'
       : (g.ratingDelta >= 0 ? `<span class="up">+${g.ratingDelta}</span>` : `<span class="down">${g.ratingDelta}</span>`);
     const mode = g.mode === "online" ? "🌐" : "🤖";
@@ -459,14 +459,14 @@ let LAST_REQ = null;
 
 async function runAnalyze(req, statusId = "aiStatus") {
   LAST_REQ = req;
-  overlay(true, "엔진이 모든 수를 평가하고 있습니다… (보통 2~5초)");
+  overlay(true, t("analyze_running"));
   try {
     const view = await api("/api/analyze", req);
     loadReview(view);
     switchTab("review");
   } catch (e) {
     overlay(false);
-    setStatus(statusId, isOffline(e) ? OFFLINE_MSG : "분석 실패: " + e.message, true);
+    setStatus(statusId, isOffline(e) ? t("offline_msg") : t("analyze_fail") + e.message, true);
     return;
   }
   overlay(false);
@@ -479,8 +479,8 @@ function clsColor(c) {
     Inaccuracy: "#c9a227", Mistake: "#e07a1f", Blunder: "#c62828" })[c] || "#ddd";
 }
 function clsLabel(c) {
-  return ({ Best: "최선", Excellent: "훌륭함", Good: "무난", Inaccuracy: "부정확",
-    Mistake: "실수", Blunder: "블런더" })[c] || c;
+  return ({ Best: t("cls_best"), Excellent: t("cls_excellent"), Good: t("cls_good"), Inaccuracy: t("cls_inaccuracy"),
+    Mistake: t("cls_mistake"), Blunder: t("cls_blunder") })[c] || c;
 }
 
 function loadReview(view) {
@@ -490,8 +490,8 @@ function loadReview(view) {
 
   $("rvSummary").innerHTML =
     `<b>${view.title}</b> &nbsp; <span style="color:#9aa0a6">${view.opening || ""}</span><br>` +
-    `정확도(둔 수가 최선에 얼마나 가까웠는지) — ` +
-    `<b>백 ${view.white.accuracy.toFixed(1)}%</b> &nbsp;·&nbsp; <b>흑 ${view.black.accuracy.toFixed(1)}%</b>`;
+    t("rv_accuracy_label") +
+    `<b>${t("side_white")} ${view.white.accuracy.toFixed(1)}%</b> &nbsp;·&nbsp; <b>${t("side_black")} ${view.black.accuracy.toFixed(1)}%</b>`;
 
   // movelist
   let html = "";
@@ -511,19 +511,19 @@ function loadReview(view) {
 
 function rvDetail() {
   if (RV.idx === 0) {
-    $("rvDetail").innerHTML = '<div class="r">시작 포지션입니다. ▶ 또는 → 키로 진행하세요.</div>';
+    $("rvDetail").innerHTML = `<div class="r">${t("rv_start_pos")}</div>`;
     return;
   }
   const m = RV.view.moves[RV.idx - 1];
-  const turn = m.color === "white" ? "백" : "흑";
+  const turn = m.color === "white" ? t("side_white") : t("side_black");
   const tag = m.isBest
-    ? '<span class="tag" style="background:#2e7d32;color:#fff">최선</span>'
+    ? `<span class="tag" style="background:#2e7d32;color:#fff">${t("cls_best")}</span>`
     : `<span class="tag" style="background:${m.clsColor}">${clsLabel(m.classification)} ${m.symbol}</span>`;
-  const missed = m.missedWin ? ' <b style="color:#c62828">· 승리 놓침</b>' : "";
+  const missed = m.missedWin ? ` <b style="color:#c62828">${t("rv_missed_win")}</b>` : "";
   const explain = m.explain
     ? `<div class="aiexplain">🤖 ${escapeHtml(m.explain)}</div>` : "";
   const pv = (m.pv || []).slice(0, 8).join(" ");
-  const pvRow = pv ? `<div class="r">예상 진행 수순: <span class="pv">${pv}</span></div>` : "";
+  const pvRow = pv ? `<div class="r">${t("rv_pv_label")}<span class="pv">${pv}</span></div>` : "";
   $("rvDetail").innerHTML =
     `<div><b style="font-size:16px">${m.moveNumber}${m.color === "white" ? "." : "..."} ${turn} ${m.san}${m.symbol}</b> &nbsp; ${tag}${missed}</div>` +
     explain +
@@ -584,21 +584,21 @@ function renderCoach(coach) {
   if (coach.available && coach.text) {
     el.innerHTML = `<div style="white-space:pre-wrap; font-size:14px; line-height:1.6">${escapeHtml(coach.text)}</div>`;
   } else if (coach.available) {
-    el.innerHTML = `<div style="color:#9aa0a6; font-size:14px">LLM 코칭을 생성하려면 아래 버튼을 누르세요.</div>` +
-      `<button class="ghost" id="coachBtn" style="margin-top:8px">🧠 코치 평 생성</button>`;
+    el.innerHTML = `<div style="color:#9aa0a6; font-size:14px">${t("coach_prompt")}</div>` +
+      `<button class="ghost" id="coachBtn" style="margin-top:8px">${t("coach_btn")}</button>`;
     $("coachBtn").onclick = genCoach;
   } else {
-    el.innerHTML = `<div style="color:#9aa0a6; font-size:14px">${escapeHtml(coach.message || "LLM 코칭 비활성화됨.")}</div>`;
+    el.innerHTML = `<div style="color:#9aa0a6; font-size:14px">${escapeHtml(coach.message || t("coach_disabled"))}</div>`;
   }
 }
 async function genCoach() {
   if (!LAST_REQ) return;
-  overlay(true, "코치가 리포트를 작성 중입니다…");
+  overlay(true, t("coach_running"));
   try {
     const view = await api("/api/analyze", { ...LAST_REQ, coach: true });
     RV.view.coach = view.coach;
     renderCoach(view.coach);
-  } catch (e) { renderCoach({ available: false, message: "코칭 오류: " + e.message }); }
+  } catch (e) { renderCoach({ available: false, message: t("coach_err") + e.message }); }
   overlay(false);
 }
 function escapeHtml(s) {
@@ -632,13 +632,13 @@ $("rvExport").onclick = () => {
   });
   txt += body + v.result + "\n";
   download("annotated.pgn", txt, "application/x-chess-pgn");
-  setStatus("rvShareStatus", "AI 해설이 담긴 주석 PGN을 저장했습니다.");
+  setStatus("rvShareStatus", t("rv_pgn_saved"));
 };
 
 // ---- share: standalone HTML study with AI explanations + arrows ----
 $("rvShare").onclick = async () => {
   const { v, white, black } = reviewMeta();
-  setStatus("rvShareStatus", "AI 해설 공유본 생성 중…");
+  setStatus("rvShareStatus", t("rv_share_gen"));
   try {
     const res = await fetch("/api/study_html", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -646,15 +646,15 @@ $("rvShare").onclick = async () => {
         moves: v.moves.map((m) => m.uci),
         comments: aiCommentsByIndex(),
         shapes: {},
-        white, black, title: v.title || "체스 AI 해설",
+        white, black, title: v.title || t("rv_study_title"),
       }),
     });
     if (!res.ok) throw new Error(await res.text());
     const html = await res.text();
     const name = (v.title || "study").replace(/[^\w가-힣 -]/g, "").trim() + ".html";
     download(name || "study.html", html, "text/html");
-    setStatus("rvShareStatus", "저장 완료! 이 파일은 인터넷 없이 열립니다. 사람들에게 그대로 보내세요.");
-  } catch (e) { setStatus("rvShareStatus", "생성 실패: " + e.message, true); }
+    setStatus("rvShareStatus", t("rv_share_done"));
+  } catch (e) { setStatus("rvShareStatus", t("rv_share_fail") + e.message, true); }
 };
 
 // =========================================================================== //
@@ -685,7 +685,7 @@ function showResult(o) {
   if (o.badge) {
     badge.classList.remove("hidden");
     badge.classList.toggle("master", !!o.badge.master);
-    badge.innerHTML = `<span class="small">${o.badge.small || "🎉 새 기록 달성"}</span>${o.badge.text}`;
+    badge.innerHTML = `<span class="small">${o.badge.small || t("badge_newrecord")}</span>${o.badge.text}`;
   } else { badge.classList.add("hidden"); }
   const act = $("resultActions"); act.innerHTML = "";
   (o.actions || []).forEach((a) => {
@@ -780,7 +780,7 @@ function onAiClick(sq) {
 }
 
 // ---- AI opponent identity for the player bar (name + rating) ----
-const AI_STYLE_LABEL = { tal: "탈", fischer: "피셔", carlsen: "카를센", petrosian: "페트로시안" };
+const AI_STYLE_LABEL = { tal: "name_tal", fischer: "name_fischer", carlsen: "name_carlsen", petrosian: "name_petrosian" };
 // 10-level ladder: title (호칭) per level + a friendly display rating that
 // shows the widening gap. Titles are translated via i18n (lvl_1..lvl_10).
 const AI_LEVEL_RATING = [0, 200, 400, 600, 800, 1100, 1400, 1700, 2000, 2300, 2850];
@@ -791,7 +791,7 @@ function aiLevelWord() { return (typeof t === "function") ? t("word_rating") : "
 function aiLevelText(n) { return `${aiLevelWord()} ${aiRatingOf(n)} · ${aiTitle(n)}`; }
 function aiOppInfo() {
   if (AIG.style && AIG.style !== "default")
-    return { name: `${AI_STYLE_LABEL[AIG.style] || "AI"} AI`, rating: (typeof t === "function") ? t("word_max") : "최강" };
+    return { name: `${t(AI_STYLE_LABEL[AIG.style]) || "AI"} AI`, rating: (typeof t === "function") ? t("word_max") : "최강" };
   const lv = AIG.level;
   return { name: `AI · ${aiTitle(lv)}`, rating: aiRatingOf(lv) };
 }
@@ -809,7 +809,7 @@ function renderAiPbars() {
     `<span class="pv-turn ${active ? "active" : ""}"></span>`;
   const opp = aiOppInfo();
   top.innerHTML = html(opp.name, opp.rating, false, turnOf(theirs));
-  bottom.innerHTML = html(AUTH.id || "나", myRating(), true, turnOf(mine));
+  bottom.innerHTML = html(AUTH.id || t("og_me"), myRating(), true, turnOf(mine));
 }
 
 function updateAiTurn() {
@@ -828,7 +828,7 @@ function updateAiTurn() {
 function renderAiMoves() {
   const el = $("aiMoves");
   const san = (AIG.state && AIG.state.san) ? AIG.state.san : [];
-  if (!san.length) { el.innerHTML = '<span class="num">대국을 시작하면 여기에 기보가 쌓입니다.</span>'; return; }
+  if (!san.length) { el.innerHTML = `<span class="num">${t("ai_moves_empty")}</span>`; return; }
   let html = "";
   san.forEach((s, i) => {
     if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
@@ -844,7 +844,7 @@ async function aiHumanMove(uci) {
   const moves = [...AIG.moves, uci];
   let st;
   try { st = await api("/api/legal", { moves }); }
-  catch (e) { renderAiBoard(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "수 처리 오류: " + e.message, true); return; }
+  catch (e) { renderAiBoard(); setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
   AIG.moves = moves; AIG.state = st;
   renderAiBoard(); renderAiMoves(); updateAiTurn();   // authoritative — fixes any special move / check
   playMoveSfx(st);
@@ -858,7 +858,7 @@ async function aiReply() {
   AIG.thinking = true; updateAiTurn();
   let res;
   try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level, style: AIG.style }); }
-  catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : "AI 응수 오류: " + e.message, true); return; }
+  catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_reply_err") + e.message, true); return; }
   AIG.thinking = false;
   if (res.move) AIG.moves.push(res.move);
   AIG.state = res;
@@ -872,8 +872,8 @@ function aiPlayerNames() {
   const lv = AIG.level;
   const ai = `AI ${aiTitle(lv)}`;
   return AIG.human === "w"
-    ? { white: "나(You)", black: ai }
-    : { white: ai, black: "나(You)" };
+    ? { white: t("ai_you"), black: ai }
+    : { white: ai, black: t("ai_you") };
 }
 
 function aiEndGame() {
@@ -924,7 +924,7 @@ async function aiStart() {
   $("aiAnalyze").classList.add("hidden");
   const T = (typeof t === "function") ? t : ((k) => k);
   try { AIG.state = await api("/api/legal", { moves: [] }); }
-  catch (e) { AIG.started = false; setStatus("aiStatus", isOffline(e) ? OFFLINE_MSG : T("err_start") + ": " + e.message, true); return; }
+  catch (e) { AIG.started = false; setStatus("aiStatus", isOffline(e) ? t("offline_msg") : T("err_start") + ": " + e.message, true); return; }
   const who = AIG.style !== "default" ? T("style_" + AIG.style) : aiLevelText(AIG.level);
   const side = AIG.human === "w" ? T("side_white") : T("side_black");
   setStatus("aiStatus", T("ai_start_msg").replace("{who}", who).replace("{side}", side));
@@ -945,22 +945,22 @@ $("aiStyle").onchange = (e) => {
 $("aiStart").onclick = aiStart;
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
 $("aiResign").onclick = () => {
-  if (!AIG.moves.length) { setStatus("aiStatus", "먼저 대국을 시작하고 한 수 이상 두세요.", true); return; }
+  if (!AIG.moves.length) { setStatus("aiStatus", t("ai_need_move"), true); return; }
   AIG.over = true; markGameOver(); renderAiBoard(); updateAiTurn();   // stay full-screen
   const { white, black } = aiPlayerNames();
   const moves = [...AIG.moves], lv = AIG.level;
-  setStatus("aiStatus", "기권했습니다.");
+  setStatus("aiStatus", t("ai_resigned"));
   $("aiAnalyze").classList.remove("hidden");
   addHistory({ mode: "ai", opponent: `AI ${aiTitle(lv)}`, result: "loss", ratingDelta: null,
     moves: [...moves], white, black });
   // AI review is OPTIONAL — offered as a button, not run automatically.
   showResult({
-    kind: "loss", icon: "🏳️", title: "기권하셨습니다",
-    sub: `AI ${aiTitle(lv)}에게 기권했습니다`,
+    kind: "loss", icon: "🏳️", title: t("ai_resign_title"),
+    sub: t("ai_resign_sub").replace("{ai}", aiTitle(lv)),
     actions: [
-      { label: "🤖 AI 평가 보기", primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 90 }) },
-      { label: "🔄 새 대국", onClick: () => aiStart() },
-      { label: "🚪 나가기", onClick: () => exitImmersive() },
+      { label: t("ai_review_btn"), primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 90 }) },
+      { label: t("ai_again_btn"), onClick: () => aiStart() },
+      { label: t("exit_btn"), onClick: () => exitImmersive() },
     ],
   });
 };
@@ -984,6 +984,7 @@ function pzLoadSolved() {
 function pzSaveSolved() { localStorage.setItem("cc_puzzles_solved", JSON.stringify([...PZ.solved])); authSchedulePush(); }
 
 async function loadPuzzles() {
+  $("pzPrompt").textContent = t("pz_loading");
   try { PZ.list = await (await fetch("/static/puzzles.json")).json(); }
   catch (e) { PZ.list = []; }
   if (PZ.list.length) {
@@ -991,7 +992,7 @@ async function loadPuzzles() {
     let idx = PZ.list.findIndex((p) => !PZ.solved.has(p.level));  // resume at first unsolved
     if (idx < 0) idx = 0;
     loadPuzzle(idx);
-  } else { $("pzPrompt").textContent = "퍼즐을 불러오지 못했습니다."; }
+  } else { $("pzPrompt").textContent = t("pz_load_fail"); }
 }
 
 function renderPzGrid() {
@@ -1009,7 +1010,7 @@ function renderPzGrid() {
     grid.appendChild(b);
   }
   const solvedCount = PZ.list.filter((p) => PZ.solved.has(p.level)).length;
-  $("pzProgress").textContent = `(푼 문제 ${solvedCount}/${PZ.list.length})`;
+  $("pzProgress").textContent = t("pz_grid_progress").replace("{n}", solvedCount).replace("{total}", PZ.list.length);
 }
 
 async function loadPuzzle(idx) {
@@ -1022,15 +1023,15 @@ async function loadPuzzle(idx) {
   if (!pzUnlocked(p.level)) {       // sequential lock — must beat the previous level first
     PZ.locked = true; PZ.fen = p.fen; PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
     PZ.legal = { legal: {} };
-    $("pzPrompt").innerHTML = `🔒 #${p.level} 잠김 — 앞 단계 #${p.level - 1}을(를) 먼저 깨야 합니다.`;
-    setStatus("pzFeedback", "이전 단계를 먼저 해결하세요.", true);
+    $("pzPrompt").innerHTML = t("pz_locked").replace("{n}", p.level).replace("{prev}", p.level - 1);
+    setStatus("pzFeedback", t("pz_locked_fb"), true);
     renderPzBoard();
     return;
   }
   PZ.locked = false;
   PZ.baseFen = p.fen; PZ.fen = p.fen; PZ.mateIn = p.mateIn; PZ.movesLeft = p.mateIn;
   PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
-  $("pzPrompt").innerHTML = `#${p.level} — 백이 두어 <b>${p.mateIn}수</b> 만에 체크메이트! (백 차례)`;
+  $("pzPrompt").innerHTML = t("pz_prompt").replace("{n}", p.level).replace("{mate}", p.mateIn);
   $("pzFeedback").textContent = ""; $("pzFeedback").className = "status";
   try { PZ.legal = await api("/api/legal_fen", { fen: PZ.fen }); }
   catch (e) { PZ.legal = { legal: {} }; }
@@ -1097,7 +1098,7 @@ async function pzUserMove(uci) {
   const prevFen = PZ.fen, prevLast = PZ.lastUci;
   let res;
   try { res = await api("/api/puzzle_move", { fen: PZ.fen, move: uci, mateIn: PZ.movesLeft }); }
-  catch (e) { PZ.busy = false; setStatus("pzFeedback", isOffline(e) ? OFFLINE_MSG : "오류: " + e.message, true); renderPzBoard(); return; }
+  catch (e) { PZ.busy = false; setStatus("pzFeedback", isOffline(e) ? t("offline_msg") : t("pz_err") + e.message, true); renderPzBoard(); return; }
 
   if (!res.correct) {
     // play the move, then shake the board + flash a big "오답!", then revert
@@ -1128,7 +1129,7 @@ async function pzUserMove(uci) {
   PZ.fen = res.fen; PZ.lastUci = res.replyUci; PZ.movesLeft = res.mateIn;
   renderPzBoard();
   if (res.replyUci) animateMove($("pzBoard"), res.replyUci.slice(0, 2), res.replyUci.slice(2, 4), "w");
-  setStatus("pzFeedback", `✅ 좋아요! 메이트까지 ${res.mateIn}수 남았습니다.`, false);
+  setStatus("pzFeedback", t("pz_correct").replace("{n}", res.mateIn), false);
   $("pzFeedback").style.color = "#7bd88f";
   try { PZ.legal = await api("/api/legal_fen", { fen: PZ.fen }); } catch (e) { PZ.legal = { legal: {} }; }
   PZ.busy = false;
@@ -1139,10 +1140,10 @@ function pzSolved() {
   const p = PZ.list[PZ.idx];
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
   showResult({
-    kind: "win", icon: "🏆", title: "정답!", sub: `퍼즐 #${p.level} · ${p.mateIn}수 메이트 성공!`,
+    kind: "win", icon: "🏆", title: t("pz_solved_title"), sub: t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn),
     actions: [
-      { label: "다음 퍼즐 ▶", primary: true, onClick: () => loadPuzzle(Math.min(PZ.list.length - 1, PZ.idx + 1)) },
-      { label: "이 퍼즐 다시", onClick: () => loadPuzzle(PZ.idx) },
+      { label: t("pz_next_btn"), primary: true, onClick: () => loadPuzzle(Math.min(PZ.list.length - 1, PZ.idx + 1)) },
+      { label: t("pz_retry_btn"), onClick: () => loadPuzzle(PZ.idx) },
     ],
   });
 }
@@ -1158,11 +1159,11 @@ $("pzHint").onclick = async () => {
   if (PZ.fen !== PZ.baseFen) await loadPuzzle(PZ.idx);   // hint from the start
   PZ.hintSq = (p.solution[0] || "").slice(0, 2);
   renderPzBoard();
-  setStatus("pzFeedback", "💡 표시된 칸의 기물을 움직여 보세요.", false);
+  setStatus("pzFeedback", t("pz_hint_fb"), false);
 };
 $("pzSolution").onclick = () => {
   const p = PZ.list[PZ.idx];
-  setStatus("pzFeedback", "정답: " + (p.solutionSan || []).join(" "), false);
+  setStatus("pzFeedback", t("pz_sol_fb") + (p.solutionSan || []).join(" "), false);
 };
 
 async function aiBoot() {
@@ -1200,50 +1201,41 @@ function learnTopic(topic) {
   // d4 = fx 3, fy 3
   switch (topic) {
     case "pawn": return {
-      title: "폰 (Pawn) ♟", pieces: { e2: "P", d3: "p", f3: "p" },
+      title: t("learn_t_pawn"), pieces: { e2: "P", d3: "p", f3: "p" },
       moves: ["e3", "e4"], captures: ["d3", "f3"],
-      desc: "폰은 <b>앞으로 한 칸</b> 전진합니다. 단, 그 폰의 <b>첫 이동</b>에 한해 두 칸까지 갈 수 있어요(e2→e4).<br>" +
-        "잡을 때는 <b>대각선 앞</b>으로만 잡습니다(빨간 표시). <b>뒤로는 절대 못 가고</b>, 앞이 막히면 못 움직입니다.<br>" +
-        "끝 줄(8랭크)에 도달하면 <b>승격</b>합니다. → '승격' 버튼 참고",
+      desc: t("learn_d_pawn"),
     };
     case "knight": return {
-      title: "나이트 (Knight) ♞", pieces: { d4: "N" }, moves: _steps(3, 3, _KNIGHT), captures: [],
-      desc: "나이트는 <b>'ㄴ'(L)자</b>로 움직입니다 — 한 방향 두 칸 + 직각으로 한 칸.<br>" +
-        "체스에서 <b>유일하게 다른 기물을 뛰어넘을 수 있는</b> 기물입니다(앞이 막혀 있어도 OK).",
+      title: t("learn_t_knight"), pieces: { d4: "N" }, moves: _steps(3, 3, _KNIGHT), captures: [],
+      desc: t("learn_d_knight"),
     };
     case "bishop": return {
-      title: "비숍 (Bishop) ♝", pieces: { d4: "B" }, moves: _slide(3, 3, _DIAG), captures: [],
-      desc: "비숍은 <b>대각선</b>으로 막힐 때까지 원하는 만큼 이동합니다.<br>" +
-        "한 비숍은 <b>한 가지 색의 칸</b>에만 머뭅니다(흰칸 비숍/검은칸 비숍).",
+      title: t("learn_t_bishop"), pieces: { d4: "B" }, moves: _slide(3, 3, _DIAG), captures: [],
+      desc: t("learn_d_bishop"),
     };
     case "rook": return {
-      title: "룩 (Rook) ♜", pieces: { d4: "R" }, moves: _slide(3, 3, _ORTHO), captures: [],
-      desc: "룩은 <b>가로·세로</b>로 막힐 때까지 원하는 만큼 이동합니다. 캐슬링에도 쓰입니다.",
+      title: t("learn_t_rook"), pieces: { d4: "R" }, moves: _slide(3, 3, _ORTHO), captures: [],
+      desc: t("learn_d_rook"),
     };
     case "queen": return {
-      title: "퀸 (Queen) ♛", pieces: { d4: "Q" }, moves: _slide(3, 3, _ALL8), captures: [],
-      desc: "퀸은 <b>가로·세로·대각선 모두</b> 원하는 만큼 이동합니다. <b>가장 강력한</b> 기물(룩+비숍).",
+      title: t("learn_t_queen"), pieces: { d4: "Q" }, moves: _slide(3, 3, _ALL8), captures: [],
+      desc: t("learn_d_queen"),
     };
     case "king": return {
-      title: "킹 (King) ♚", pieces: { d4: "K" }, moves: _steps(3, 3, _ALL8), captures: [],
-      desc: "킹은 <b>모든 방향으로 한 칸씩</b> 이동합니다. 가장 중요한 기물 — <b>잡히면(체크메이트) 패배</b>.<br>" +
-        "상대가 공격하는 칸으로는 갈 수 없습니다.",
+      title: t("learn_t_king"), pieces: { d4: "K" }, moves: _steps(3, 3, _ALL8), captures: [],
+      desc: t("learn_d_king"),
     };
     case "castle": return {
-      title: "캐슬링 (Castling)", pieces: { e1: "K", h1: "R", a1: "R" }, moves: ["g1", "f1", "c1", "d1"], captures: [],
-      desc: "킹과 룩을 <b>한 번에</b> 움직이는 특수 수입니다.<br>" +
-        "• 킹사이드: 킹 e1→g1, 룩 h1→f1<br>• 퀸사이드: 킹 e1→c1, 룩 a1→d1<br>" +
-        "조건: 킹과 그 룩이 <b>아직 안 움직였고</b>, 사이가 <b>비어 있고</b>, 킹이 <b>체크가 아니며</b> 지나는 칸도 공격받지 않을 때.",
+      title: t("learn_t_castle"), pieces: { e1: "K", h1: "R", a1: "R" }, moves: ["g1", "f1", "c1", "d1"], captures: [],
+      desc: t("learn_d_castle"),
     };
     case "enpassant": return {
-      title: "앙파상 (En passant)", pieces: { e5: "P", d5: "p" }, moves: [], captures: ["d6"],
-      desc: "상대 폰이 <b>두 칸 전진</b>해 내 폰 바로 옆에 나란히 섰을 때(d7→d5), <b>바로 다음 수에 한해</b> " +
-        "마치 한 칸만 온 것처럼 <b>대각선 뒤(d6)로 잡는</b> 특수 규칙입니다. 잡힌 상대 폰(d5)은 사라집니다.",
+      title: t("learn_t_enp"), pieces: { e5: "P", d5: "p" }, moves: [], captures: ["d6"],
+      desc: t("learn_d_enp"),
     };
     case "promotion": return {
-      title: "승격 (Promotion)", pieces: { e7: "P" }, moves: ["e8"], captures: [],
-      desc: "폰이 <b>끝 줄(8랭크)</b>에 도달하면 <b>퀸·룩·비숍·나이트</b> 중 하나로 변신합니다.<br>" +
-        "거의 항상 가장 강한 <b>퀸</b>으로 승격합니다(언더프로모션은 특수한 경우).",
+      title: t("learn_t_promo"), pieces: { e7: "P" }, moves: ["e8"], captures: [],
+      desc: t("learn_d_promo"),
     };
     default: return learnTopic("pawn");
   }
@@ -1351,7 +1343,7 @@ function renderPbars() {
       `<span class="pv-caps">${caps.map((c) => GLYPH[c]).join("")}` +
       `${lead > 0 ? `<b class="pv-lead">+${lead}</b>` : ""}</span>`;
   };
-  bar(top, theirs, OG.opponent || "상대", OG.oppRating, false);
+  bar(top, theirs, OG.opponent || t("og_opp"), OG.oppRating, false);
   bar(bottom, mine, ogName(), myRating(), true);
 }
 setInterval(() => { if (OG.started) renderPbars(); }, 250);
@@ -1375,14 +1367,14 @@ function ogConnect(then) {
     if (OG.pingTimer) { clearInterval(OG.pingTimer); OG.pingTimer = null; }
     if (OG.started && !OG.over) {
       OG.over = true; updateOgTurn();
-      setStatus("ogStatus", "서버와 연결이 끊어졌습니다. 새로고침 후 다시 매치를 시작하세요.", true);
+      setStatus("ogStatus", t("og_disconnected"), true);
     }
     OG.ws = null;
   };
-  ws.onerror = () => { setStatus("ogSetupStatus", "연결 오류 — 잠시 후 다시 시도하세요.", true); };
+  ws.onerror = () => { setStatus("ogSetupStatus", t("og_conn_err"), true); };
 }
 
-function ogName() { return ($("ogName").value || "플레이어").trim().slice(0, 20) || "플레이어"; }
+function ogName() { return ($("ogName").value || t("og_player")).trim().slice(0, 20) || t("og_player"); }
 
 // Matchmaking always starts on a FRESH socket: closing the old one makes the
 // server clean up any stale queue/room/game state for us, so the user can
@@ -1399,17 +1391,17 @@ function ogFresh(then) {
 function ogHandle(msg) {
   switch (msg.type) {
     case "waiting":
-      setStatus("ogSetupStatus", "상대를 찾는 중… 다른 사람이 '빠른 매치'를 누르면 연결됩니다.");
+      setStatus("ogSetupStatus", t("og_searching"));
       $("ogCancel").classList.remove("hidden");
       break;
     case "room":
       $("ogCodeBox").classList.remove("hidden");
       $("ogCode").textContent = msg.code;
-      setStatus("ogSetupStatus", "친구가 코드를 입력하면 대국이 시작됩니다.");
+      setStatus("ogSetupStatus", t("og_room_wait"));
       $("ogCancel").classList.remove("hidden");
       break;
     case "cancelled":
-      setStatus("ogSetupStatus", "매칭을 취소했습니다.");
+      setStatus("ogSetupStatus", t("og_cancelled"));
       $("ogCancel").classList.add("hidden");
       $("ogCodeBox").classList.add("hidden");
       break;
@@ -1417,15 +1409,15 @@ function ogHandle(msg) {
       OG.started = true; OG.over = false; OG.ratingApplied = false;
       OG.oppRating = +(msg.opponentRating || RATING_START);
       OG.color = msg.color; OG.orient = msg.color;
-      OG.opponent = msg.opponent || "상대";
+      OG.opponent = msg.opponent || t("og_opp");
       OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null; OG.lastUci = null;
       ogSyncClock(msg.state);
       $("ogSetup").classList.add("hidden");
       $("ogGameInfo").classList.remove("hidden");
       $("ogCancel").classList.add("hidden"); $("ogCodeBox").classList.add("hidden");
       $("ogVs").innerHTML = `${escapeHtml(ogName())} (${ratingHTML(myRating())}) vs ${escapeHtml(OG.opponent)} (${ratingHTML(OG.oppRating)})`;
-      $("ogColorInfo").textContent = `당신은 ${OG.color === "w" ? "백(선공)" : "흑(후공)"}입니다.`;
-      setStatus("ogStatus", "대국 시작! 행운을 빕니다 🍀");
+      $("ogColorInfo").textContent = t("og_you_are").replace("{side}", OG.color === "w" ? t("og_first") : t("og_second"));
+      setStatus("ogStatus", t("og_start_luck"));
       setStatus("ogSetupStatus", "");
       ogEnterGame();
       renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
@@ -1443,16 +1435,16 @@ function ogHandle(msg) {
       $("ogDrawPrompt").classList.remove("hidden");
       break;
     case "draw_declined":
-      setStatus("ogStatus", "상대가 무승부 제안을 거절했습니다.", true);
+      setStatus("ogStatus", t("og_draw_declined"), true);
       break;
     case "chat":
-      ogAppendChat(OG.opponent || "상대", msg.text || "", false);
+      ogAppendChat(OG.opponent || t("og_opp"), msg.text || "", false);
       break;
     case "end":
       ogEnd(msg.result, msg.reason);
       break;
     case "error":
-      setStatus(OG.started ? "ogStatus" : "ogSetupStatus", msg.message || "오류", true);
+      setStatus(OG.started ? "ogStatus" : "ogSetupStatus", msg.message || t("og_error"), true);
       break;
   }
 }
@@ -1521,7 +1513,7 @@ function onOgClick(sq) {
 function renderOgMoves() {
   const el = $("ogMoves");
   const san = (OG.state && OG.state.san) ? OG.state.san : [];
-  if (!san.length) { el.innerHTML = '<span class="num">매치가 시작되면 기보가 여기에 쌓입니다.</span>'; return; }
+  if (!san.length) { el.innerHTML = `<span class="num">${t("og_moves_empty")}</span>`; return; }
   let html = "";
   san.forEach((s, i) => {
     if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
@@ -1537,7 +1529,7 @@ function updateOgTurn() {
   if (OG.over) { el.innerHTML = "<b>" + T("turn_over") + "</b>"; return; }
   const w = st.turn === "w", mine = st.turn === OG.color;
   el.innerHTML = `<span class="pill ${w ? "" : "b"}"></span>${w ? T("turn_white") : T("turn_black")}` +
-    (mine ? " " + T("turn_you") : ` (${escapeHtml(OG.opponent || "상대")})`) +
+    (mine ? " " + T("turn_you") : ` (${escapeHtml(OG.opponent || t("og_opp"))})`) +
     (st.check ? ` · <b style='color:#ff8a80'>${T("turn_check")}</b>` : "");
 }
 
@@ -1546,17 +1538,17 @@ function ogEnd(result, reason) {
   let kind = "draw";
   if (result === "1-0") kind = OG.color === "w" ? "win" : "loss";
   else if (result === "0-1") kind = OG.color === "b" ? "win" : "loss";
-  const reasonTxt = { checkmate: "체크메이트", resign: "기권", forfeit: "상대가 나갔습니다", timeout: "시간 초과", agreement: "합의 무승부", draw: "무승부" }[reason] || "";
+  const reasonTxt = { checkmate: t("og_r_checkmate"), resign: t("og_r_resign"), forfeit: t("og_r_forfeit"), timeout: t("og_r_timeout"), agreement: t("og_r_agreement"), draw: t("og_r_draw") }[reason] || "";
   const me = ogName();
-  const white = OG.color === "w" ? me : (OG.opponent || "상대");
-  const black = OG.color === "b" ? me : (OG.opponent || "상대");
+  const white = OG.color === "w" ? me : (OG.opponent || t("og_opp"));
+  const black = OG.color === "b" ? me : (OG.opponent || t("og_opp"));
   const movesCopy = [...OG.moves];
   const actions = [];
   if (movesCopy.length) {
-    actions.push({ label: "🤖 AI 평가 보기", primary: true,
+    actions.push({ label: t("ai_review_btn"), primary: true,
       onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 90 }, "ogStatus") });
   }
-  actions.push({ label: "🔄 새 매치", onClick: ogReset });
+  actions.push({ label: t("og_new_match"), onClick: ogReset });
 
   // Rating changes ONLY here — an online match result. Apply exactly once.
   let badge = null;
@@ -1567,19 +1559,19 @@ function ogEnd(result, reason) {
     const newRating = Math.max(0, before + eloDelta(before, OG.oppRating, score));
     const applied = newRating - before;   // what actually changed (0-floor aware)
     setMyRating(newRating);
-    addHistory({ mode: "online", opponent: OG.opponent || "상대", result: kind, ratingDelta: applied,
+    addHistory({ mode: "online", opponent: OG.opponent || t("og_opp"), result: kind, ratingDelta: applied,
       moves: [...movesCopy], white, black });
-    badge = { small: "⚡ 레이팅 변동", text: `${applied >= 0 ? "+" + applied : applied} → ${ratingHTML(newRating)}` };
+    badge = { small: t("og_rating_change"), text: `${applied >= 0 ? "+" + applied : applied} → ${ratingHTML(newRating)}` };
     setTimeout(loadLeaderboard, 1600);   // after the debounced progress push lands
   }
 
   const T = (typeof t === "function") ? t : ((k) => k);
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: T("res_win"), sub: `${OG.opponent}님을 이겼습니다 (${reasonTxt})`, badge, actions }
+    ? { kind, icon: "🏆", title: T("res_win"), sub: T("og_won_sub").replace("{opp}", OG.opponent).replace("{reason}", reasonTxt), badge, actions }
     : kind === "loss"
-      ? { kind, icon: "😢", title: T("res_loss"), sub: `${OG.opponent}님에게 졌습니다 (${reasonTxt})`, badge, actions }
-      : { kind, icon: "🤝", title: "무승부입니다", sub: `${OG.opponent}님과 비겼습니다`, badge, actions };
-  setStatus("ogStatus", `대국 종료 (${result}) — ${reasonTxt}`);
+      ? { kind, icon: "😢", title: T("res_loss"), sub: T("og_lost_sub").replace("{opp}", OG.opponent).replace("{reason}", reasonTxt), badge, actions }
+      : { kind, icon: "🤝", title: T("res_draw"), sub: T("og_drew_sub").replace("{opp}", OG.opponent), badge, actions };
+  setStatus("ogStatus", T("og_game_end").replace("{result}", result).replace("{reason}", reasonTxt));
   presentResult(opts);
 }
 
@@ -1603,30 +1595,30 @@ function ogReset() {
 
 $("ogQuick").onclick = () => {
   if (!requireLogin()) return;
-  setStatus("ogSetupStatus", "서버에 연결 중…");
+  setStatus("ogSetupStatus", t("og_connecting"));
   ogFresh(() => ogSend({ type: "quick", name: ogName(), rating: myRating() }));
 };
 $("ogCreate").onclick = () => {
   if (!requireLogin()) return;
-  setStatus("ogSetupStatus", "서버에 연결 중…");
+  setStatus("ogSetupStatus", t("og_connecting"));
   ogFresh(() => ogSend({ type: "create", name: ogName(), rating: myRating() }));
 };
 $("ogJoin").onclick = () => {
   if (!requireLogin()) return;
   const code = ($("ogJoinCode").value || "").trim().toUpperCase();
-  if (code.length !== 4) { setStatus("ogSetupStatus", "4글자 코드를 입력하세요.", true); return; }
-  setStatus("ogSetupStatus", "방에 참가하는 중…");
+  if (code.length !== 4) { setStatus("ogSetupStatus", t("og_code_len"), true); return; }
+  setStatus("ogSetupStatus", t("og_joining"));
   ogFresh(() => ogSend({ type: "join", code, name: ogName(), rating: myRating() }));
 };
 $("ogCancel").onclick = () => ogSend({ type: "cancel" });
 $("ogResign").onclick = () => {
-  if (!OG.started || OG.over) { setStatus("ogStatus", "진행 중인 대국이 없습니다.", true); return; }
+  if (!OG.started || OG.over) { setStatus("ogStatus", t("og_no_game"), true); return; }
   ogSend({ type: "resign" });
 };
 $("ogDraw").onclick = () => {
-  if (!OG.started || OG.over) { setStatus("ogStatus", "진행 중인 대국이 없습니다.", true); return; }
+  if (!OG.started || OG.over) { setStatus("ogStatus", t("og_no_game"), true); return; }
   ogSend({ type: "draw_offer" });
-  setStatus("ogStatus", "무승부를 제안했습니다. 상대의 응답을 기다립니다…");
+  setStatus("ogStatus", t("og_draw_sent"));
 };
 $("ogDrawAccept").onclick = () => { ogSend({ type: "draw_accept" }); $("ogDrawPrompt").classList.add("hidden"); };
 $("ogDrawDecline").onclick = () => { ogSend({ type: "draw_decline" }); $("ogDrawPrompt").classList.add("hidden"); };
@@ -1640,12 +1632,12 @@ function updateOgAuthGate() {
   const on = !!AUTH.token;
   gate.classList.toggle("hidden", on);
   body.classList.toggle("hidden", !on);
-  if (on && $("ogName")) $("ogName").value = AUTH.id || "플레이어";
+  if (on && $("ogName")) $("ogName").value = AUTH.id || t("og_player");
 }
 $("ogLoginBtn").onclick = openAuth;
 function requireLogin() {
   if (AUTH.token) return true;
-  setStatus("ogSetupStatus", "온라인 대국은 로그인 후 이용할 수 있습니다.", true);
+  setStatus("ogSetupStatus", t("og_login_first"), true);
   openAuth();
   return false;
 }
@@ -1674,7 +1666,7 @@ function ogSendChat() {
   const inp = $("ogChatInput"), t = (inp.value || "").trim();
   if (!t || !OG.started || OG.over) return;
   ogSend({ type: "chat", text: t });
-  ogAppendChat(AUTH.id || "나", t, true);
+  ogAppendChat(AUTH.id || (typeof window.t === "function" ? window.t("og_me") : "나"), t, true);
   inp.value = "";
 }
 $("ogChatSend").onclick = ogSendChat;
@@ -1750,13 +1742,13 @@ function renderAuthArea() {
   const el = $("authArea"); if (!el) return;
   if (AUTH.token) {
     el.innerHTML = `<span class="user-chip">👤 <b>${escapeHtml(AUTH.id || "")}</b></span>` +
-      `<button class="ghost" id="authLogout">로그아웃</button>`;
+      `<button class="ghost" id="authLogout">${t("auth_logout")}</button>`;
     $("authLogout").onclick = async () => {
       try { await api("/api/auth/logout", { token: AUTH.token }); } catch (e) {}
       authClearSession();
     };
   } else {
-    el.innerHTML = `<button class="ghost" id="authOpen">👤 로그인</button>`;
+    el.innerHTML = `<button class="ghost" id="authOpen">${t("auth_open")}</button>`;
     $("authOpen").onclick = () => {
       $("authModal").classList.remove("hidden");
       setStatus("authStatus", "");
@@ -1770,8 +1762,8 @@ async function authSubmit(mode) {
   // was stored at registration — otherwise a correct id/pw can be rejected.
   const id = ($("authId").value || "").trim().normalize("NFC");
   const pw = ($("authPw").value || "").normalize("NFC");
-  if (!id || !pw) { setStatus("authStatus", "아이디와 비밀번호를 입력하세요.", true); return; }
-  setStatus("authStatus", mode === "register" ? "계정을 만드는 중…" : "로그인 중…");
+  if (!id || !pw) { setStatus("authStatus", t("auth_need"), true); return; }
+  setStatus("authStatus", mode === "register" ? t("auth_registering") : t("auth_logging"));
   try {
     const email = ($("authEmail") ? ($("authEmail").value || "").trim() : "");
     const body = mode === "register" ? { id, pw, email, progress: collectProgress() } : { id, pw };
@@ -1787,7 +1779,7 @@ async function authSubmit(mode) {
     // brand-new account → ask their skill level to seed the starting rating
     if (mode === "register") showSkillModal();
   } catch (e) {
-    setStatus("authStatus", isOffline(e) ? OFFLINE_MSG : e.message, true);
+    setStatus("authStatus", isOffline(e) ? t("offline_msg") : e.message, true);
   }
 }
 
@@ -1810,7 +1802,7 @@ async function authReset() {
     $("authModal").classList.add("hidden");
     alert(T("reset_done"));
   } catch (e) {
-    alert(isOffline(e) ? OFFLINE_MSG : (e.message || "재설정 실패"));
+    alert(isOffline(e) ? t("offline_msg") : (e.message || t("reset_fail")));
   }
 }
 
@@ -1848,9 +1840,9 @@ async function loadLeaderboard() {
   const el = $("lbList"); if (!el) return;
   try {
     const r = await (await fetch("/api/leaderboard")).json();
-    $("lbTotal").textContent = r.total ? `(플레이어 ${r.total}명)` : "";
+    $("lbTotal").textContent = r.total ? t("lb_total").replace("{n}", r.total) : "";
     if (!r.top || !r.top.length) {
-      el.innerHTML = '<div class="hist-empty">아직 등록된 플레이어가 없습니다. 첫 주인공이 되어보세요!</div>';
+      el.innerHTML = `<div class="hist-empty">${t("lb_empty")}</div>`;
       return;
     }
     const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
@@ -1858,11 +1850,11 @@ async function loadLeaderboard() {
       const me = AUTH.id && e.id === AUTH.id;
       return `<div class="lb-row ${me ? "me" : ""}">` +
         `<span class="lb-rank">${medal(i)}</span>` +
-        `<span class="lb-name">${escapeHtml(e.id)}${me ? " (나)" : ""}</span>` +
+        `<span class="lb-name">${escapeHtml(e.id)}${me ? " " + t("lb_me") : ""}</span>` +
         `<b class="lb-rating">${ratingHTML(e.rating)}</b></div>`;
     }).join("");
   } catch (e) {
-    el.innerHTML = '<div class="hist-empty">리더보드를 불러오지 못했습니다.</div>';
+    el.innerHTML = `<div class="hist-empty">${t("lb_fail")}</div>`;
   }
 }
 
@@ -1918,7 +1910,7 @@ function ratingSeries() {
   const games = gameHistory().slice().reverse();   // oldest first
   const total = games.reduce((s, g) => s + (g.ratingDelta || 0), 0);
   let cur = Math.max(0, myRating() - total);
-  const pts = [{ r: cur, date: null, label: "시작" }];
+  const pts = [{ r: cur, date: null, label: t("gr_start") }];
   for (const g of games) {
     cur = Math.max(0, cur + (g.ratingDelta || 0));
     pts.push({ r: cur, date: g.date || null, mode: g.mode, result: g.result });
@@ -1952,9 +1944,9 @@ function weekKey(d) {
   return t.toISOString().slice(0, 10);   // Monday's date = week id
 }
 const GOAL_TYPES = {
-  onlinewin: { label: "온라인 승리", unit: "승", presets: [3, 5, 10] },
-  games: { label: "대국 수", unit: "판", presets: [5, 10, 20] },
-  rating: { label: "레이팅 상승", unit: "점", presets: [30, 60, 100] },
+  onlinewin: { labelKey: "goal_onlinewin", unitKey: "unit_win", presets: [3, 5, 10] },
+  games: { labelKey: "goal_games", unitKey: "unit_game", presets: [5, 10, 20] },
+  rating: { labelKey: "goal_rating", unitKey: "unit_point", presets: [30, 60, 100] },
 };
 function goalGet() { try { return JSON.parse(localStorage.getItem("cc_goal") || "null"); } catch (e) { return null; } }
 function goalSet(g) { localStorage.setItem("cc_goal", JSON.stringify(g)); renderGoal(); }
@@ -1971,10 +1963,11 @@ function renderGoal() {
   const g = goalGet();
   if (!g || g.week !== weekKey()) {
     // no active goal for this week — offer presets
-    let html = `<p class="setdesc" style="margin:0 0 10px">이번 주 목표를 정해 꾸준함을 유지해 보세요.</p><div class="goal-presets">`;
+    let html = `<p class="setdesc" style="margin:0 0 10px">${t("gr_goal_lead")}</p><div class="goal-presets">`;
     for (const [type, cfg] of Object.entries(GOAL_TYPES)) {
-      cfg.presets.forEach((t) => {
-        html += `<button class="ghost goal-set" data-type="${type}" data-target="${t}">${cfg.label} ${t}${cfg.unit}</button>`;
+      const lab = t(cfg.labelKey), un = t(cfg.unitKey);
+      cfg.presets.forEach((n) => {
+        html += `<button class="ghost goal-set" data-type="${type}" data-target="${n}">${lab} ${n}${un}</button>`;
       });
     }
     html += `</div>`;
@@ -1984,12 +1977,13 @@ function renderGoal() {
     return;
   }
   const cfg = GOAL_TYPES[g.type], p = goalProgress(g), pct = Math.min(100, Math.round((p / g.target) * 100));
+  const lab = t(cfg.labelKey), un = t(cfg.unitKey);
   const done = p >= g.target;
   el.innerHTML =
-    `<div class="goal-head"><b>${cfg.label} ${g.target}${cfg.unit}</b>` +
-    `<span>${done ? "🎉 달성!" : `${p} / ${g.target}${cfg.unit}`}</span></div>` +
+    `<div class="goal-head"><b>${lab} ${g.target}${un}</b>` +
+    `<span>${done ? t("gr_goal_done") : `${p} / ${g.target}${un}`}</span></div>` +
     `<div class="goal-bar"><div class="goal-fill ${done ? "done" : ""}" style="width:${pct}%"></div></div>` +
-    `<div style="margin-top:10px"><button class="ghost" id="goalReset">목표 바꾸기</button></div>`;
+    `<div style="margin-top:10px"><button class="ghost" id="goalReset">${t("gr_goal_change")}</button></div>`;
   $("goalReset").onclick = () => { localStorage.removeItem("cc_goal"); renderGoal(); };
 }
 
@@ -1998,16 +1992,16 @@ function renderGrowthAdapt() {
   const s = currentStreak();
   let html;
   if (s.kind === "loss" && s.n >= 3) {
-    html = `<p class="grtip">😮‍💨 <b>${s.n}연패 중</b>이에요. 무리하게 이어가기보다 <b>쉬운 퍼즐</b>로 감을 되찾는 걸 추천해요.</p>` +
-      `<button class="primary" data-goto="puzzle">🧩 쉬운 퍼즐 풀러 가기</button>`;
+    html = `<p class="grtip">${t("gr_streak_loss").replace("{n}", s.n)}</p>` +
+      `<button class="primary" data-goto="puzzle">${t("gr_go_easy")}</button>`;
   } else if (s.kind === "win" && s.n >= 3) {
-    html = `<p class="grtip">🔥 <b>${s.n}연승 중</b>! 실력이 오르는 신호예요. <b>더 높은 난이도 AI</b>에 도전해 성장 속도를 높여보세요.</p>` +
-      `<button class="primary" id="grHarder">🤖 더 어려운 AI와 대국</button>`;
+    html = `<p class="grtip">${t("gr_streak_win").replace("{n}", s.n)}</p>` +
+      `<button class="primary" id="grHarder">${t("gr_harder")}</button>`;
   } else {
     const r = myRating();
-    html = `<p class="grtip">꾸준함이 실력을 만듭니다. 오늘도 한 판, 퍼즐 몇 개 어때요?</p>` +
-      `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" data-goto="ai">🤖 AI 대국</button>` +
-      `<button class="ghost" data-goto="puzzle">🧩 퍼즐</button>${AUTH.token ? '<button class="ghost" data-goto="online">🌐 온라인</button>' : ""}</div>`;
+    html = `<p class="grtip">${t("gr_keep")}</p>` +
+      `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" data-goto="ai">${t("gr_ai")}</button>` +
+      `<button class="ghost" data-goto="puzzle">${t("gr_pz")}</button>${AUTH.token ? `<button class="ghost" data-goto="online">${t("gr_online")}</button>` : ""}</div>`;
   }
   el.innerHTML = html;
   el.querySelectorAll("[data-goto]").forEach((b) => (b.onclick = () => switchTab(b.dataset.goto)));
@@ -2024,7 +2018,7 @@ function renderGrowthChart() {
   const pts = ratingSeries();
   const rated = gameHistory().filter((g) => g.mode === "online").length;
   if (pts.length < 2 || rated === 0) {
-    box.innerHTML = '<div class="hist-empty">온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.</div>';
+    box.innerHTML = `<div class="hist-empty">${t("gr_chart_empty")}</div>`;
     stats.innerHTML = ""; return;
   }
   const vals = pts.map((p) => p.r);
@@ -2046,16 +2040,16 @@ function renderGrowthChart() {
   const startR = pts[0].r, nowR = myRating(), delta = nowR - startR;
   const peak = Math.max(...vals);
   stats.innerHTML =
-    `<span>현재 <b>${ratingHTML(nowR)}</b></span><span>최고 <b>${peak}</b></span>` +
-    `<span>누적 <b class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" + delta : delta}</b></span>` +
-    `<span>온라인 <b>${rated}</b>판</span>`;
+    `<span>${t("gr_now")} <b>${ratingHTML(nowR)}</b></span><span>${t("gr_peak")} <b>${peak}</b></span>` +
+    `<span>${t("gr_total")} <b class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" + delta : delta}</b></span>` +
+    `<span>${t("gr_online_label")} <b>${rated}</b>${t("gr_games_suffix")}</span>`;
 }
 
 function renderGrowthProjection() {
   const el = $("grProjection");
   const online = gameHistory().filter((g) => g.mode === "online" && g.date);
   if (online.length < 4) {
-    el.innerHTML = '<div class="hist-empty">온라인 대국이 4판 이상 쌓이면 예측이 표시됩니다.</div>'; return;
+    el.innerHTML = `<div class="hist-empty">${t("gr_proj_need")}</div>`; return;
   }
   // rating change per day over the rated span
   const dates = online.map((g) => g.date).sort();
@@ -2067,11 +2061,10 @@ function renderGrowthProjection() {
   // extrapolate to absurd numbers.
   const change = Math.max(-400, Math.min(400, perDay * 90));
   const proj90 = Math.max(0, Math.round(myRating() + change));
-  const trend = perDay > 0.3 ? "상승세" : perDay < -0.3 ? "하락세" : "안정적";
+  const trend = perDay > 0.3 ? t("gr_trend_up") : perDay < -0.3 ? t("gr_trend_down") : t("gr_trend_flat");
   const arrow = perDay > 0.3 ? "📈" : perDay < -0.3 ? "📉" : "➖";
   el.innerHTML =
-    `<div class="grproj">${arrow} 최근 추세는 <b>${trend}</b>입니다.<br>` +
-    `지금처럼 계속하면 <b>3개월 뒤 약 ${ratingHTML(proj90)}</b> 정도가 예상돼요.</div>`;
+    `<div class="grproj">${t("gr_proj_text").replace("{arrow}", arrow).replace("{trend}", trend).replace("{proj}", ratingHTML(proj90))}</div>`;
 }
 
 // =========================================================================== //
@@ -2101,7 +2094,7 @@ $("setDeleteBtn").onclick = async () => {
     $("settingsModal").classList.add("hidden");
     alert(T("del_done"));
   } catch (e) {
-    alert(isOffline(e) ? OFFLINE_MSG : (e.message || "삭제 실패"));
+    alert(isOffline(e) ? t("offline_msg") : (e.message || t("del_fail")));
   }
 };
 $("setSyncBtn").onclick = async () => {
@@ -2117,7 +2110,7 @@ $("setSyncBtn").onclick = async () => {
     }
   } catch (e) {
     btn.disabled = false; btn.textContent = orig;
-    alert(isOffline(e) ? OFFLINE_MSG : (e.message || "동기화 실패"));
+    alert(isOffline(e) ? t("offline_msg") : (e.message || t("sync_fail")));
     return;
   }
   location.reload();   // pick up the latest assets
@@ -2204,6 +2197,12 @@ function refreshDashboard() {
     if (ll && lv && typeof aiLevelText === "function") ll.textContent = aiLevelText(lv.value);
     if (typeof updateAiTurn === "function") updateAiTurn();   // re-translate live turn text on language change
     if (typeof updateOgTurn === "function") updateOgTurn();
+    // re-render the learn card in the chosen language (keeps the selected piece)
+    var _lb = document.querySelector("#learnSel button.active");
+    if (_lb && typeof showLearn === "function") showLearn(_lb.dataset.topic);
+    // re-render the growth report if that tab is currently open
+    var _gt = document.getElementById("tab-growth");
+    if (_gt && _gt.classList.contains("active") && typeof renderGrowth === "function") renderGrowth();
   } catch (e) {}
 }
 refreshDashboard();
@@ -2220,7 +2219,7 @@ function renderHistoryModal() {
   if (!h.length) { el.innerHTML = `<div class="hist-empty">${T("hist_empty")}</div>`; return; }
   el.innerHTML = "";
   h.forEach((g) => {
-    const res = g.result === "win" ? '<b class="w">승</b>' : g.result === "loss" ? '<b class="l">패</b>' : '<b class="d">무</b>';
+    const res = g.result === "win" ? `<b class="w">${T("res_short_win")}</b>` : g.result === "loss" ? `<b class="l">${T("res_short_loss")}</b>` : `<b class="d">${T("res_short_draw")}</b>`;
     const mode = g.mode === "online" ? "🌐" : "🤖";
     const delta = (g.ratingDelta === null || g.ratingDelta === undefined) ? '<span class="hm-delta"></span>'
       : (g.ratingDelta >= 0 ? `<span class="hm-delta up">+${g.ratingDelta}</span>` : `<span class="hm-delta down">${g.ratingDelta}</span>`);
