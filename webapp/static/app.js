@@ -283,6 +283,7 @@ function markGameOver() {
 }
 function switchTab(name) {
   exitImmersive(); hideResult();              // leaving into a browse tab always exits immersive
+  if (name !== "review" && typeof coachStopSpeak === "function") coachStopSpeak();  // stop the coach voice
   document.querySelectorAll("[data-tab]").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) =>
@@ -474,11 +475,24 @@ function renderHistory() {
 // =========================================================================== //
 let LAST_REQ = null;
 
+// Review speed: analysis is PREFETCHED the moment a game ends and cached, so by
+// the time the player opens the review it's usually already done. Keyed by the
+// exact request so the button and the prefetch share one in-flight call.
+const REVIEW_MT = 60;          // per-position engine budget (ms) — snappier
+const ANALYZE_CACHE = {};
+function _ckey(req) { return (req.moves || []).join("") + "|" + (req.movetime || "") + "|" + (req.white || "") + "/" + (req.black || ""); }
+function prefetchAnalyze(req) {
+  const k = _ckey(req);
+  if (!ANALYZE_CACHE[k]) {
+    ANALYZE_CACHE[k] = api("/api/analyze", req).catch((e) => { delete ANALYZE_CACHE[k]; throw e; });
+  }
+  return ANALYZE_CACHE[k];
+}
 async function runAnalyze(req, statusId = "aiStatus") {
   LAST_REQ = req;
   overlay(true, t("analyze_running"));
   try {
-    const view = await api("/api/analyze", req);
+    const view = await prefetchAnalyze(req);   // reuse the in-flight/finished prefetch
     loadReview(view);
     switchTab("review");
   } catch (e) {
@@ -595,11 +609,53 @@ document.addEventListener("keydown", (e) => {
 window.addEventListener("resize", () => { if (RV.view) rvGraph(); });
 
 // ---- coach ----
+// ---- coach voice (Web Speech API — free, on-device, follows app language) ----
+const TTS_LANG = { ko: "ko-KR", en: "en-US", ja: "ja-JP", zh: "zh-CN", es: "es-ES" };
+function coachStopSpeak() {
+  try { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); } catch (e) {}
+  const av = document.getElementById("coachAvatar"); if (av) av.classList.remove("speaking");
+  const b = document.getElementById("coachSpeakBtn"); if (b) b.textContent = t("coach_speak");
+}
+function coachSpeak(text) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  // strip markdown so it reads naturally
+  const clean = String(text).replace(/[#*`_>]/g, "").replace(/\n{2,}/g, ". ").replace(/\s+/g, " ").trim();
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = TTS_LANG[(typeof CC_LANG !== "undefined") ? CC_LANG : "ko"] || "ko-KR";
+  u.rate = 1.02;
+  const av = document.getElementById("coachAvatar");
+  const b = document.getElementById("coachSpeakBtn");
+  u.onstart = () => { if (av) av.classList.add("speaking"); if (b) b.textContent = t("coach_stop"); };
+  u.onend = () => { if (av) av.classList.remove("speaking"); if (b) b.textContent = t("coach_speak"); };
+  u.onerror = u.onend;
+  window.speechSynthesis.speak(u);
+}
+function coachToggleSpeak(text) {
+  if ("speechSynthesis" in window && window.speechSynthesis.speaking) coachStopSpeak();
+  else coachSpeak(text);
+}
+
 function renderCoach(coach) {
   const el = $("rvCoach");
+  coachStopSpeak();
   if (!coach) { el.textContent = ""; return; }
   if (coach.available && coach.text) {
-    el.innerHTML = `<div style="white-space:pre-wrap; font-size:14px; line-height:1.6">${escapeHtml(coach.text)}</div>`;
+    const canTTS = ("speechSynthesis" in window);
+    el.innerHTML =
+      `<div class="coach-card">` +
+        `<div class="coach-av" id="coachAvatar">🧑‍🏫</div>` +
+        `<div class="coach-body">` +
+          `<div class="coach-head"><b>${t("coach_title")}</b>` +
+            (canTTS ? `<button class="ghost coach-speak" id="coachSpeakBtn">${t("coach_speak")}</button>` : "") +
+          `</div>` +
+          `<div class="coach-text" style="white-space:pre-wrap; font-size:14px; line-height:1.6">${escapeHtml(coach.text)}</div>` +
+        `</div>` +
+      `</div>`;
+    if (canTTS) {
+      $("coachSpeakBtn").onclick = () => coachToggleSpeak(coach.text);
+      coachSpeak(coach.text);   // auto-read once when the report appears
+    }
   } else if (coach.available) {
     el.innerHTML = `<div style="color:#9aa0a6; font-size:14px">${t("coach_prompt")}</div>` +
       `<button class="ghost" id="coachBtn" style="margin-top:8px">${t("coach_btn")}</button>`;
@@ -916,9 +972,12 @@ function aiEndGame() {
     moves: [...AIG.moves], white, black });
   setStatus("aiStatus", `${T("ai_over")} (${r}).`);
   $("aiAnalyze").classList.remove("hidden");
+  // start the review analysis NOW (in the background) so it's ready instantly
+  const reviewReq = { moves: [...AIG.moves], white, black, movetime: REVIEW_MT };
+  prefetchAnalyze(reviewReq).catch(() => {});
   const actions = [
     { label: T("ai_review_btn"), primary: true,
-      onClick: () => runAnalyze({ moves: AIG.moves, white, black, movetime: 90 }) },
+      onClick: () => runAnalyze(reviewReq) },
     { label: T("ai_again_btn"), onClick: () => aiStart() },
     { label: T("exit_btn"), onClick: () => exitImmersive() },
   ];
@@ -976,7 +1035,7 @@ $("aiResign").onclick = () => {
     kind: "loss", icon: "🏳️", title: t("ai_resign_title"),
     sub: t("ai_resign_sub").replace("{ai}", aiTitle(lv)),
     actions: [
-      { label: t("ai_review_btn"), primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: 90 }) },
+      { label: t("ai_review_btn"), primary: true, onClick: () => runAnalyze({ moves, white, black, movetime: REVIEW_MT }) },
       { label: t("ai_again_btn"), onClick: () => aiStart() },
       { label: t("exit_btn"), onClick: () => exitImmersive() },
     ],
@@ -985,7 +1044,7 @@ $("aiResign").onclick = () => {
 $("aiAnalyze").onclick = () => {
   if (!AIG.moves.length) return;
   const { white, black } = aiPlayerNames();
-  runAnalyze({ moves: AIG.moves, white, black, movetime: 90 });
+  runAnalyze({ moves: AIG.moves, white, black, movetime: REVIEW_MT });
 };
 
 // =========================================================================== //
@@ -1563,8 +1622,10 @@ function ogEnd(result, reason) {
   const movesCopy = [...OG.moves];
   const actions = [];
   if (movesCopy.length) {
+    const reviewReq = { moves: movesCopy, white, black, movetime: REVIEW_MT };
+    prefetchAnalyze(reviewReq).catch(() => {});   // start analysis now → instant review
     actions.push({ label: t("ai_review_btn"), primary: true,
-      onClick: () => runAnalyze({ moves: movesCopy, white, black, movetime: 90 }, "ogStatus") });
+      onClick: () => runAnalyze(reviewReq, "ogStatus") });
   }
   actions.push({ label: t("og_new_match"), onClick: ogReset });
 
@@ -2254,7 +2315,7 @@ function renderHistoryModal() {
       btn.textContent = T("hist_review");
       btn.onclick = () => {
         document.getElementById("historyModal").classList.add("hidden");
-        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: 90 });
+        runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: REVIEW_MT });
       };
     } else {
       btn.textContent = T("hist_norec"); btn.disabled = true;
