@@ -74,6 +74,9 @@ var I18N = {
   stat_puzzles: { ko: "푼 퍼즐", en: "Puzzles", ja: "解いたパズル", zh: "已解谜题", es: "Puzzles" },
   stat_winrate: { ko: "승률", en: "Win rate", ja: "勝率", zh: "胜率", es: "Victorias" },
   stat_games:   { ko: "총 대국", en: "Games", ja: "総対局", zh: "总对局", es: "Partidas" },
+  stat_streak:  { ko: "연승", en: "Streak", ja: "連勝", zh: "连胜", es: "Racha" },
+  streak_best_short: { ko: "최고", en: "best", ja: "最高", zh: "最佳", es: "máx." },
+  streak_win:   { ko: "🔥 {n}연승 중!", en: "🔥 {n}-win streak!", ja: "🔥 {n}連勝中!", zh: "🔥 {n}连胜!", es: "🔥 ¡Racha de {n}!" },
   // ----- sidebar profile + tip -----
   sp_guest:     { ko: "게스트", en: "Guest", ja: "ゲスト", zh: "访客", es: "Invitado" },
   sp_notlogged: { ko: "로그인 전 · 게스트", en: "Not signed in · Guest", ja: "未ログイン・ゲスト", zh: "未登录 · 访客", es: "Sin sesión · Invitado" },
@@ -294,6 +297,15 @@ var I18N = {
   inapp_copied: { ko: "복사됨 ✓", en: "Copied ✓", ja: "コピーしました ✓", zh: "已复制 ✓", es: "Copiado ✓" },
   install_btn:  { ko: "📲 앱 설치", en: "📲 Install app", ja: "📲 アプリをインストール", zh: "📲 安装应用", es: "📲 Instalar app" },
   install_hint: { ko: "이미 설치되어 있거나, 브라우저 메뉴(⋮ → ‘앱 설치’ / 홈 화면에 추가)에서 설치할 수 있어요. 아이폰은 사파리 공유 → ‘홈 화면에 추가’.", en: "It's already installed, or install it from the browser menu (⋮ → ‘Install app’ / Add to Home Screen). On iPhone: Safari Share → ‘Add to Home Screen’.", ja: "すでにインストール済みか、ブラウザメニュー(⋮ →「アプリをインストール」/ ホーム画面に追加)からインストールできます。iPhoneはSafariの共有 →「ホーム画面に追加」。", zh: "可能已安装，或可从浏览器菜单(⋮ →“安装应用”/添加到主屏幕)安装。iPhone 请用 Safari 分享 →“添加到主屏幕”。", es: "Ya está instalada, o instálala desde el menú del navegador (⋮ → ‘Instalar app’ / Añadir a pantalla de inicio). En iPhone: Compartir en Safari → ‘Añadir a pantalla de inicio’." },
+
+  // ----- icon-button tooltips (title / aria-label) -----
+  tt_close:    { ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭", es: "Cerrar" },
+  tt_history:  { ko: "게임 기록", en: "Game history", ja: "対局履歴", zh: "对局记录", es: "Historial de partidas" },
+  tt_settings: { ko: "설정", en: "Settings", ja: "設定", zh: "设置", es: "Ajustes" },
+  tt_first:    { ko: "처음", en: "First", ja: "最初", zh: "第一步", es: "Primero" },
+  tt_prev:     { ko: "이전 (←)", en: "Previous (←)", ja: "前へ (←)", zh: "上一步 (←)", es: "Anterior (←)" },
+  tt_next:     { ko: "다음 (→)", en: "Next (→)", ja: "次へ (→)", zh: "下一步 (→)", es: "Siguiente (→)" },
+  tt_last:     { ko: "끝", en: "Last", ja: "最後", zh: "最后一步", es: "Último" },
 
   // ----- engine (health) status -----
   sf_checking:   { ko: "엔진 확인 중…", en: "Checking engine…", ja: "エンジンを確認中…", zh: "正在检查引擎…", es: "Comprobando el motor…" },
@@ -525,6 +537,12 @@ function applyLang(lang) {
   });
   document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
     el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+    el.setAttribute("title", t(el.getAttribute("data-i18n-title")));
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach(function (el) {
+    el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria")));
   });
   var sel = document.getElementById("setLang");
   if (sel) sel.value = lang;

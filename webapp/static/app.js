@@ -435,8 +435,25 @@ function addHistory(entry) {
   const h = gameHistory();
   h.unshift({ ...entry, date: new Date().toISOString().slice(0, 10) });
   localStorage.setItem("cc_history", JSON.stringify(h.slice(0, 50)));
+  // update best win-streak record (current streak = leading wins in history)
+  const cur = winStreak();
+  if (cur > bestStreak()) localStorage.setItem("cc_streak_best", String(cur));
   renderHistory();
   authSchedulePush();
+}
+// consecutive wins ending at the most recent game (AI + online both count)
+function winStreak() {
+  let n = 0;
+  for (const g of gameHistory()) { if (g.result === "win") n++; else break; }
+  return n;
+}
+function bestStreak() { return +(localStorage.getItem("cc_streak_best") || 0); }
+// " · 🔥 N연승" suffix for the result screen (only when it's a real streak ≥2)
+function streakSuffix() {
+  const n = winStreak();
+  if (n < 2) return "";
+  const T = (typeof t === "function") ? t : ((k) => k);
+  return " · " + T("streak_win").replace("{n}", n);
 }
 function renderHistory() {
   const el = $("ogHistory"); if (!el) return;
@@ -905,7 +922,7 @@ function aiEndGame() {
     { label: T("exit_btn"), onClick: () => exitImmersive() },
   ];
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: T("res_win"), sub: T("won_vs").replace("{ai}", aiName), badge, actions }
+    ? { kind, icon: "🏆", title: T("res_win"), sub: T("won_vs").replace("{ai}", aiName) + streakSuffix(), badge, actions }
     : kind === "loss"
       ? { kind, icon: "😢", title: T("res_loss"), sub: T("lost_vs").replace("{ai}", aiName), actions }
       : { kind, icon: "🤝", title: T("res_draw"), sub: T("drew_vs").replace("{ai}", aiName), actions };
@@ -1567,7 +1584,7 @@ function ogEnd(result, reason) {
 
   const T = (typeof t === "function") ? t : ((k) => k);
   const opts = kind === "win"
-    ? { kind, icon: "🏆", title: T("res_win"), sub: T("og_won_sub").replace("{opp}", OG.opponent).replace("{reason}", reasonTxt), badge, actions }
+    ? { kind, icon: "🏆", title: T("res_win"), sub: T("og_won_sub").replace("{opp}", OG.opponent).replace("{reason}", reasonTxt) + streakSuffix(), badge, actions }
     : kind === "loss"
       ? { kind, icon: "😢", title: T("res_loss"), sub: T("og_lost_sub").replace("{opp}", OG.opponent).replace("{reason}", reasonTxt), badge, actions }
       : { kind, icon: "🤝", title: T("res_draw"), sub: T("og_drew_sub").replace("{opp}", OG.opponent), badge, actions };
@@ -1690,6 +1707,7 @@ function collectProgress() {
     history: gameHistory(),
     bestLevel: bestLevel(),
     puzzles: [...PZ.solved],
+    bestStreak: bestStreak(),
   };
 }
 
@@ -1698,6 +1716,7 @@ function applyProgress(p) {
   if (typeof p.rating === "number") localStorage.setItem("cc_rating3", String(Math.max(0, Math.round(p.rating))));
   if (Array.isArray(p.history)) localStorage.setItem("cc_history", JSON.stringify(p.history));
   if (typeof p.bestLevel === "number") localStorage.setItem("cc_best_level", String(p.bestLevel));
+  if (typeof p.bestStreak === "number") localStorage.setItem("cc_streak_best", String(Math.max(p.bestStreak, bestStreak())));
   if (Array.isArray(p.puzzles)) {
     localStorage.setItem("cc_puzzles_solved", JSON.stringify(p.puzzles));
     PZ.solved = new Set(p.puzzles);
@@ -2163,6 +2182,7 @@ function renderHomeStats() {
     { ic: "🤖", k: T("stat_best"), v: (bestLevel() || "-") },
     { ic: "🧩", k: T("stat_puzzles"), v: solved + "<span style='font-size:13px;color:var(--muted)'>/100</span>" },
     { ic: "📈", k: T("stat_winrate"), v: wr + "<span style='font-size:13px;color:var(--muted)'>%</span>" },
+    { ic: "🔥", k: T("stat_streak"), v: winStreak() + (bestStreak() > 0 ? `<span style='font-size:12px;color:var(--muted)'> · ${T("streak_best_short")} ${bestStreak()}</span>` : "") },
     { ic: "♟", k: T("stat_games"), v: hist.length },
   ];
   el.innerHTML = tiles.map((t) =>

@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=46">
+<link rel="stylesheet" href="/static/style.css?v=47">
 </head>
 <body>
 
@@ -34,16 +34,16 @@
 <div id="inappBanner" class="hidden" style="align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#fff3cd;color:#664d03;font-size:12.5px;line-height:1.4;border-bottom:1px solid #ffe69c">
   <span><span data-i18n="inapp_a">앱 안의 브라우저예요 — </span><b data-i18n="inapp_b">Chrome·네이버 웨일 등 기본 브라우저로 열면</b><span data-i18n="inapp_c"> 설치와 모든 기능을 쓸 수 있어요.</span></span>
   <button id="inappCopy" data-i18n="inapp_copy" style="border:1px solid #d6b400;background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap">링크 복사</button>
-  <button id="inappClose" aria-label="닫기" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;color:#664d03">×</button>
+  <button id="inappClose" aria-label="닫기" data-i18n-aria="tt_close" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;color:#664d03">×</button>
 </div>
 
 <header class="top">
   <h1>Matevio</h1>
   <div class="rating-chip hidden" id="ratingChip">레이팅 <b>400</b></div>
   <div class="sf" id="sfStatus">엔진 확인 중…</div>
-  <button id="installBtn" class="hidden" title="앱 설치" data-i18n="install_btn" style="order:2;padding:7px 13px;border-radius:999px;border:none;background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px -5px var(--accent)">📲 앱 설치</button>
-  <button class="iconbtn" id="historyBtn" title="게임 기록">📋</button>
-  <button class="iconbtn" id="settingsBtn" title="설정">⚙️</button>
+  <button id="installBtn" class="hidden" title="앱 설치" data-i18n="install_btn" data-i18n-title="install_btn" style="order:2;padding:7px 13px;border-radius:999px;border:none;background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 12px -5px var(--accent)">📲 앱 설치</button>
+  <button class="iconbtn" id="historyBtn" title="게임 기록" data-i18n-title="tt_history">📋</button>
+  <button class="iconbtn" id="settingsBtn" title="설정" data-i18n-title="tt_settings">⚙️</button>
   <div class="auth-area" id="authArea"></div>
 </header>
 
@@ -382,10 +382,10 @@
         <div class="svgboard" id="rvBoard"></div>
       </div>
       <div class="controls">
-        <button class="ghost" id="rvFirst" title="처음">⏮</button>
-        <button class="ghost" id="rvPrev" title="이전 (←)">◀</button>
-        <button class="ghost" id="rvNext" title="다음 (→)">▶</button>
-        <button class="ghost" id="rvLast" title="끝">⏭</button>
+        <button class="ghost" id="rvFirst" title="처음" data-i18n-title="tt_first">⏮</button>
+        <button class="ghost" id="rvPrev" title="이전 (←)" data-i18n-title="tt_prev">◀</button>
+        <button class="ghost" id="rvNext" title="다음 (→)" data-i18n-title="tt_next">▶</button>
+        <button class="ghost" id="rvLast" title="끝" data-i18n-title="tt_last">⏭</button>
         <input type="range" id="rvSlider" min="0" value="0">
       </div>
       <div class="legend">
@@ -546,7 +546,7 @@
 <!-- win / loss / draw result window — floats over the game screen, closeable -->
 <div class="result-overlay hidden" id="resultOverlay">
   <div class="result-box" id="resultBox">
-    <button class="result-close" id="resultClose" aria-label="닫기" title="닫기">×</button>
+    <button class="result-close" id="resultClose" aria-label="닫기" title="닫기" data-i18n-aria="tt_close" data-i18n-title="tt_close">×</button>
     <div class="confetti" id="confetti"></div>
     <div class="result-icon" id="resultIcon">🏆</div>
     <div class="result-title" id="resultTitle">승리!</div>
@@ -564,8 +564,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=46"></script>
-<script src="/static/app.js?v=46"></script>
+<script src="/static/i18n.js?v=47"></script>
+<script src="/static/app.js?v=47"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

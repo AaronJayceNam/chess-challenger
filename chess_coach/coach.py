@@ -81,7 +81,10 @@ def generate_coaching(view: dict, model: Optional[str] = None) -> dict:
     try:
         import anthropic
 
-        model = model or os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8")
+        # Default to the low-cost Haiku model (the engine already did the hard
+        # analysis; the LLM only writes it up). Override with ANTHROPIC_MODEL,
+        # e.g. "claude-sonnet-5" for richer prose.
+        model = model or os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
         client = anthropic.Anthropic()
         payload = build_payload(view)
         user = (

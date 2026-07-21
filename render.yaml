@@ -55,6 +55,13 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      # AI coach (plain-Korean move explanations). Optional: set ANTHROPIC_API_KEY
+      # to enable it. Defaults to the low-cost Haiku model; override with
+      # ANTHROPIC_MODEL (e.g. claude-sonnet-5). Engine analysis works without it.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        sync: false
       # Sized to fit the 512MB free tier (0.1 shared CPU). A single small engine
       # avoids the out-of-memory crash during analysis.
       - key: CC_WORKERS
