@@ -763,3 +763,79 @@ body.ingame .resultgate{ bottom:24px; }
    ============================================================ */
 .auth-box{ max-height:88vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 .overlay{ padding:16px; }
+
+/* ============================================================
+   SETUP PANELS v53 — AI "새 대국 설정" + online match card.
+   A11y helper, a deliberate strength picker, and segmented
+   chip controls that mirror hidden <select>s.
+   ============================================================ */
+.visually-hidden{ position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+
+/* --- AI setup card header: title + best-record pill on one line --- */
+.setup-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+.setup-head h3{ margin:0; }
+.setup-head .rankbadge{ margin-bottom:0; }
+.setup-go{ margin-top:16px; }
+.setup-go .primary{ width:100%; }
+
+/* --- deliberate strength picker (rating slider) --- */
+.strength-pick{ margin:2px 0 4px; padding:13px 15px 12px; border-radius:14px;
+  background:linear-gradient(180deg, rgba(63,157,99,.09), rgba(63,157,99,.02));
+  border:1px solid rgba(63,157,99,.22); }
+.strength-pick > .field{ margin:0 0 2px; }
+.strength-val{ font-size:16.5px; font-weight:800; color:var(--accent-deep);
+  letter-spacing:-.2px; margin:0 0 11px; line-height:1.2; transition:opacity .15s; }
+.strength-pick input[type=range]{ -webkit-appearance:none; appearance:none; width:100%;
+  height:6px; border-radius:999px; background:#d7e3da; outline:none; margin:0; padding:0; cursor:pointer; }
+.strength-pick input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none;
+  width:22px; height:22px; border-radius:50%; border:2px solid #fff; cursor:pointer;
+  background:linear-gradient(180deg,var(--accent2),var(--accent));
+  box-shadow:0 2px 7px -1px rgba(47,125,77,.65); }
+.strength-pick input[type=range]::-moz-range-thumb{ width:20px; height:20px; border-radius:50%;
+  border:2px solid #fff; cursor:pointer; background:linear-gradient(180deg,var(--accent2),var(--accent));
+  box-shadow:0 2px 7px -1px rgba(47,125,77,.65); }
+.strength-pick input[type=range]::-moz-range-track{ height:6px; border-radius:999px; background:#d7e3da; }
+.strength-pick input[type=range]:disabled{ cursor:not-allowed; }
+.strength-pick input[type=range]:disabled::-webkit-slider-thumb{ background:#b7c2cb; box-shadow:none; }
+.strength-pick input[type=range]:disabled::-moz-range-thumb{ background:#b7c2cb; box-shadow:none; }
+.strength-pick input[type=range]:focus-visible{ box-shadow:0 0 0 3px rgba(63,157,99,.22); }
+.strength-ticks{ display:flex; justify-content:space-between; margin-top:7px;
+  font-size:11px; font-weight:700; color:var(--faint); font-variant-numeric:tabular-nums; }
+
+/* --- segmented chip controls (mirror the hidden selects) --- */
+.segmented{ display:flex; gap:7px; flex-wrap:wrap; margin:2px 0 2px; }
+.seg-color .seg-btn{ flex:1 1 0; min-width:0; }
+.seg-btn{ flex:0 1 auto; cursor:pointer; font-family:inherit; text-align:center;
+  padding:9px 13px; font-size:13.5px; font-weight:650; line-height:1.2; border-radius:11px;
+  color:var(--muted); background:var(--elevated); border:1px solid var(--line2);
+  transition:background .15s, color .15s, border-color .15s, box-shadow .15s, transform .08s; }
+.seg-btn:hover{ background:#e3e8ef; color:var(--ink); }
+.seg-btn:active{ transform:translateY(1px); }
+.seg-btn.active{ color:#fff; border-color:transparent; font-weight:750;
+  background:linear-gradient(180deg,var(--accent2),var(--accent));
+  box-shadow:0 6px 16px -8px var(--accent); }
+.seg-btn:focus-visible{ outline:none; box-shadow:0 0 0 3px rgba(63,157,99,.22); }
+
+/* ============================================================
+   ONLINE MATCH SETUP v53 — cleaner rating header, tidy fields,
+   framed friend / invite-code section.
+   ============================================================ */
+.og-rating-head{ display:flex; flex-direction:column; gap:5px; }
+.og-rating-head .ogr-main{ display:flex; align-items:baseline; gap:9px; }
+.og-rating-head .ogr-label{ font-size:13px; font-weight:600; color:var(--muted); }
+.og-rating-head b#ogRating{ font-size:32px; line-height:1; margin-left:0; color:var(--gold-deep);
+  letter-spacing:-.5px; font-variant-numeric:tabular-nums; }
+.og-rating-head .ogr-note{ margin-top:0; }
+.og-field{ margin-top:2px; }
+.og-actions{ margin-top:14px; display:flex; gap:8px; flex-wrap:wrap; }
+.og-actions .primary{ flex:1 1 auto; }
+.og-friend{ margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+.og-friend h3{ margin:0 0 10px; }
+.og-friend .og-create-btn{ width:100%; }
+.og-join-row{ display:flex; gap:8px; margin-top:5px; }
+
+@media (max-width:560px){
+  .setup-head{ flex-wrap:wrap; gap:6px; }
+  .seg-btn{ padding:10px 12px; font-size:14px; }
+}

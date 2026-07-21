@@ -1072,6 +1072,57 @@ $("aiStyle").onchange = (e) => {
   $("aiLevelLabel").style.opacity = styled ? "0.4" : "1";
 };
 $("aiStart").onclick = aiStart;
+
+// --- Segmented chip controls: a nicer UI mirroring the hidden <select>s.
+// Each ".segmented[data-seg-for]" wraps a chip per option of its target
+// select. Clicking a chip sets select.value + fires a real "change" event so
+// existing onchange handlers run. Chip labels are (re)read from option text so
+// they stay translated; call this on load and after any language change.
+function segShortLabel(text) {
+  var s = (text || "").trim();
+  var emoji = "";
+  try {
+    var m = s.match(/\s([\p{Extended_Pictographic}][️‍\p{Extended_Pictographic}]*)\s*$/u);
+    if (m) emoji = m[1];
+  } catch (e) {}
+  // take the name before an em/en dash or an opening parenthesis
+  var name = s.split(/\s[—–-]\s|\s*[（(]/)[0].trim() || s;
+  return emoji ? name + " " + emoji : name;
+}
+function syncSegmentedControls() {
+  var wraps = document.querySelectorAll(".segmented[data-seg-for]");
+  wraps.forEach(function (wrap) {
+    var sel = document.getElementById(wrap.getAttribute("data-seg-for"));
+    if (!sel) return;
+    var opts = sel.options;
+    if (wrap.children.length !== opts.length) {
+      wrap.innerHTML = "";
+      for (var i = 0; i < opts.length; i++) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "seg-btn";
+        b.setAttribute("data-seg-val", opts[i].value);
+        b.addEventListener("click", function () {
+          sel.value = this.getAttribute("data-seg-val");
+          sel.dispatchEvent(new Event("change"));
+          syncSegmentedControls();
+        });
+        wrap.appendChild(b);
+      }
+    }
+    for (var j = 0; j < opts.length; j++) {
+      var chip = wrap.children[j];
+      if (!chip) continue;
+      chip.textContent = segShortLabel(opts[j].textContent);
+      chip.title = opts[j].textContent.trim();
+      var on = opts[j].value === sel.value;
+      chip.classList.toggle("active", on);
+      chip.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+  });
+}
+syncSegmentedControls();
+
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
 $("aiResign").onclick = () => {
   if (!AIG.moves.length) { setStatus("aiStatus", t("ai_need_move"), true); return; }
@@ -2336,6 +2387,7 @@ function refreshDashboard() {
     if (typeof updateRankBadge === "function") updateRankBadge();
     const ll = document.getElementById("aiLevelLabel"), lv = document.getElementById("aiLevel");
     if (ll && lv && typeof aiLevelText === "function") ll.textContent = aiLevelText(lv.value);
+    if (typeof syncSegmentedControls === "function") syncSegmentedControls();  // re-sync chip labels/active on language change
     if (typeof updateAiTurn === "function") updateAiTurn();   // re-translate live turn text on language change
     if (typeof updateOgTurn === "function") updateOgTurn();
     // re-render the learn card in the chosen language (keeps the selected piece)
