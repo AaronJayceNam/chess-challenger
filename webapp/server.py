@@ -167,6 +167,7 @@ class AnalyzeRequest(BaseModel):
     depth: int = 16
     movetime: Optional[int] = None    # ms per position (preferred; predictable speed)
     coach: bool = False
+    lang: str = "ko"                  # app language for the coaching report
 
 
 class AiMoveRequest(BaseModel):
@@ -393,7 +394,7 @@ def analyze(req: AnalyzeRequest):
     view = build_view_data(game, ga)
 
     if req.coach:
-        view["coach"] = coach_mod.generate_coaching(view)
+        view["coach"] = coach_mod.generate_coaching(view, req.lang)
     else:
         view["coach"] = {"available": coach_mod.coaching_available()}
     return JSONResponse(view)

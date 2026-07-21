@@ -55,9 +55,20 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
-      # AI coach (plain-Korean move explanations). Optional: set ANTHROPIC_API_KEY
-      # to enable it. Defaults to the low-cost Haiku model; override with
-      # ANTHROPIC_MODEL (e.g. claude-sonnet-5). Engine analysis works without it.
+      # AI coach (move explanations in the user's app language). Set ANY ONE key
+      # to enable it; priority is Gemini → Groq → Anthropic. Engine analysis works
+      # without it. Gemini & Groq both have FREE tiers.
+      #   Groq (free):    GROQ_API_KEY   (console.groq.com), GROQ_MODEL optional
+      #   Gemini (free):  GEMINI_API_KEY (aistudio.google.com), GEMINI_MODEL optional
+      #   Anthropic:      ANTHROPIC_API_KEY, ANTHROPIC_MODEL (paid)
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_MODEL

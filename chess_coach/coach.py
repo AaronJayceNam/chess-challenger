@@ -13,18 +13,88 @@ import json
 from typing import Optional
 
 
-SYSTEM_PROMPT = (
-    "당신은 따뜻하고 구체적인 체스 코치(FM/IM 수준)입니다. "
-    "입력으로 받는 모든 평가 수치(centipawn/mate), centipawn loss(CPL), 최선수, "
-    "주 변화(PV)는 Stockfish 엔진이 계산한 사실입니다. "
-    "절대 평가 수치나 변화를 새로 지어내지 마십시오. 변화를 제시할 때는 반드시 "
-    "전달된 엔진 PV/최선수만 사용하고, 수와 칸은 SAN으로 표기하십시오. "
-    "한국어로, 격려하면서도 구체적으로 코칭하세요."
+# The report language follows the user's app language.
+_LANG_NAME = {
+    "ko": "Korean (한국어)",
+    "en": "English",
+    "ja": "Japanese (日本語)",
+    "zh": "Simplified Chinese (简体中文)",
+    "es": "Spanish (Español)",
+}
+
+_SYSTEM_BASE = (
+    "You are a warm, specific chess coach (FM/IM level). Every evaluation number "
+    "(centipawn/mate), centipawn loss (CPL), best move, and principal variation "
+    "(PV) you receive was computed by the Stockfish engine and is fact. NEVER "
+    "invent evaluations or variations. When you show a line, use ONLY the engine "
+    "PV/best move provided, and write moves and squares in SAN. Be encouraging "
+    "but concrete."
 )
 
 
+def _system_for(lang: str) -> str:
+    name = _LANG_NAME.get(lang, _LANG_NAME["ko"])
+    return _SYSTEM_BASE + f" Write the ENTIRE coaching report in {name}."
+
+
+# Back-compat: some callers/tests import SYSTEM_PROMPT.
+SYSTEM_PROMPT = _system_for("ko")
+
+
 def coaching_available() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    # Any one of these enables coaching. Gemini & Groq both have free tiers.
+    return bool(
+        os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GROQ_API_KEY")
+        or os.environ.get("ANTHROPIC_API_KEY")
+    )
+
+
+def _http_json(url: str, payload: dict, headers: dict, timeout: int = 30) -> dict:
+    import urllib.request
+    req = urllib.request.Request(
+        url, data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", **headers}, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _gen_gemini(system: str, user: str) -> tuple[str, str]:
+    """Google Gemini (free tier). Returns (text, model)."""
+    key = os.environ.get("GEMINI_API_KEY", "")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    data = _http_json(url, {
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": [{"parts": [{"text": user}]}],
+        "generationConfig": {"maxOutputTokens": 1400, "temperature": 0.6},
+    }, headers={})
+    parts = data["candidates"][0]["content"]["parts"]
+    return "".join(p.get("text", "") for p in parts), f"gemini:{model}"
+
+
+def _gen_groq(system: str, user: str) -> tuple[str, str]:
+    """Groq (free tier, OpenAI-compatible). Returns (text, model)."""
+    key = os.environ.get("GROQ_API_KEY", "")
+    model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    data = _http_json("https://api.groq.com/openai/v1/chat/completions", {
+        "model": model,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+        "max_tokens": 1400, "temperature": 0.6,
+    }, headers={"Authorization": f"Bearer {key}"})
+    return data["choices"][0]["message"]["content"], f"groq:{model}"
+
+
+def _gen_anthropic(system: str, user: str) -> tuple[str, str]:
+    import anthropic
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+    client = anthropic.Anthropic()
+    msg = client.messages.create(
+        model=model, max_tokens=1200, system=system,
+        messages=[{"role": "user", "content": user}])
+    text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+    return text, model
 
 
 def _key_moments(view: dict, limit: int = 6) -> list[dict]:
@@ -70,37 +140,38 @@ def build_payload(view: dict) -> dict:
     }
 
 
-def generate_coaching(view: dict, model: Optional[str] = None) -> dict:
-    """Return {available, text|message}. Never raises into the request path."""
+def generate_coaching(view: dict, lang: str = "ko") -> dict:
+    """Return {available, text|message}. Never raises into the request path.
+
+    Provider priority: Gemini → Groq → Anthropic (first with a key wins). Gemini
+    and Groq both have free tiers. The report is written in `lang` (the user's
+    app language: ko/en/ja/zh/es).
+    """
     if not coaching_available():
         return {
             "available": False,
-            "message": "LLM 코칭은 ANTHROPIC_API_KEY 환경변수를 설정하면 활성화됩니다. "
+            "message": "LLM 코칭은 GEMINI_API_KEY(무료) 또는 GROQ_API_KEY(무료), "
+                       "ANTHROPIC_API_KEY 중 하나를 설정하면 활성화됩니다. "
                        "(엔진 평가는 키 없이도 모두 동작합니다.)",
         }
+    system = _system_for(lang)
+    lang_name = _LANG_NAME.get(lang, _LANG_NAME["ko"])
+    payload = build_payload(view)
+    user = (
+        "Below is engine-analysis data (JSON) for one chess game. Using ONLY this "
+        "data, write a coaching report with these sections: 1) one-line summary + "
+        "both sides' accuracy, 2) decisive moments (cite the engine best move/PV "
+        "from keyMoments), 3) recurring weaknesses, 4) concrete suggestions on what "
+        f"to study next. Write the whole report in {lang_name}.\n\n"
+        f"```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
+    )
     try:
-        import anthropic
-
-        # Default to the low-cost Haiku model (the engine already did the hard
-        # analysis; the LLM only writes it up). Override with ANTHROPIC_MODEL,
-        # e.g. "claude-sonnet-5" for richer prose.
-        model = model or os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
-        client = anthropic.Anthropic()
-        payload = build_payload(view)
-        user = (
-            "아래는 한 체스 게임에 대한 엔진 분석 데이터(JSON)입니다. "
-            "이 데이터만 근거로, 다음 섹션의 한국어 코칭 리포트를 작성하세요: "
-            "1) 한 줄 요약 + 양측 정확도, 2) 결정적 순간(전달된 keyMoments의 최선수/PV 인용), "
-            "3) 반복되는 약점, 4) 다음에 무엇을 공부하면 좋을지 구체적 제안.\n\n"
-            f"```json\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n```"
-        )
-        msg = client.messages.create(
-            model=model,
-            max_tokens=1200,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user}],
-        )
-        text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
-        return {"available": True, "text": text, "model": model}
+        if os.environ.get("GEMINI_API_KEY"):
+            text, used = _gen_gemini(system, user)
+        elif os.environ.get("GROQ_API_KEY"):
+            text, used = _gen_groq(system, user)
+        else:
+            text, used = _gen_anthropic(system, user)
+        return {"available": True, "text": text, "model": used}
     except Exception as e:  # never break the analysis response
         return {"available": False, "message": f"코칭 생성 중 오류: {e}"}

@@ -612,7 +612,8 @@ async function genCoach() {
   if (!LAST_REQ) return;
   overlay(true, t("coach_running"));
   try {
-    const view = await api("/api/analyze", { ...LAST_REQ, coach: true });
+    const lang = (typeof CC_LANG !== "undefined") ? CC_LANG : "ko";
+    const view = await api("/api/analyze", { ...LAST_REQ, coach: true, lang });
     RV.view.coach = view.coach;
     renderCoach(view.coach);
   } catch (e) { renderCoach({ available: false, message: t("coach_err") + e.message }); }
