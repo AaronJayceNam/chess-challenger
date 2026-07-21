@@ -14,6 +14,8 @@ from .config import ClassifyConfig
 
 # NAG-ish symbols used in the move list.
 SYMBOLS = {
+    "Brilliant": "!!",
+    "Great": "!",
     "Best": "",
     "Excellent": "",
     "Good": "",

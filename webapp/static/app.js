@@ -334,6 +334,16 @@ function parseFen(fen) {
   return map;
 }
 
+// captured pieces + material lead to show next to `color`'s name in a player bar
+// (uses the shared materialInfo()/GLYPH defined with the online player bars).
+function capHtml(mat, color) {
+  if (!mat) return "";
+  const caps = color === "w" ? mat.capByWhite : mat.capByBlack;
+  const lead = color === "w" ? mat.wLead : -mat.wLead;
+  const pcs = caps.map((c) => GLYPH[c]).join("");
+  return `<span class="pv-caps">${pcs}${lead > 0 ? `<b class="pv-lead">+${lead}</b>` : ""}</span>`;
+}
+
 function promoChooser(boardEl, isWhite, cb) {
   closePromo();
   const picker = document.createElement("div");
@@ -506,12 +516,12 @@ async function runAnalyze(req, statusId = "aiStatus") {
 const RV = { view: null, idx: 0, N: 0 };
 
 function clsColor(c) {
-  return ({ Best: "#2e7d32", Excellent: "#2e7d32", Good: "#9e9e9e",
+  return ({ Brilliant: "#1aa7a0", Great: "#3f7fd6", Best: "#2e7d32", Excellent: "#2e7d32", Good: "#9e9e9e",
     Inaccuracy: "#c9a227", Mistake: "#e07a1f", Blunder: "#c62828" })[c] || "#ddd";
 }
 function clsLabel(c) {
-  return ({ Best: t("cls_best"), Excellent: t("cls_excellent"), Good: t("cls_good"), Inaccuracy: t("cls_inaccuracy"),
-    Mistake: t("cls_mistake"), Blunder: t("cls_blunder") })[c] || c;
+  return ({ Brilliant: t("cls_brilliant"), Great: t("cls_great"), Best: t("cls_best"), Excellent: t("cls_excellent"),
+    Good: t("cls_good"), Inaccuracy: t("cls_inaccuracy"), Mistake: t("cls_mistake"), Blunder: t("cls_blunder") })[c] || c;
 }
 
 function loadReview(view) {
@@ -543,11 +553,16 @@ function loadReview(view) {
 // Build a short, plain-language coach line for one move from the engine's own
 // classification — instant, no LLM, correct in every language.
 function moveCoachText(m) {
-  const key = m.isBest ? "move_cmt_best" : ({
-    Best: "move_cmt_best", Excellent: "move_cmt_excellent", Good: "move_cmt_good",
+  const key = ({
+    Brilliant: "move_cmt_brilliant", Great: "move_cmt_great", Best: "move_cmt_best",
+    Excellent: "move_cmt_excellent", Good: "move_cmt_good",
     Inaccuracy: "move_cmt_inaccuracy", Mistake: "move_cmt_mistake", Blunder: "move_cmt_blunder",
-  })[m.classification] || "move_cmt_good";
+  })[m.classification] || (m.isBest ? "move_cmt_best" : "move_cmt_good");
   let s = t(key).replace("{mv}", m.san + (m.symbol || ""));
+  // on a sub-optimal move, tell (and read) the better move the engine found
+  if (m.best && (m.classification === "Inaccuracy" || m.classification === "Mistake" || m.classification === "Blunder")) {
+    s += " " + t("move_cmt_better").replace("{best}", m.best);
+  }
   if (m.missedWin) s += " " + t("rv_missed_win");
   return s;
 }
@@ -909,14 +924,16 @@ function renderAiPbars() {
   top.classList.remove("hidden"); bottom.classList.remove("hidden");
   const mine = AIG.human, theirs = mine === "w" ? "b" : "w";
   const turnOf = (c) => AIG.started && !AIG.over && AIG.state.turn === c;
-  const html = (name, rating, isMe, active) =>
+  const mat = materialInfo(AIG.state.fen);
+  const html = (name, rating, isMe, active, color) =>
     `<span class="pv-ava ${isMe ? "me" : ""}">${escapeHtml(String(name).charAt(0).toUpperCase())}</span>` +
     `<span class="pv-name">${escapeHtml(name)}</span>` +
+    capHtml(mat, color) +
     `<span class="pv-rating">${typeof rating === "number" ? ratingHTML(rating) : escapeHtml(rating)}</span>` +
     `<span class="pv-turn ${active ? "active" : ""}"></span>`;
   const opp = aiOppInfo();
-  top.innerHTML = html(opp.name, opp.rating, false, turnOf(theirs));
-  bottom.innerHTML = html(AUTH.id || t("og_me"), myRating(), true, turnOf(mine));
+  top.innerHTML = html(opp.name, opp.rating, false, turnOf(theirs), theirs);
+  bottom.innerHTML = html(AUTH.id || t("og_me"), myRating(), true, turnOf(mine), mine);
 }
 
 function updateAiTurn() {

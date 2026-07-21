@@ -118,6 +118,17 @@ def _captured_name(board: chess.Board, mv: chess.Move) -> Optional[str]:
     return _KOR_PIECE.get(pc.piece_type) if pc else None
 
 
+_PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
+
+
+def _material_pov(board: chess.Board, mover_is_white: bool) -> int:
+    """Total material from the mover's point of view (positive = mover ahead)."""
+    s = 0
+    for pt, v in _PIECE_VALUE.items():
+        s += v * (len(board.pieces(pt, chess.WHITE)) - len(board.pieces(pt, chess.BLACK)))
+    return s if mover_is_white else -s
+
+
 def _mp_signed(entry: dict, mate_value: int = 100_000) -> int:
     """Signed centipawns for a multipv entry (mover POV)."""
     if entry.get("mate") is not None:
@@ -272,6 +283,24 @@ def _assemble(
         if is_best and len(mp) >= 2:
             gap = _mp_signed(mp[0]) - _mp_signed(mp[1])
             only_move = gap >= 130   # ~1.3 pawns / points
+
+        # Upgrade a best move to Great (완벽) or Brilliant (놀라움).
+        #   Brilliant = a sound sacrifice: best move that nets away >= a minor
+        #               piece (after the opponent's best reply) yet stays winning.
+        #   Great     = the single only-good move in the position.
+        if is_best and cls.label in ("Best", "Excellent"):
+            sac = 0
+            try:
+                if reply_mv is not None:
+                    _ab = after_board.copy(stack=False)
+                    _ab.push(reply_mv)
+                    sac = _material_pov(before_board, mover_is_white) - _material_pov(_ab, mover_is_white)
+            except Exception:
+                sac = 0
+            if sac >= 2 and win_after >= 55.0:
+                cls = Classification("Brilliant", "!!", cls.missed_win)
+            elif only_move:
+                cls = Classification("Great", "!", cls.missed_win)
 
         san = replay.san(mv)
         replay.push(mv)

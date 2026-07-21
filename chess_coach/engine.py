@@ -27,16 +27,19 @@ import chess.engine
 # random legal move this turn. As the level rises the random share falls (big,
 # uneven steps at the bottom = large gaps) and the engine's own Elo takes over.
 #   rand = probability of a random legal move   elo = UCI_Elo (None = full)
+# `rand` = chance of a random blunder this move (beginner handicap).
+# Levels 1-3 make deliberate mistakes (30/20/10%); 4+ rarely blunder and the
+# strength difference comes from the engine's Elo cap + thinking time instead.
 _LADDER = {
-    1:  {"rand": 0.90, "elo": 1320},   # ~200
-    2:  {"rand": 0.80, "elo": 1320},   # ~400
-    3:  {"rand": 0.66, "elo": 1320},   # ~600
-    4:  {"rand": 0.50, "elo": 1320},   # ~800
-    5:  {"rand": 0.28, "elo": 1350},   # ~1100  (raised: 5-10 are noticeably stronger)
-    6:  {"rand": 0.12, "elo": 1500},   # ~1400
-    7:  {"rand": 0.03, "elo": 1750},   # ~1700
-    8:  {"rand": 0.00, "elo": 2050},   # ~2000
-    9:  {"rand": 0.00, "elo": 2400},   # ~2300
+    1:  {"rand": 0.30, "elo": 1320},   # most mistakes
+    2:  {"rand": 0.20, "elo": 1320},
+    3:  {"rand": 0.10, "elo": 1320},
+    4:  {"rand": 0.05, "elo": 1320},
+    5:  {"rand": 0.02, "elo": 1400},
+    6:  {"rand": 0.00, "elo": 1550},
+    7:  {"rand": 0.00, "elo": 1750},
+    8:  {"rand": 0.00, "elo": 2000},
+    9:  {"rand": 0.00, "elo": 2400},
     10: {"rand": 0.00, "elo": None},   # full strength (~2850+)
 }
 _MAX_LEVEL = 10
