@@ -54,7 +54,14 @@ def _http_json(url: str, payload: dict, headers: dict, timeout: int = 30) -> dic
     import urllib.request
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", **headers}, method="POST")
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            # These APIs sit behind Cloudflare, which 403s the default
+            # "Python-urllib" User-Agent; send a normal one.
+            "User-Agent": "Matevio/1.0 (+https://matevio.com)",
+            **headers,
+        }, method="POST")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
