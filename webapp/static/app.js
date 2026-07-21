@@ -412,12 +412,13 @@ function eloDelta(mine, opp, score) {
 // Rating tiers — a chess-piece symbol next to the number, ascending by piece
 // value as the rating climbs. Same brackets everywhere the rating shows.
 function ratingTier(r) {
-  if (r >= 2300) return { sym: "♔", name: "마스터", cls: "t-king" };
-  if (r >= 1900) return { sym: "♕", name: "퀸", cls: "t-queen" };
-  if (r >= 1500) return { sym: "♖", name: "룩", cls: "t-rook" };
-  if (r >= 1100) return { sym: "♗", name: "비숍", cls: "t-bishop" };
-  if (r >= 700) return { sym: "♘", name: "나이트", cls: "t-knight" };
-  return { sym: "♙", name: "폰", cls: "t-pawn" };
+  const T = (typeof t === "function") ? t : ((k) => k);
+  if (r >= 2300) return { sym: "♔", name: T("tier_master"), cls: "t-king" };
+  if (r >= 1900) return { sym: "♕", name: T("tier_queen"), cls: "t-queen" };
+  if (r >= 1500) return { sym: "♖", name: T("tier_rook"), cls: "t-rook" };
+  if (r >= 1100) return { sym: "♗", name: T("tier_bishop"), cls: "t-bishop" };
+  if (r >= 700) return { sym: "♘", name: T("tier_knight"), cls: "t-knight" };
+  return { sym: "♙", name: T("tier_pawn"), cls: "t-pawn" };
 }
 // HTML: colored tier symbol + number (e.g. for chips/badges/leaderboard)
 function ratingHTML(r) {
