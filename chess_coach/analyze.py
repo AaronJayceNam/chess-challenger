@@ -284,11 +284,13 @@ def _assemble(
             gap = _mp_signed(mp[0]) - _mp_signed(mp[1])
             only_move = gap >= 130   # ~1.3 pawns / points
 
-        # Upgrade a best move to Great (완벽) or Brilliant (놀라움).
-        #   Brilliant = a sound sacrifice: best move that nets away >= a minor
+        # Upgrade a strong move to Great (완벽) or Brilliant (놀라움).
+        #   Brilliant = a sound sacrifice: a good move that nets away >= a minor
         #               piece (after the opponent's best reply) yet stays winning.
+        #               (Doesn't require being the engine's exact #1, so real
+        #               sacrifices are still caught at shallow search depth.)
         #   Great     = the single only-good move in the position.
-        if is_best and cls.label in ("Best", "Excellent"):
+        if cls.label in ("Best", "Excellent"):
             sac = 0
             try:
                 if reply_mv is not None:

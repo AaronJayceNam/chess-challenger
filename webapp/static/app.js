@@ -488,7 +488,9 @@ let LAST_REQ = null;
 // Review speed: analysis is PREFETCHED the moment a game ends and cached, so by
 // the time the player opens the review it's usually already done. Keyed by the
 // exact request so the button and the prefetch share one in-flight call.
-const REVIEW_MT = 35;          // per-position engine budget (ms) — very snappy
+const REVIEW_MT = 120;         // per-position engine budget (ms). Prefetch at game
+                               // end hides the latency, so this is deep enough to
+                               // classify tactics (Brilliant/Great) reliably.
 const ANALYZE_CACHE = {};
 function _ckey(req) { return (req.moves || []).join("") + "|" + (req.movetime || "") + "|" + (req.white || "") + "/" + (req.black || ""); }
 function prefetchAnalyze(req) {
@@ -2323,6 +2325,13 @@ function renderSidebarProfile() {
 
 function refreshDashboard() {
   try {
+    // header re-renders on language change (login button + rating chip).
+    // NB: set the chip text inline — calling updateRatingChip() would recurse.
+    if (typeof renderAuthArea === "function") renderAuthArea();
+    const rc = document.getElementById("ratingChip");
+    if (rc && !rc.classList.contains("hidden") && typeof myRating === "function") {
+      rc.innerHTML = `${t("word_rating")} <b>${ratingHTML(myRating())}</b>`;
+    }
     renderHomeStats(); renderSidebarProfile();
     if (typeof updateRankBadge === "function") updateRankBadge();
     const ll = document.getElementById("aiLevelLabel"), lv = document.getElementById("aiLevel");
