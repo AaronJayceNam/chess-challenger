@@ -34,7 +34,10 @@ _SYSTEM_BASE = (
 
 def _system_for(lang: str) -> str:
     name = _LANG_NAME.get(lang, _LANG_NAME["ko"])
-    return _SYSTEM_BASE + f" Write the ENTIRE coaching report in {name}."
+    return _SYSTEM_BASE + (
+        f" Write the ENTIRE coaching report in {name}. Use ONLY {name} — never mix "
+        f"in words from any other language (chess move notation in SAN is fine)."
+    )
 
 
 # Back-compat: some callers/tests import SYSTEM_PROMPT.
