@@ -442,6 +442,9 @@ input[type=range]{ accent-color:var(--accent); }
 .coach-body{ flex:1; min-width:0; }
 .coach-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
 .coach-speak{ font-size:12.5px; padding:5px 10px; white-space:nowrap; }
+.coach-mini{ padding:10px 12px; margin-bottom:10px; }
+.coach-mini .coach-av{ width:38px; height:38px; font-size:21px; }
+.coach-mini .coach-text{ font-size:14px; }
 
 /* full-screen takeover when signed out (not a small modal) */
 #loginGate{ background:linear-gradient(165deg,#0f5132 0%,#2f7d4d 48%,#3f9d63 100%);

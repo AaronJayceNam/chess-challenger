@@ -478,7 +478,7 @@ let LAST_REQ = null;
 // Review speed: analysis is PREFETCHED the moment a game ends and cached, so by
 // the time the player opens the review it's usually already done. Keyed by the
 // exact request so the button and the prefetch share one in-flight call.
-const REVIEW_MT = 60;          // per-position engine budget (ms) — snappier
+const REVIEW_MT = 35;          // per-position engine budget (ms) — very snappy
 const ANALYZE_CACHE = {};
 function _ckey(req) { return (req.moves || []).join("") + "|" + (req.movetime || "") + "|" + (req.white || "") + "/" + (req.black || ""); }
 function prefetchAnalyze(req) {
@@ -540,7 +540,21 @@ function loadReview(view) {
   rvRender();
 }
 
+// Build a short, plain-language coach line for one move from the engine's own
+// classification — instant, no LLM, correct in every language.
+function moveCoachText(m) {
+  const key = m.isBest ? "move_cmt_best" : ({
+    Best: "move_cmt_best", Excellent: "move_cmt_excellent", Good: "move_cmt_good",
+    Inaccuracy: "move_cmt_inaccuracy", Mistake: "move_cmt_mistake", Blunder: "move_cmt_blunder",
+  })[m.classification] || "move_cmt_good";
+  let s = t(key).replace("{mv}", m.san + (m.symbol || ""));
+  if (m.missedWin) s += " " + t("rv_missed_win");
+  return s;
+}
+function coachVoiceOn() { return localStorage.getItem("cc_coach_voice") !== "0"; }
+
 function rvDetail() {
+  coachStopSpeak();
   if (RV.idx === 0) {
     $("rvDetail").innerHTML = `<div class="r">${t("rv_start_pos")}</div>`;
     return;
@@ -555,10 +569,29 @@ function rvDetail() {
     ? `<div class="aiexplain">🤖 ${escapeHtml(m.explain)}</div>` : "";
   const pv = (m.pv || []).slice(0, 8).join(" ");
   const pvRow = pv ? `<div class="r">${t("rv_pv_label")}<span class="pv">${pv}</span></div>` : "";
+  // automatic per-move coach (avatar + spoken comment)
+  const cmt = moveCoachText(m);
+  const vOn = coachVoiceOn();
+  const coachMini =
+    `<div class="coach-card coach-mini">` +
+      `<div class="coach-av" id="coachAvatar">🧑‍🏫</div>` +
+      `<div class="coach-body"><div class="coach-head"><b>${t("coach_title")}</b>` +
+        `<button class="ghost coach-speak" id="coachVoiceToggle">${vOn ? t("coach_voice_on") : t("coach_voice_off")}</button></div>` +
+        `<div class="coach-text">${escapeHtml(cmt)}</div></div>` +
+    `</div>`;
   $("rvDetail").innerHTML =
+    coachMini +
     `<div><b style="font-size:16px">${m.moveNumber}${m.color === "white" ? "." : "..."} ${turn} ${m.san}${m.symbol}</b> &nbsp; ${tag}${missed}</div>` +
     explain +
     pvRow;
+  $("coachVoiceToggle").onclick = () => {
+    const on = coachVoiceOn();
+    localStorage.setItem("cc_coach_voice", on ? "0" : "1");
+    if (on) coachStopSpeak();
+    $("coachVoiceToggle").textContent = on ? t("coach_voice_off") : t("coach_voice_on");
+    if (!on) coachSpeak(cmt);
+  };
+  if (vOn) coachSpeak(cmt);   // speak this move's comment automatically
 }
 
 function rvGraph() {
