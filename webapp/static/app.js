@@ -584,9 +584,14 @@ function rvDetail() {
   }
   const m = RV.view.moves[RV.idx - 1];
   const turn = m.color === "white" ? t("side_white") : t("side_black");
-  const tag = m.isBest
-    ? `<span class="tag" style="background:#2e7d32;color:#fff">${t("cls_best")}</span>`
-    : `<span class="tag" style="background:${m.clsColor}">${clsLabel(m.classification)} ${m.symbol}</span>`;
+  // Brilliant/Great take priority over the plain "Best" tag even when the move
+  // is also the engine's top choice.
+  const special = m.classification === "Brilliant" || m.classification === "Great";
+  const tag = special
+    ? `<span class="tag" style="background:${clsColor(m.classification)};color:#fff">${clsLabel(m.classification)} ${m.symbol}</span>`
+    : m.isBest
+      ? `<span class="tag" style="background:#2e7d32;color:#fff">${t("cls_best")}</span>`
+      : `<span class="tag" style="background:${m.clsColor}">${clsLabel(m.classification)} ${m.symbol}</span>`;
   const missed = m.missedWin ? ` <b style="color:#c62828">${t("rv_missed_win")}</b>` : "";
   const explain = m.explain
     ? `<div class="aiexplain">🤖 ${escapeHtml(m.explain)}</div>` : "";

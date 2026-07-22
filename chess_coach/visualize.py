@@ -20,6 +20,8 @@ BOARD_SIZE = 440
 
 # classification -> colour (move list + detail panel)
 _COLOR = {
+    "Brilliant": "#1aa7a0",
+    "Great": "#3f7fd6",
     "Best": "#2e7d32",
     "Excellent": "#2e7d32",
     "Good": "#9e9e9e",
