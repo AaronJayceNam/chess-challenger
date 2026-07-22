@@ -17,7 +17,10 @@ async function api(path, body) {
   return res.json();
 }
 const $ = (id) => document.getElementById(id);
-const GLYPH = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+// Trailing ︎ = text-presentation selector: forces iOS/Safari to render the
+// chess symbols as TEXT (so our .pc.w/.pc.b CSS colors apply) instead of as
+// same-colored emoji, which made white and black pieces look identical.
+const GLYPH = { k: "♚︎", q: "♛︎", r: "♜︎", b: "♝︎", n: "♞︎", p: "♟︎" };
 
 // Slide the piece that just moved from its origin square to its destination,
 // so moves look smooth even though the board is re-rendered from scratch.
@@ -63,7 +66,9 @@ function optimisticMove(boardEl, from, to, orient) {
   const cap = toDiv.querySelector(".pc"); if (cap) cap.remove();
   toDiv.appendChild(pc);
   // castling: king moves two files → bring the matching rook along
-  if (pc.textContent === "♔" || pc.textContent === "♚") {
+  // (charAt(0): ignore the trailing text-presentation selector on the glyph)
+  const _kg = pc.textContent.charAt(0);
+  if (_kg === "♔" || _kg === "♚") {
     const ff = "abcdefgh".indexOf(from[0]), tf = "abcdefgh".indexOf(to[0]), rank = from[1];
     const shift = (rf, rt) => {
       const rFrom = _sqDivOf(boardEl, rf + rank, orient), rTo = _sqDivOf(boardEl, rt + rank, orient);
