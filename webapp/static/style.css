@@ -379,7 +379,7 @@ input[type=range]{ accent-color:var(--accent); }
 .pv-clock.active.low{ background:linear-gradient(180deg,#f0584f,#c62828); box-shadow:0 2px 0 #8e1e1e; animation:lowtime 1s steps(2) infinite; }
 @keyframes lowtime{ 50%{ filter:brightness(1.35); } }
 .pv-caps{ margin-left:auto; display:flex; align-items:center; gap:2px; font-size:16px; color:#6b7683; letter-spacing:-1px; }
-.pv-lead{ margin-left:6px; font-size:13.5px; color:var(--good-d); letter-spacing:0; }
+.pv-lead{ margin-left:6px; font-size:14px; font-weight:800; color:var(--good-d); letter-spacing:0; }
 
 /* in-game chat */
 .ogchat{ width:var(--board); margin-top:12px; border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden; box-shadow:var(--shadow-sm); }
@@ -607,7 +607,6 @@ body.ingame .cols > div:last-child{ display:none !important; }   /* hide the sid
 body.ingame .cols > div:first-child{ width:var(--board); max-width:96vw; display:flex; flex-direction:column; align-items:center; }
 body.ingame .boardwrap{ justify-content:center; }
 body.ingame .pbar{ margin:9px 0; }
-body.ingame .pv-caps{ display:none; }               /* keep it to nickname + rating */
 body.ingame .pv-clock{ margin-left:auto; }
 body.ingame .turn{ text-align:center; font-size:13.5px; color:var(--muted); margin:10px 0 2px; }
 body.ingame .controls{ justify-content:center; }
