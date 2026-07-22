@@ -446,6 +446,17 @@ input[type=range]{ accent-color:var(--accent); }
 .coach-mini .coach-av{ width:38px; height:38px; font-size:21px; }
 .coach-mini .coach-text{ font-size:14px; }
 
+/* daily puzzle card */
+.daily-card{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  background:linear-gradient(120deg,#fff7e6,#fdf0f5); border:1px solid var(--line2); }
+.daily-left{ display:flex; align-items:center; gap:12px; }
+.daily-badge{ width:44px; height:44px; flex:0 0 auto; display:grid; place-items:center; font-size:24px;
+  border-radius:12px; background:#fff; box-shadow:var(--shadow-sm); }
+.daily-title{ font-weight:800; font-size:16px; }
+.daily-streak{ font-size:13px; color:var(--muted); margin-top:2px; }
+#dailyBtn.done{ filter:grayscale(.4) brightness(.98); }
+@media (max-width:560px){ .daily-card #dailyBtn{ width:100%; } }
+
 /* full-screen takeover when signed out (not a small modal) */
 #loginGate{ background:linear-gradient(165deg,#0f5132 0%,#2f7d4d 48%,#3f9d63 100%);
   backdrop-filter:none; padding:28px; z-index:60; overflow:hidden; }

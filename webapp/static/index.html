@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=55">
+<link rel="stylesheet" href="/static/style.css?v=56">
 </head>
 <body>
 
@@ -305,6 +305,16 @@
     <text x="96" y="82" font-size="30" fill="#2f7d4d" text-anchor="middle">&#9818;</text>
     <circle cx="40" cy="40" r="5" fill="#ffd968"/><circle cx="44" cy="88" r="4" fill="#fff" opacity=".7"/><circle cx="128" cy="46" r="4" fill="#fff" opacity=".7"/>
   </svg></div>
+  <div class="card daily-card" id="dailyCard">
+    <div class="daily-left">
+      <div class="daily-badge">📅</div>
+      <div>
+        <div class="daily-title" data-i18n="daily_title">오늘의 퍼즐</div>
+        <div class="daily-streak" id="dailyStreak"></div>
+      </div>
+    </div>
+    <button class="primary" id="dailyBtn" data-i18n="daily_solve">오늘의 퍼즐 풀기</button>
+  </div>
   <div class="cols">
     <div>
       <div class="boardwrap"><div class="boardstack" id="pzStack">
@@ -581,8 +591,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=55"></script>
-<script src="/static/app.js?v=55"></script>
+<script src="/static/i18n.js?v=56"></script>
+<script src="/static/app.js?v=56"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {
