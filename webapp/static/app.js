@@ -542,6 +542,7 @@ function addHistory(entry) {
   if (cur > bestStreak()) localStorage.setItem("cc_streak_best", String(cur));
   renderHistory();
   authSchedulePush();
+  if (typeof checkAchievements === "function") checkAchievements();
 }
 // consecutive wins ending at the most recent game (AI + online both count)
 function winStreak() {
@@ -1422,6 +1423,7 @@ function pzSolved() {
   const p = PZ.list[PZ.idx];
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
   pzStreakInc();   // consecutive-solve streak
+  if (typeof checkAchievements === "function") checkAchievements();
   showResult({
     kind: "win", icon: "🏆", title: t("pz_solved_title"),
     sub: t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn) + pzStreakSuffix(),
@@ -2001,6 +2003,7 @@ function collectProgress() {
     bestStreak: bestStreak(),
     pzStreak: pzStreak(),
     pzStreakBest: pzStreakBest(),
+    achievements: [...achUnlocked()],
   };
 }
 
@@ -2017,7 +2020,12 @@ function applyProgress(p) {
     localStorage.setItem("cc_puzzles_solved", JSON.stringify(p.puzzles));
     PZ.solved = new Set(p.puzzles);
   }
+  if (Array.isArray(p.achievements)) {
+    const merged = new Set([...achUnlocked(), ...p.achievements]);   // union across devices
+    localStorage.setItem("cc_achievements", JSON.stringify([...merged]));
+  }
   updateRatingChip(); renderHistory(); updateRankBadge();
+  if (typeof renderAchievements === "function") renderAchievements();
   if (PZ.list.length) renderPzGrid();
 }
 
@@ -2511,6 +2519,7 @@ function currentStreak() {
 
 function renderGrowth() {
   renderGoal();
+  renderAchievements();
   renderGrowthAdapt();
   renderGrowthChart();
   renderGrowthProjection();
@@ -2975,3 +2984,93 @@ function renderHistoryModal() {
 // Apply the saved language now that all renderers exist (translates static
 // [data-i18n] text and re-renders the dynamic dashboard in the chosen tongue).
 if (typeof applyLang === "function") applyLang(typeof CC_LANG !== "undefined" ? CC_LANG : "ko");
+
+// =========================================================================== //
+// ④ Achievements / badges
+// =========================================================================== //
+const ACHIEVEMENTS = [
+  { id: "first_win",   icon: "🥇", need: (s) => s.wins >= 1 },
+  { id: "win_10",      icon: "🏅", need: (s) => s.wins >= 10 },
+  { id: "win_50",      icon: "🎖️", need: (s) => s.wins >= 50 },
+  { id: "streak_3",    icon: "🔥", need: (s) => s.bestStreak >= 3 },
+  { id: "streak_5",    icon: "⚡", need: (s) => s.bestStreak >= 5 },
+  { id: "games_10",    icon: "♟️", need: (s) => s.games >= 10 },
+  { id: "games_50",    icon: "🎯", need: (s) => s.games >= 50 },
+  { id: "pz_1",        icon: "🧩", need: (s) => s.puzzles >= 1 },
+  { id: "pz_25",       icon: "🧠", need: (s) => s.puzzles >= 25 },
+  { id: "pz_100",      icon: "👑", need: (s) => s.puzzles >= 100 },
+  { id: "pzstreak_5",  icon: "🌟", need: (s) => s.pzStreakBest >= 5 },
+  { id: "pzstreak_10", icon: "💫", need: (s) => s.pzStreakBest >= 10 },
+  { id: "rating_800",  icon: "📈", need: (s) => s.rating >= 800 },
+  { id: "rating_1200", icon: "🚀", need: (s) => s.rating >= 1200 },
+  { id: "rating_1600", icon: "💎", need: (s) => s.rating >= 1600 },
+];
+
+function achStats() {
+  let solved = 0;
+  try { solved = (JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]") || []).length; } catch (e) {}
+  const hist = (typeof gameHistory === "function") ? gameHistory() : [];
+  return {
+    games: hist.length,
+    wins: hist.filter((g) => g.result === "win").length,
+    bestStreak: (typeof bestStreak === "function") ? bestStreak() : 0,
+    puzzles: solved,
+    pzStreakBest: (typeof pzStreakBest === "function") ? pzStreakBest() : 0,
+    rating: (typeof myRating === "function") ? myRating() : 0,
+  };
+}
+function achUnlocked() {
+  try { return new Set(JSON.parse(localStorage.getItem("cc_achievements") || "[]")); }
+  catch (e) { return new Set(); }
+}
+function achSave(set) {
+  localStorage.setItem("cc_achievements", JSON.stringify([...set]));
+  if (typeof authSchedulePush === "function") authSchedulePush();
+}
+// Detect newly earned achievements, persist, and toast them (unless silent).
+function checkAchievements(silent) {
+  const s = achStats();
+  const have = achUnlocked();
+  const fresh = [];
+  for (const a of ACHIEVEMENTS) {
+    if (!have.has(a.id) && a.need(s)) { have.add(a.id); fresh.push(a); }
+  }
+  if (fresh.length) {
+    achSave(have);
+    if (!silent) fresh.forEach((a, i) => setTimeout(() => achToast(a), i * 1600));
+    if (document.getElementById("achGrid")) renderAchievements();
+  }
+  return fresh.length;
+}
+function achToast(a) {
+  const T = (typeof t === "function") ? t : ((k) => k);
+  const el = document.createElement("div");
+  el.className = "ach-toast";
+  el.innerHTML = '<span class="ach-ic">' + a.icon + '</span><div>' +
+    '<div class="ach-tt">' + T("ach_unlocked") + '</div>' +
+    '<div class="ach-nm">' + T("ach_" + a.id) + '</div></div>';
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 400); }, 4200);
+}
+function renderAchievements() {
+  const el = document.getElementById("achGrid");
+  if (!el) return;
+  const T = (typeof t === "function") ? t : ((k) => k);
+  const s = achStats();
+  const have = achUnlocked();
+  let changed = false;
+  for (const a of ACHIEVEMENTS) if (!have.has(a.id) && a.need(s)) { have.add(a.id); changed = true; }
+  if (changed) achSave(have);
+  const got = ACHIEVEMENTS.filter((a) => have.has(a.id)).length;
+  const cnt = document.getElementById("achCount");
+  if (cnt) cnt.textContent = got + "/" + ACHIEVEMENTS.length;
+  el.innerHTML = ACHIEVEMENTS.map((a) => {
+    const on = have.has(a.id);
+    return '<div class="ach ' + (on ? "on" : "off") + '" title="' + T("ach_" + a.id + "_d") + '">' +
+      '<span class="ach-ic">' + (on ? a.icon : "🔒") + '</span>' +
+      '<span class="ach-nm">' + T("ach_" + a.id) + '</span></div>';
+  }).join("");
+}
+// silent backfill on load (unlock anything already earned, no toast spam)
+try { checkAchievements(true); } catch (e) {}
