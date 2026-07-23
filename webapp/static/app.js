@@ -883,7 +883,7 @@ $("rvShare").onclick = async () => {
 // =========================================================================== //
 // PLAY vs AI (levels 1-10) -> auto-evaluate when the game ends
 // =========================================================================== //
-const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false, style: "default", variant: false, startFen: null, hint: null };
+const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false, style: "default", variant: false, startFen: null, hint: null, viewState: null, viewLast: null, viewIdx: null };
 
 // Progress: the highest level beaten (persisted in localStorage). Shown as a
 // plain level number — no titles.
@@ -942,16 +942,17 @@ function presentResult(opts) { setTimeout(() => showResult(opts), 420); }
 
 function renderAiBoard() {
   const board = $("aiBoard"); board.innerHTML = "";
-  const st = AIG.state; if (!st) return;
+  const viewing = !!AIG.viewState;                 // browsing an earlier position?
+  const st = viewing ? AIG.viewState : AIG.state; if (!st) return;
   const map = parseFen(st.fen);
   const files = AIG.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"];
   const ranks = AIG.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
-  const lastUci = AIG.moves.length ? AIG.moves[AIG.moves.length - 1] : null;
+  const lastUci = viewing ? AIG.viewLast : (AIG.moves.length ? AIG.moves[AIG.moves.length - 1] : null);
   const lf = lastUci ? lastUci.slice(0, 2) : null, lt = lastUci ? lastUci.slice(2, 4) : null;
   const kingChar = st.turn === "w" ? "K" : "k";
   let kingSq = null;
   for (const s in map) if (map[s] === kingChar) kingSq = s;
-  const canMove = !AIG.over && !AIG.thinking && st.turn === AIG.human;
+  const canMove = !viewing && !AIG.over && !AIG.thinking && st.turn === AIG.human;
   const legal = canMove ? (st.legal || {}) : {};
   for (const rank of ranks) {
     for (const f of files) {
@@ -959,8 +960,8 @@ function renderAiBoard() {
       const div = document.createElement("div");
       div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
       if (sq === lf || sq === lt) div.classList.add("last");
-      if (AIG.hint && (sq === AIG.hint.from || sq === AIG.hint.to)) div.classList.add("hintsq");
-      if (AIG.sel === sq) div.classList.add("sel");
+      if (!viewing && AIG.hint && (sq === AIG.hint.from || sq === AIG.hint.to)) div.classList.add("hintsq");
+      if (!viewing && AIG.sel === sq) div.classList.add("sel");
       if (st.check && sq === kingSq) div.classList.add("check");
       const p = map[sq];
       if (p) {
@@ -983,6 +984,7 @@ function renderAiBoard() {
 
 function onAiClick(sq) {
   if (_dragJustMoved) return;
+  if (AIG.viewState) { aiViewLive(); return; }       // browsing history → snap back to live, ignore the click
   const st = AIG.state;
   if (!AIG.started || AIG.over || AIG.thinking || !st || st.turn !== AIG.human) return;
   const map = parseFen(st.fen), legal = st.legal || {};
@@ -1064,6 +1066,7 @@ function renderAiMoves() {
     el.innerHTML = html; el.scrollTop = el.scrollHeight;
   }
   renderMoveStrip("aiMoveStrip", san);
+  if (typeof updateAiNav === "function") updateAiNav();
   updateOpeningLine("aiOpening", AIG.moves);
 }
 
@@ -1085,7 +1088,7 @@ function renderMoveStrip(elId, san) {
 
 async function aiHumanMove(uci) {
   // Instant feedback: move the piece right away, don't wait for the server.
-  AIG.sel = null; AIG.hint = null;
+  AIG.sel = null; AIG.hint = null; AIG.viewState = null; AIG.viewIdx = null; AIG.viewLast = null;
   optimisticMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   const moves = [...AIG.moves, uci];
   let st;
@@ -1108,6 +1111,7 @@ async function aiReply() {
   AIG.thinking = false;
   if (res.move) AIG.moves.push(res.move);
   AIG.state = res;
+  AIG.viewState = null; AIG.viewIdx = null; AIG.viewLast = null;   // new move → back to live
   renderAiBoard(); renderAiMoves(); updateAiTurn();
   if (res.move) animateMove($("aiBoard"), res.move.slice(0, 2), res.move.slice(2, 4), AIG.orient);
   playMoveSfx(res);
@@ -1223,6 +1227,39 @@ async function aiHint() {
   clearTimeout(aiHint._t);
   aiHint._t = setTimeout(() => { AIG.hint = null; renderAiBoard(); }, 4000);
 }
+
+// ---- in-game move navigation (VIEW previous moves only — not takeback) ----
+// Shows the board at an earlier ply without altering the live game. Making a
+// move (or tapping the board / ▶ to the end) returns to the live position.
+async function aiView(idx) {
+  if (!AIG.started) return;
+  const total = AIG.moves.length;
+  idx = Math.max(0, Math.min(total, idx));
+  if (idx === total) { aiViewLive(); return; }        // back at the live position
+  const sub = AIG.moves.slice(0, idx);
+  let st;
+  try { st = await api("/api/legal", { moves: sub, startFen: AIG.startFen }); }
+  catch (e) { return; }
+  AIG.viewIdx = idx;
+  AIG.viewState = st;
+  AIG.viewLast = idx > 0 ? AIG.moves[idx - 1] : null;
+  AIG.sel = null;
+  renderAiBoard(); updateAiNav();
+}
+function aiViewLive() {
+  AIG.viewIdx = null; AIG.viewState = null; AIG.viewLast = null;
+  renderAiBoard(); updateAiNav();
+}
+function updateAiNav() {
+  const total = AIG.moves.length;
+  const cur = AIG.viewIdx == null ? total : AIG.viewIdx;
+  const prev = $("aiPrev"), next = $("aiNext"), strip = $("aiMoveStrip");
+  if (prev) prev.disabled = cur <= 0;
+  if (next) next.disabled = cur >= total;
+  if (strip) strip.classList.toggle("viewing", AIG.viewIdx != null);
+}
+if ($("aiPrev")) $("aiPrev").onclick = () => aiView((AIG.viewIdx == null ? AIG.moves.length : AIG.viewIdx) - 1);
+if ($("aiNext")) $("aiNext").onclick = () => aiView((AIG.viewIdx == null ? AIG.moves.length : AIG.viewIdx) + 1);
 
 $("aiLevel").oninput = (e) => {
   $("aiLevelLabel").textContent = aiLevelText(+e.target.value);
@@ -1752,6 +1789,7 @@ showLearn("pawn");
 const OG = {
   ws: null, started: false, over: false, color: null, opponent: null,
   state: null, moves: [], sel: null, orient: "w", lastUci: null, pingTimer: null,
+  viewState: null, viewLast: null, viewIdx: null,
   oppRating: RATING_START, ratingApplied: false,
   clock: { w: 600, b: 600 }, clockSyncedAt: 0,
 };
@@ -1891,6 +1929,7 @@ function ogHandle(msg) {
       break;
     case "state":
       OG.state = msg.state; OG.moves = msg.state.moves || []; OG.sel = null;
+      OG.viewState = null; OG.viewIdx = null; OG.viewLast = null;   // a new move snaps back to live
       OG.lastUci = msg.lastUci || null;
       ogSyncClock(msg.state);
       $("ogDrawPrompt").classList.add("hidden");   // a move voids any pending draw offer
@@ -1918,12 +1957,14 @@ function ogHandle(msg) {
 
 function renderOgBoard() {
   const board = $("ogBoard"); board.innerHTML = "";
-  const st = OG.state; if (!st) return;
+  const viewing = !!OG.viewState;
+  const st = viewing ? OG.viewState : OG.state; if (!st) return;
   const map = parseFen(st.fen);
   const files = OG.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"];
   const ranks = OG.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
-  const lf = OG.lastUci ? OG.lastUci.slice(0, 2) : null, lt = OG.lastUci ? OG.lastUci.slice(2, 4) : null;
-  const myTurn = OG.started && !OG.over && st.turn === OG.color;
+  const lastUci = viewing ? OG.viewLast : OG.lastUci;
+  const lf = lastUci ? lastUci.slice(0, 2) : null, lt = lastUci ? lastUci.slice(2, 4) : null;
+  const myTurn = !viewing && OG.started && !OG.over && st.turn === OG.color;
   const legal = myTurn ? (st.legal || {}) : {};
   let kingSq = null;
   if (st.check) { const kc = st.turn === "w" ? "K" : "k"; for (const s in map) if (map[s] === kc) kingSq = s; }
@@ -1933,7 +1974,7 @@ function renderOgBoard() {
       const div = document.createElement("div");
       div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
       if (sq === lf || sq === lt) div.classList.add("last");
-      if (OG.sel === sq) div.classList.add("sel");
+      if (!viewing && OG.sel === sq) div.classList.add("sel");
       if (sq === kingSq) div.classList.add("check");
       const p = map[sq];
       if (p) {
@@ -1956,6 +1997,7 @@ function renderOgBoard() {
 
 function onOgClick(sq) {
   if (_dragJustMoved) return;
+  if (OG.viewState) { ogViewLive(); return; }        // browsing history → snap back to live
   const st = OG.state;
   if (!OG.started || OG.over || !st || st.turn !== OG.color) return;
   const map = parseFen(st.fen), legal = st.legal || {};
@@ -1990,6 +2032,7 @@ function renderOgMoves() {
     el.innerHTML = html; el.scrollTop = el.scrollHeight;
   }
   renderMoveStrip("ogMoveStrip", san);
+  if (typeof updateOgNav === "function") updateOgNav();
   updateOpeningLine("ogOpening", OG.moves);
 }
 
@@ -2096,6 +2139,33 @@ $("ogDraw").onclick = () => {
 $("ogDrawAccept").onclick = () => { ogSend({ type: "draw_accept" }); $("ogDrawPrompt").classList.add("hidden"); };
 $("ogDrawDecline").onclick = () => { ogSend({ type: "draw_decline" }); $("ogDrawPrompt").classList.add("hidden"); };
 $("ogFlip").onclick = () => { OG.orient = OG.orient === "w" ? "b" : "w"; renderOgBoard(); };
+
+// ---- online in-game move navigation (view earlier moves only) ----
+async function ogView(idx) {
+  if (!OG.started) return;
+  const total = OG.moves.length;
+  idx = Math.max(0, Math.min(total, idx));
+  if (idx === total) { ogViewLive(); return; }
+  let st;
+  try { st = await api("/api/legal", { moves: OG.moves.slice(0, idx) }); }
+  catch (e) { return; }
+  OG.viewIdx = idx; OG.viewState = st; OG.viewLast = idx > 0 ? OG.moves[idx - 1] : null; OG.sel = null;
+  renderOgBoard(); updateOgNav();
+}
+function ogViewLive() {
+  OG.viewIdx = null; OG.viewState = null; OG.viewLast = null;
+  renderOgBoard(); updateOgNav();
+}
+function updateOgNav() {
+  const total = OG.moves.length;
+  const cur = OG.viewIdx == null ? total : OG.viewIdx;
+  const prev = $("ogPrev"), next = $("ogNext"), strip = $("ogMoveStrip");
+  if (prev) prev.disabled = cur <= 0;
+  if (next) next.disabled = cur >= total;
+  if (strip) strip.classList.toggle("viewing", OG.viewIdx != null);
+}
+if ($("ogPrev")) $("ogPrev").onclick = () => ogView((OG.viewIdx == null ? OG.moves.length : OG.viewIdx) - 1);
+if ($("ogNext")) $("ogNext").onclick = () => ogView((OG.viewIdx == null ? OG.moves.length : OG.viewIdx) + 1);
 
 // ---- login gate: online rated play requires an account ----
 function openAuth() { $("authModal").classList.remove("hidden"); setStatus("authStatus", ""); $("authId").focus(); }

@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=69">
+<link rel="stylesheet" href="/static/style.css?v=70">
 </head>
 <body>
 
@@ -96,7 +96,11 @@
         <button class="ghost" id="ogFlip" data-i18n="btn_flip">⇅ 보드 뒤집기</button>
         <button class="ghost" id="ogChatToggle" data-i18n="og_chat_btn">💬 채팅</button>
       </div>
-      <div class="movestrip" id="ogMoveStrip" aria-label="기보"></div>
+      <div class="movenav">
+        <button class="ghost msnav" id="ogPrev" title="이전 수" data-i18n-title="tt_prev">◀</button>
+        <div class="movestrip" id="ogMoveStrip" aria-label="기보"></div>
+        <button class="ghost msnav" id="ogNext" title="다음 수" data-i18n-title="tt_next">▶</button>
+      </div>
       <div class="og-draw hidden" id="ogDrawPrompt">
         <b data-i18n="og_draw_offer">상대가 무승부를 제안했습니다.</b>
         <div class="row">
@@ -282,7 +286,11 @@
         <button class="ghost" id="aiResign" data-i18n="btn_resign_ai">🏳️ 기권하고 평가받기</button>
         <button class="ghost" id="aiFlip" data-i18n="btn_flip">⇅ 보드 뒤집기</button>
       </div>
-      <div class="movestrip" id="aiMoveStrip" aria-label="기보"></div>
+      <div class="movenav">
+        <button class="ghost msnav" id="aiPrev" title="이전 수" data-i18n-title="tt_prev">◀</button>
+        <div class="movestrip" id="aiMoveStrip" aria-label="기보"></div>
+        <button class="ghost msnav" id="aiNext" title="다음 수" data-i18n-title="tt_next">▶</button>
+      </div>
     </div>
     <div style="flex:1; min-width:300px; max-width:420px;">
       <div class="card setup-card">
@@ -678,8 +686,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=69"></script>
-<script src="/static/app.js?v=69"></script>
+<script src="/static/i18n.js?v=70"></script>
+<script src="/static/app.js?v=70"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {
