@@ -666,6 +666,11 @@ var I18N = {
   rv_export_btn:  { ko: "⬇ 주석 PGN", en: "⬇ Annotated PGN", ja: "⬇ 注釈付きPGN", zh: "⬇ 带注释 PGN", es: "⬇ PGN anotado" },
   rv_share_status:{ ko: "공유본은 인터넷 없이 열리는 단일 파일입니다. 사람들에게 그대로 보내세요.", en: "The study is a single file that opens without internet. Send it to anyone as-is.", ja: "共有ファイルはインターネットなしで開ける単一ファイルです。そのまま送れます。", zh: "分享文件是无需联网即可打开的单个文件，可直接发送给他人。", es: "El estudio es un único archivo que se abre sin internet. Envíalo tal cual a quien quieras." },
   rv_lg_reco:     { ko: "추천 수(녹색 화살표)", en: "recommended move (green arrow)", ja: "推奨手(緑の矢印)", zh: "推荐着法(绿色箭头)", es: "jugada recomendada (flecha verde)" },
+  share_btn:      { ko: "🔗 이 게임 공유", en: "🔗 Share this game", ja: "🔗 この対局を共有", zh: "🔗 分享此对局", es: "🔗 Compartir partida" },
+  share_text:     { ko: "Matevio에서 둔 체스 게임을 확인해보세요!", en: "Check out my chess game on Matevio!", ja: "Matevioで指したチェスの対局をどうぞ！", zh: "来看看我在 Matevio 的对局！", es: "¡Mira mi partida de ajedrez en Matevio!" },
+  share_copied:   { ko: "공유 링크가 복사됐어요!", en: "Share link copied!", ja: "共有リンクをコピーしました！", zh: "已复制分享链接！", es: "¡Enlace copiado!" },
+  share_copy_manual: { ko: "이 링크를 복사하세요:", en: "Copy this link:", ja: "このリンクをコピー:", zh: "复制此链接：", es: "Copia este enlace:" },
+  share_none:     { ko: "공유할 게임이 없어요.", en: "No game to share.", ja: "共有する対局がありません。", zh: "没有可分享的对局。", es: "No hay partida para compartir." },
 
   // ----- misc (dynamic) -----
   foot_engine: { ko: "체스 엔진", en: "Chess engine", ja: "チェスエンジン", zh: "国际象棋引擎", es: "Motor de ajedrez" },

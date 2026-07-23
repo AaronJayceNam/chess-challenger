@@ -3132,3 +3132,57 @@ function renderAchievements() {
 }
 // silent backfill on load (unlock anything already earned, no toast spam)
 try { checkAchievements(true); } catch (e) {}
+
+// =========================================================================== //
+// ⑦ Game share — encode a finished game into a link; opening it replays the
+// game in the Review tab (reusing the whole analysis viewer). No server needed.
+// =========================================================================== //
+function b64urlEncode(str) {
+  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64urlDecode(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  return decodeURIComponent(escape(atob(s)));
+}
+function buildShareUrl(g) {
+  const payload = JSON.stringify({
+    w: g.white || "White", b: g.black || "Black",
+    r: g.result || "", m: (g.moves || []).join(" "),
+  });
+  return location.origin + "/?g=" + b64urlEncode(payload);
+}
+function shareFlash(msg) {
+  const el = document.createElement("div");
+  el.className = "ach-toast show";
+  el.innerHTML = '<span class="ach-ic">🔗</span><div><div class="ach-nm">' + msg + "</div></div>";
+  document.body.appendChild(el);
+  setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 400); }, 2600);
+}
+async function shareGame(g) {
+  if (!g || !g.moves || !g.moves.length) { shareFlash(t("share_none")); return; }
+  const url = buildShareUrl(g);
+  try {
+    if (navigator.share) { await navigator.share({ title: "Matevio", text: t("share_text"), url }); return; }
+  } catch (e) { return; }   // user dismissed the native sheet
+  try { await navigator.clipboard.writeText(url); shareFlash(t("share_copied")); }
+  catch (e) { window.prompt(t("share_copy_manual"), url); }
+}
+// On load: if the URL carries a shared game, replay it in Review.
+function checkSharedGame() {
+  let g;
+  try { g = new URLSearchParams(location.search).get("g"); } catch (e) { return; }
+  if (!g) return;
+  let d;
+  try { d = JSON.parse(b64urlDecode(g)); } catch (e) { return; }
+  const moves = (d && d.m || "").trim() ? d.m.trim().split(/\s+/) : [];
+  if (!moves.length) return;
+  try { history.replaceState(null, "", location.origin + "/"); } catch (e) {}   // don't re-trigger on refresh
+  setTimeout(() => {
+    try {
+      switchTab("review");
+      runAnalyze({ moves, white: d.w || "White", black: d.b || "Black", movetime: REVIEW_MT });
+    } catch (e) {}
+  }, 500);
+}
+if ($("rvShare")) $("rvShare").onclick = () => shareGame(LAST_REQ);
+checkSharedGame();
