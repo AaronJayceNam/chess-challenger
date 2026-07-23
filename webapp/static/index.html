@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=61">
+<link rel="stylesheet" href="/static/style.css?v=62">
 </head>
 <body>
 
@@ -158,6 +158,7 @@
       </div>
       <div class="card">
         <h3 data-i18n="h_moves">기보</h3>
+        <div class="opening-line hidden" id="ogOpening"></div>
         <div class="movelist" id="ogMoves"><span class="num" data-i18n="og_moves_empty">매치가 시작되면 기보가 여기에 쌓입니다.</span></div>
       </div>
       <div class="card">
@@ -221,6 +222,19 @@
           <p><b data-i18n="rule_value_t">⚖ 기물 가치(참고)</b><span data-i18n="rule_value_d"> — 폰 1 · 나이트·비숍 3 · 룩 5 · 퀸 9 · 킹 ∞</span></p>
           <p style="color:var(--muted)" data-i18n="rule_special">위 버튼으로 캐슬링·앙파상·승격 같은 특수 규칙도 보드에서 직접 확인하세요.</p>
         </div>
+      </div>
+      <div class="card">
+        <h3 data-i18n="op_practice_title">오프닝 연습</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px" data-i18n="op_practice_desc">유명한 오프닝을 골라 '다음 수'로 한 수씩 따라 두며 정석 수순을 익혀보세요.</p>
+        <label class="field" data-i18n="op_select_label">오프닝 선택</label>
+        <select id="opSelect"></select>
+        <div class="boardwrap" style="margin-top:10px"><div class="boardstack"><div class="cboard" id="opBoard"></div></div></div>
+        <div class="turn" id="opMoveLine"></div>
+        <div class="controls">
+          <button class="ghost" id="opReset" data-i18n="op_reset_btn">↺ 처음으로</button>
+          <button class="primary" id="opNext" data-i18n="op_next_btn">다음 수 ▶</button>
+        </div>
+        <div class="status" id="opStatus"></div>
       </div>
     </div>
   </div>
@@ -288,6 +302,7 @@
       </div>
       <div class="card">
         <h3 data-i18n="h_moves">기보</h3>
+        <div class="opening-line hidden" id="aiOpening"></div>
         <div class="movelist" id="aiMoves"><span class="num" data-i18n="ai_moves_empty">대국을 시작하면 여기에 기보가 쌓입니다.</span></div>
       </div>
       <div class="card">
@@ -473,6 +488,7 @@
       </div>
       <div class="card">
         <h3 data-i18n="h_moves">기보</h3>
+        <div class="opening-line hidden" id="anOpening"></div>
         <div class="movelist" id="anMoves"><span class="num" data-i18n="an_moves_empty">아무 수나 두어보세요. 여기에 기보가 쌓입니다.</span></div>
       </div>
       <div class="card">
@@ -631,8 +647,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=61"></script>
-<script src="/static/app.js?v=61"></script>
+<script src="/static/i18n.js?v=62"></script>
+<script src="/static/app.js?v=62"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

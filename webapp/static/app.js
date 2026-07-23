@@ -387,6 +387,90 @@ function isOffline(e) {
 // Network-error message (translated live via t("offline_msg")).
 
 // =========================================================================== //
+// OPENING BOOK — map a game's LEADING move sequence to a named opening. Keyed by
+// space-joined UCI (every live board tracks moves as UCI: AIG.moves / OG.moves /
+// AN.moves), so no SAN conversion is needed. The name is stored as an i18n KEY
+// (op_*) resolved through t() so it shows in the app's language. Shorter
+// prefixes are included too, so a name appears early (e.g. "e4 c5" → Sicilian)
+// and refines as more theory moves are played (e.g. the Najdorf).
+// =========================================================================== //
+const OPENING_BOOK = {
+  // ---- first-move families ----
+  "e2e4 e7e5": "op_open_game",
+  "e2e4 c7c5": "op_sicilian",
+  "e2e4 e7e6": "op_french",
+  "e2e4 c7c6": "op_caro_kann",
+  "e2e4 d7d5": "op_scandinavian",
+  "e2e4 d7d6": "op_pirc",
+  "e2e4 g7g6": "op_modern",
+  "e2e4 g8f6": "op_alekhine",
+  "d2d4 d7d5": "op_queens_pawn",
+  "d2d4 g8f6": "op_indian_defense",
+  "d2d4 f7f5": "op_dutch",
+  "c2c4": "op_english",
+  "g1f3": "op_reti",
+  "f2f4": "op_bird",
+  // ---- 1.e4 e5 open games ----
+  "e2e4 e7e5 g1f3 b8c6 f1b5": "op_ruy_lopez",
+  "e2e4 e7e5 g1f3 b8c6 f1c4": "op_italian",
+  "e2e4 e7e5 g1f3 b8c6 d2d4": "op_scotch",
+  "e2e4 e7e5 g1f3 b8c6 b1c3 g8f6": "op_four_knights",
+  "e2e4 e7e5 g1f3 g8f6": "op_petrov",
+  "e2e4 e7e5 g1f3 d7d6": "op_philidor",
+  "e2e4 e7e5 f2f4": "op_kings_gambit",
+  "e2e4 e7e5 b1c3": "op_vienna",
+  // ---- Sicilian lines ----
+  "e2e4 c7c5 c2c3": "op_sicilian_alapin",
+  "e2e4 c7c5 b1c3": "op_sicilian_closed",
+  "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6": "op_sicilian_najdorf",
+  "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 g7g6": "op_sicilian_dragon",
+  // ---- French ----
+  "e2e4 e7e6 d2d4 d7d5 e4e5": "op_french_advance",
+  // ---- 1.d4 d5 ----
+  "d2d4 d7d5 c2c4": "op_queens_gambit",
+  "d2d4 d7d5 c2c4 e7e6": "op_qgd",
+  "d2d4 d7d5 c2c4 d5c4": "op_qga",
+  "d2d4 d7d5 c2c4 c7c6": "op_slav",
+  "d2d4 d7d5 c1f4": "op_london",
+  "d2d4 d7d5 g1f3 g8f6 c1f4": "op_london",
+  // ---- 1.d4 Nf6 2.c4 Indian systems ----
+  "d2d4 g8f6 c2c4 e7e6 b1c3 f8b4": "op_nimzo_indian",
+  "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6": "op_queens_indian",
+  "d2d4 g8f6 c2c4 e7e6 g2g3": "op_catalan",
+  "d2d4 g8f6 c2c4 g7g6": "op_kings_indian",
+  "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5": "op_grunfeld",
+  "d2d4 g8f6 c2c4 c7c5": "op_benoni",
+  "d2d4 g8f6 c1f4": "op_london",
+};
+
+// Longest-prefix match: given a UCI move list, return the i18n key of the most
+// specific opening whose move sequence is a prefix of the game, or null.
+function detectOpening(uciMoves) {
+  if (!uciMoves || !uciMoves.length) return null;
+  let best = null, bestLen = 0;
+  for (const seq in OPENING_BOOK) {
+    const plies = seq.split(" ");
+    if (plies.length <= uciMoves.length && plies.length > bestLen) {
+      let ok = true;
+      for (let i = 0; i < plies.length; i++) { if (uciMoves[i] !== plies[i]) { ok = false; break; } }
+      if (ok) { best = OPENING_BOOK[seq]; bestLen = plies.length; }
+    }
+  }
+  return best;
+}
+
+// Set the small "오프닝: 루이 로페즈" label next to a board's move list. Blank
+// (and hidden) when no opening matches. Re-derives from the UCI list so it also
+// refreshes correctly on a language change.
+function updateOpeningLine(elId, uciMoves) {
+  const el = $(elId); if (!el) return;
+  const key = detectOpening(uciMoves || []);
+  if (!key) { el.textContent = ""; el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  el.textContent = t("opening_label") + ": " + t(key);
+}
+
+// =========================================================================== //
 // RATING + GAME HISTORY — per device (localStorage).
 // The rating changes ONLY through online matches; AI games are logged in the
 // history but never move the rating.
@@ -973,6 +1057,7 @@ function renderAiMoves() {
     html += `<span class="mv" style="cursor:default">${s}</span> `;
   });
   el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  updateOpeningLine("aiOpening", AIG.moves);
 }
 
 async function aiHumanMove(uci) {
@@ -1739,6 +1824,7 @@ function renderOgMoves() {
     html += `<span class="mv" style="cursor:default">${s}</span> `;
   });
   el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  updateOpeningLine("ogOpening", OG.moves);
 }
 
 function updateOgTurn() {
@@ -2335,6 +2421,7 @@ function anRenderMoves() {
     html += `<span class="mv" style="cursor:default">${s}</span> `;
   });
   el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  updateOpeningLine("anOpening", AN.moves);
 }
 
 function anReset() {
@@ -2631,10 +2718,131 @@ $("setBoard").onchange = (e) => {
   applyBoardTheme(SETTINGS.boardTheme);
 };
 
+// =========================================================================== //
+// OPENING PRACTICE (Learn tab) — pick a common opening and step through its main
+// line move-by-move on a small board. Each opening is a list of UCI moves; we
+// ask /api/legal (which replays from the start and returns fen + san) for the
+// resulting position, so no client-side move generation is needed. Reuses the
+// shared parseFen/GLYPH/addCoords board helpers.
+// =========================================================================== //
+const OP_PRACTICE = [
+  { key: "op_ruy_lopez",  moves: ["e2e4","e7e5","g1f3","b8c6","f1b5","a7a6","b5a4","g8f6","e1g1","f8e7"] },
+  { key: "op_italian",    moves: ["e2e4","e7e5","g1f3","b8c6","f1c4","f8c5","c2c3","g8f6","d2d4","e5d4"] },
+  { key: "op_sicilian_najdorf", moves: ["e2e4","c7c5","g1f3","d7d6","d2d4","c5d4","f3d4","g8f6","b1c3","a7a6"] },
+  { key: "op_french",     moves: ["e2e4","e7e6","d2d4","d7d5","b1c3","g8f6","c1g5","f8e7"] },
+  { key: "op_caro_kann",  moves: ["e2e4","c7c6","d2d4","d7d5","b1c3","d5e4","c3e4","c8f5"] },
+  { key: "op_qgd",        moves: ["d2d4","d7d5","c2c4","e7e6","b1c3","g8f6","c1g5","f8e7"] },
+  { key: "op_kings_indian", moves: ["d2d4","g8f6","c2c4","g7g6","b1c3","f8g7","e2e4","d7d6","g1f3","e8g8"] },
+  { key: "op_london",     moves: ["d2d4","d7d5","g1f3","g8f6","c1f4","e7e6","e2e3","f8d6"] },
+];
+const OPRAC = { i: 0, idx: 0, fen: AN_START, san: [], lastUci: null, busy: false };
+
+function opRenderBoard() {
+  const board = $("opBoard"); if (!board) return;
+  board.innerHTML = "";
+  const map = parseFen(OPRAC.fen);
+  const files = [..."abcdefgh"], ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  const lf = OPRAC.lastUci ? OPRAC.lastUci.slice(0, 2) : null, lt = OPRAC.lastUci ? OPRAC.lastUci.slice(2, 4) : null;
+  for (const rank of ranks) {
+    for (const f of files) {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const div = document.createElement("div");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
+      if (sq === lf || sq === lt) div.classList.add("last");
+      const p = map[sq];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "pc " + (p === p.toUpperCase() ? "w" : "b");
+        s.textContent = GLYPH[p.toLowerCase()];
+        div.appendChild(s);
+      }
+      addCoords(div, f, rank, files, ranks);
+      div.dataset.sq = sq;
+      board.appendChild(div);
+    }
+  }
+}
+
+// SAN of the move that just reached the current position (index-aware).
+function opMoveLineText() {
+  const el = $("opMoveLine"); if (!el) return;
+  const cur = OP_PRACTICE[OPRAC.i];
+  const total = cur ? cur.moves.length : 0;
+  if (OPRAC.idx === 0) { el.textContent = t("op_start_pos"); return; }
+  const san = OPRAC.san[OPRAC.idx - 1] || "";
+  const moveNo = Math.floor((OPRAC.idx - 1) / 2) + 1;
+  const dots = (OPRAC.idx % 2 === 1) ? "." : "...";
+  const done = OPRAC.idx >= total ? "  ·  " + t("op_done") : "";
+  el.textContent = `${moveNo}${dots} ${san}${done}`;
+}
+
+async function opRender() {
+  const cur = OP_PRACTICE[OPRAC.i]; if (!cur) return;
+  OPRAC.busy = true;
+  let st;
+  try { st = await api("/api/legal", { moves: cur.moves.slice(0, OPRAC.idx) }); }
+  catch (e) { OPRAC.busy = false; setStatus("opStatus", isOffline(e) ? t("offline_msg") : e.message, true); return; }
+  OPRAC.busy = false;
+  OPRAC.fen = st.fen; OPRAC.san = st.san || [];
+  OPRAC.lastUci = OPRAC.idx > 0 ? cur.moves[OPRAC.idx - 1] : null;
+  setStatus("opStatus", "");
+  opRenderBoard();
+  if (OPRAC.lastUci) animateMove($("opBoard"), OPRAC.lastUci.slice(0, 2), OPRAC.lastUci.slice(2, 4), "w");
+  opMoveLineText();
+  opUpdateButtons();
+}
+
+function opUpdateButtons() {
+  const cur = OP_PRACTICE[OPRAC.i];
+  const nx = $("opNext");
+  if (nx && cur) nx.disabled = OPRAC.idx >= cur.moves.length;
+}
+
+function opNext() {
+  const cur = OP_PRACTICE[OPRAC.i]; if (!cur || OPRAC.busy) return;
+  if (OPRAC.idx >= cur.moves.length) return;
+  OPRAC.idx++;
+  opRender();
+}
+function opReset() { if (OPRAC.busy) return; OPRAC.idx = 0; opRender(); }
+function opSelectOpening(i) {
+  OPRAC.i = Math.max(0, Math.min(OP_PRACTICE.length - 1, i));
+  OPRAC.idx = 0;
+  opRender();
+}
+
+// (re)build the dropdown option labels in the current language, preserving the
+// selection. Called on init and on every language change (via refreshDashboard).
+function opRefreshLang() {
+  const sel = $("opSelect"); if (!sel) return;
+  const prev = OPRAC.i;
+  if (sel.options.length !== OP_PRACTICE.length) {
+    sel.innerHTML = "";
+    OP_PRACTICE.forEach((o, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      sel.appendChild(opt);
+    });
+  }
+  OP_PRACTICE.forEach((o, i) => { sel.options[i].textContent = t(o.key); });
+  sel.value = String(prev);
+  opMoveLineText();   // re-translate the "start position / done" line
+}
+
+function opInit() {
+  const sel = $("opSelect"); if (!sel) return;
+  opRefreshLang();
+  sel.onchange = (e) => opSelectOpening(+e.target.value);
+  const nx = $("opNext"); if (nx) nx.onclick = opNext;
+  const rs = $("opReset"); if (rs) rs.onclick = opReset;
+  opRender();
+}
+
 // boot
 aiBoot();
 authBoot();
 loadLeaderboard();
+opInit();
 
 // =========================================================================== //
 // HOME DASHBOARD — packed stats strip + sidebar profile widget (v23).
@@ -2700,6 +2908,13 @@ function refreshDashboard() {
     if (typeof syncSegmentedControls === "function") syncSegmentedControls();  // re-sync chip labels/active on language change
     if (typeof updateAiTurn === "function") updateAiTurn();   // re-translate live turn text on language change
     if (typeof updateOgTurn === "function") updateOgTurn();
+    // re-translate the live opening-name labels + the opening-practice card
+    if (typeof updateOpeningLine === "function") {
+      if (typeof AIG !== "undefined") updateOpeningLine("aiOpening", AIG.moves);
+      if (typeof OG !== "undefined") updateOpeningLine("ogOpening", OG.moves);
+      if (typeof AN !== "undefined") updateOpeningLine("anOpening", AN.moves);
+    }
+    if (typeof opRefreshLang === "function") opRefreshLang();
     // re-render the learn card in the chosen language (keeps the selected piece)
     var _lb = document.querySelector("#learnSel button.active");
     if (_lb && typeof showLearn === "function") showLearn(_lb.dataset.topic);

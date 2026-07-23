@@ -216,6 +216,9 @@ input[type=range]{ accent-color:var(--accent); }
 .movelist .mv.has{ color:var(--good-d); }
 .status{ font-size:13px; color:var(--muted); margin-top:8px; min-height:18px; }
 .status.err{ color:var(--bad); }
+/* subtle "오프닝: 루이 로페즈" label shown near a board's move list */
+.opening-line{ font-size:13px; color:var(--muted); margin:-2px 0 8px; font-weight:600; }
+#opSelect{ width:100%; }
 
 /* ============================================================
    REVIEW
