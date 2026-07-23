@@ -235,7 +235,8 @@ input[type=range]{ accent-color:var(--accent); }
 /* analysis board: it has an eval bar next to the board, so the board must use
    the eval-bar-adjusted width (--rvboard) or it overflows/clips on mobile. */
 #tab-analysis .boardstack, #tab-analysis .cboard{ width:var(--rvboard); height:var(--rvboard); }
-#tab-analysis .evalbar{ height:var(--rvboard); }
+#tab-analysis .boardstack{ flex:0 0 auto; }   /* don't let flex shrink it (would clip the board) */
+#tab-analysis .evalbar{ height:var(--rvboard); flex:0 0 auto; }
 #tab-analysis .an-eval{ font-size:26px; font-weight:800; color:var(--ink); line-height:1.2; }
 #tab-analysis .an-best{ margin-top:6px; font-size:14px; color:var(--muted); min-height:18px; }
 #tab-analysis .an-eval.w{ color:#e6e9ee; }
