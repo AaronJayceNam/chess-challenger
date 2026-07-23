@@ -579,9 +579,10 @@ let LAST_REQ = null;
 // Review speed: analysis is PREFETCHED the moment a game ends and cached, so by
 // the time the player opens the review it's usually already done. Keyed by the
 // exact request so the button and the prefetch share one in-flight call.
-const REVIEW_MT = 120;         // per-position engine budget (ms). Prefetch at game
-                               // end hides the latency, so this is deep enough to
-                               // classify tactics (Brilliant/Great) reliably.
+const REVIEW_MT = 50;          // per-position engine budget (ms) — kept low for a
+                               // fast review (prefetch at game end hides most of it).
+                               // Trade-off: Brilliant/Great detection is less
+                               // reliable at this depth than at 120ms.
 const ANALYZE_CACHE = {};
 function _ckey(req) { return (req.moves || []).join("") + "|" + (req.movetime || "") + "|" + (req.white || "") + "/" + (req.black || ""); }
 function prefetchAnalyze(req) {
