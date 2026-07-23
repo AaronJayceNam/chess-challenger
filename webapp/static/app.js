@@ -1180,13 +1180,12 @@ async function loadPuzzles() {
   catch (e) { PZ.list = []; }
   if (PZ.list.length) {
     renderPzGrid();
-    renderDailyCard();
+    renderPzStreak();
     let idx = PZ.list.findIndex((p) => !PZ.solved.has(p.level));  // resume at first unsolved
     if (idx < 0) idx = 0;
     loadPuzzle(idx);
   } else { $("pzPrompt").textContent = t("pz_load_fail"); }
 }
-if ($("dailyBtn")) $("dailyBtn").onclick = loadDailyPuzzle;
 
 function renderPzGrid() {
   const grid = $("pzGrid"); grid.innerHTML = "";
@@ -1206,16 +1205,15 @@ function renderPzGrid() {
   $("pzProgress").textContent = t("pz_grid_progress").replace("{n}", solvedCount).replace("{total}", PZ.list.length);
 }
 
-async function loadPuzzle(idx, opts) {
-  opts = opts || {};
+async function loadPuzzle(idx) {
   if (idx < 0 || idx >= PZ.list.length) return;
   PZ.idx = idx; PZ.cat = Math.floor(idx / 25);
-  PZ.daily = !!opts.daily;          // daily puzzle bypasses the sequential lock
+  PZ.fails = 0;                     // reset wrong-attempt counter (auto-hint after 3)
   document.querySelectorAll("#pzCats button").forEach((b) =>
     b.classList.toggle("active", +b.dataset.cat === PZ.cat));
   const p = PZ.list[idx];
   renderPzGrid();
-  if (!PZ.daily && !pzUnlocked(p.level)) {   // sequential lock — must beat the previous level first
+  if (!pzUnlocked(p.level)) {       // sequential lock — must beat the previous level first
     PZ.locked = true; PZ.fen = p.fen; PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
     PZ.legal = { legal: {} };
     $("pzPrompt").innerHTML = t("pz_locked").replace("{n}", p.level).replace("{prev}", p.level - 1);
@@ -1305,6 +1303,8 @@ async function pzUserMove(uci) {
     await sleep(760);
     PZ.fen = prevFen; PZ.lastUci = prevLast;
     PZ.busy = false; renderPzBoard();
+    PZ.fails = (PZ.fails || 0) + 1;
+    if (PZ.fails >= 3) { pzShowHint(); setStatus("pzFeedback", t("pz_autohint"), false); }  // struggling → auto hint
     return;
   }
   // show the user's move
@@ -1333,17 +1333,11 @@ async function pzUserMove(uci) {
 
 function pzSolved() {
   const p = PZ.list[PZ.idx];
-  if (PZ.daily) {
-    const streakLine = markDailySolved(); renderDailyCard();
-    showResult({
-      kind: "win", icon: "📅", title: t("daily_solved_title"), sub: streakLine,
-      actions: [{ label: t("pz_retry_btn"), primary: true, onClick: () => loadPuzzle(PZ.idx, { daily: true }) }],
-    });
-    return;
-  }
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
+  pzStreakInc();   // consecutive-solve streak
   showResult({
-    kind: "win", icon: "🏆", title: t("pz_solved_title"), sub: t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn),
+    kind: "win", icon: "🏆", title: t("pz_solved_title"),
+    sub: t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn) + pzStreakSuffix(),
     actions: [
       { label: t("pz_next_btn"), primary: true, onClick: () => loadPuzzle(Math.min(PZ.list.length - 1, PZ.idx + 1)) },
       { label: t("pz_retry_btn"), onClick: () => loadPuzzle(PZ.idx) },
@@ -1351,42 +1345,27 @@ function pzSolved() {
   });
 }
 
-// ---- daily puzzle + streak (one puzzle per day; consecutive-day streak) ----
-function _dayStr(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
-function dailyToday() { return _dayStr(new Date()); }
-function dailyIndex() {
-  if (!PZ.list.length) return 0;
-  const now = new Date();
-  const dayNum = Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / 86400000);
-  return ((dayNum % PZ.list.length) + PZ.list.length) % PZ.list.length;   // same puzzle for everyone each local day
+// ---- puzzle solve streak (consecutive solves; reveal-answer breaks it) ----
+function pzStreak() { return +(localStorage.getItem("cc_pz_streak") || 0); }
+function pzStreakBest() { return +(localStorage.getItem("cc_pz_streak_best") || 0); }
+function pzStreakInc() {
+  const s = pzStreak() + 1;
+  localStorage.setItem("cc_pz_streak", String(s));
+  if (s > pzStreakBest()) localStorage.setItem("cc_pz_streak_best", String(s));
+  authSchedulePush(); renderPzStreak();
 }
-function dailyStreak() { return +(localStorage.getItem("cc_daily_streak") || 0); }
-function dailyBest() { return +(localStorage.getItem("cc_daily_best") || 0); }
-function dailyDoneToday() { return localStorage.getItem("cc_daily_last") === dailyToday(); }
-function markDailySolved() {
-  const today = dailyToday(), last = localStorage.getItem("cc_daily_last");
-  if (last !== today) {
-    const y = new Date(); y.setDate(y.getDate() - 1);
-    const s = (last === _dayStr(y)) ? dailyStreak() + 1 : 1;   // continued yesterday → +1, else restart
-    localStorage.setItem("cc_daily_streak", String(s));
-    localStorage.setItem("cc_daily_last", today);
-    if (s > dailyBest()) localStorage.setItem("cc_daily_best", String(s));
-    authSchedulePush();
-  }
-  return t("daily_streak_msg").replace("{n}", dailyStreak());
+function pzStreakReset() { localStorage.setItem("cc_pz_streak", "0"); renderPzStreak(); }
+function pzStreakSuffix() { const n = pzStreak(); return n >= 2 ? " · " + t("pzstreak_msg").replace("{n}", n) : ""; }
+function renderPzStreak() {
+  const el = document.getElementById("pzStreakLine"); if (!el) return;
+  el.innerHTML = t("pzstreak_line").replace("{n}", pzStreak()).replace("{best}", pzStreakBest());
 }
-function loadDailyPuzzle() { if (PZ.list.length) loadPuzzle(dailyIndex(), { daily: true }); }
-function renderDailyCard() {
-  const el = document.getElementById("dailyStreak"); if (!el) return;
-  // a missed day (last solve older than yesterday) breaks the streak → show 0
-  const last = localStorage.getItem("cc_daily_last");
-  if (last) {
-    const y = new Date(); y.setDate(y.getDate() - 1);
-    if (last !== dailyToday() && last !== _dayStr(y) && dailyStreak() > 0) localStorage.setItem("cc_daily_streak", "0");
-  }
-  el.innerHTML = t("daily_streak_line").replace("{n}", dailyStreak()).replace("{best}", dailyBest());
-  const btn = document.getElementById("dailyBtn");
-  if (btn) { const done = dailyDoneToday(); btn.textContent = done ? t("daily_done") : t("daily_solve"); btn.classList.toggle("done", done); }
+// show the first-move hint (used by the button AND auto after 3 wrong tries)
+async function pzShowHint() {
+  const p = PZ.list[PZ.idx];
+  if (PZ.fen !== PZ.baseFen) await loadPuzzle(PZ.idx);
+  PZ.hintSq = (p.solution[0] || "").slice(0, 2);
+  renderPzBoard();
 }
 
 document.querySelectorAll("#pzCats button").forEach((b) => {
@@ -1396,14 +1375,12 @@ $("pzPrev").onclick = () => loadPuzzle(PZ.idx - 1);
 $("pzNext").onclick = () => loadPuzzle(PZ.idx + 1);
 $("pzReset").onclick = () => loadPuzzle(PZ.idx);
 $("pzHint").onclick = async () => {
-  const p = PZ.list[PZ.idx];
-  if (PZ.fen !== PZ.baseFen) await loadPuzzle(PZ.idx);   // hint from the start
-  PZ.hintSq = (p.solution[0] || "").slice(0, 2);
-  renderPzBoard();
+  await pzShowHint();
   setStatus("pzFeedback", t("pz_hint_fb"), false);
 };
 $("pzSolution").onclick = () => {
   const p = PZ.list[PZ.idx];
+  pzStreakReset();   // revealing the full answer breaks the streak
   setStatus("pzFeedback", t("pz_sol_fb") + (p.solutionSan || []).join(" "), false);
 };
 
@@ -1934,9 +1911,8 @@ function collectProgress() {
     bestLevel: bestLevel(),
     puzzles: [...PZ.solved],
     bestStreak: bestStreak(),
-    dailyLast: localStorage.getItem("cc_daily_last") || "",
-    dailyStreak: dailyStreak(),
-    dailyBest: dailyBest(),
+    pzStreak: pzStreak(),
+    pzStreakBest: pzStreakBest(),
   };
 }
 
@@ -1947,11 +1923,8 @@ function applyProgress(p) {
   if (typeof p.bestLevel === "number") localStorage.setItem("cc_best_level", String(p.bestLevel));
   if (typeof p.bestStreak === "number") localStorage.setItem("cc_streak_best", String(Math.max(p.bestStreak, bestStreak())));
   // daily-puzzle streak: keep the most advanced (later date / higher best)
-  if (p.dailyLast && p.dailyLast >= (localStorage.getItem("cc_daily_last") || "")) {
-    localStorage.setItem("cc_daily_last", p.dailyLast);
-    if (typeof p.dailyStreak === "number") localStorage.setItem("cc_daily_streak", String(p.dailyStreak));
-  }
-  if (typeof p.dailyBest === "number") localStorage.setItem("cc_daily_best", String(Math.max(p.dailyBest, dailyBest())));
+  if (typeof p.pzStreak === "number") localStorage.setItem("cc_pz_streak", String(Math.max(p.pzStreak, pzStreak())));
+  if (typeof p.pzStreakBest === "number") localStorage.setItem("cc_pz_streak_best", String(Math.max(p.pzStreakBest, pzStreakBest())));
   if (Array.isArray(p.puzzles)) {
     localStorage.setItem("cc_puzzles_solved", JSON.stringify(p.puzzles));
     PZ.solved = new Set(p.puzzles);
@@ -2454,7 +2427,7 @@ function refreshDashboard() {
       rc.innerHTML = `${t("word_rating")} <b>${ratingHTML(myRating())}</b>`;
     }
     renderHomeStats(); renderSidebarProfile();
-    if (typeof renderDailyCard === "function") renderDailyCard();
+    if (typeof renderPzStreak === "function") renderPzStreak();
     if (typeof updateRankBadge === "function") updateRankBadge();
     const ll = document.getElementById("aiLevelLabel"), lv = document.getElementById("aiLevel");
     if (ll && lv && typeof aiLevelText === "function") ll.textContent = aiLevelText(lv.value);
