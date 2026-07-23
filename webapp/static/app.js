@@ -2199,27 +2199,45 @@ document.querySelectorAll("#skillModal .skill-opt").forEach((btn) => {
 // =========================================================================== //
 // LEADERBOARD — top registered accounts by rating (server-computed)
 // =========================================================================== //
+const LB = { data: null, mode: "rating" };
 async function loadLeaderboard() {
   const el = $("lbList"); if (!el) return;
   try {
-    const r = await (await fetch("/api/leaderboard")).json();
-    $("lbTotal").textContent = r.total ? t("lb_total").replace("{n}", r.total) : "";
-    if (!r.top || !r.top.length) {
-      el.innerHTML = `<div class="hist-empty">${t("lb_empty")}</div>`;
-      return;
-    }
-    const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
-    el.innerHTML = r.top.map((e, i) => {
-      const me = AUTH.id && e.id === AUTH.id;
-      return `<div class="lb-row ${me ? "me" : ""}">` +
-        `<span class="lb-rank">${medal(i)}</span>` +
-        `<span class="lb-name">${escapeHtml(e.id)}${me ? " " + t("lb_me") : ""}</span>` +
-        `<b class="lb-rating">${ratingHTML(e.rating)}</b></div>`;
-    }).join("");
+    LB.data = await (await fetch("/api/leaderboard")).json();
+    if ($("lbTotal")) $("lbTotal").textContent = LB.data.total ? t("lb_total").replace("{n}", LB.data.total) : "";
+    renderLeaderboard();
   } catch (e) {
     el.innerHTML = `<div class="hist-empty">${t("lb_fail")}</div>`;
   }
 }
+function renderLeaderboard() {
+  const el = $("lbList"); if (!el || !LB.data) return;
+  const list = LB.mode === "puzzles" ? (LB.data.topPuzzles || [])
+    : LB.mode === "streak" ? (LB.data.topStreak || [])
+    : (LB.data.top || []);
+  const empty = LB.mode === "rating" ? "lb_empty" : "lb_empty_pz";
+  if (!list.length) { el.innerHTML = `<div class="hist-empty">${t(empty)}</div>`; return; }
+  const medal = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+  const valHTML = (e) => LB.mode === "puzzles"
+      ? `<b class="lb-rating">${t("lb_val_puzzles").replace("{n}", e.puzzles)}</b>`
+    : LB.mode === "streak"
+      ? `<b class="lb-rating">🔥 ${e.pzStreakBest}</b>`
+      : `<b class="lb-rating">${ratingHTML(e.rating)}</b>`;
+  el.innerHTML = list.map((e, i) => {
+    const me = AUTH.id && e.id === AUTH.id;
+    return `<div class="lb-row ${me ? "me" : ""}">` +
+      `<span class="lb-rank">${medal(i)}</span>` +
+      `<span class="lb-name">${escapeHtml(e.id)}${me ? " " + t("lb_me") : ""}</span>` +
+      valHTML(e) + `</div>`;
+  }).join("");
+}
+document.querySelectorAll("#lbTabs .lbtab").forEach((b) => {
+  b.onclick = () => {
+    LB.mode = b.dataset.lb;
+    document.querySelectorAll("#lbTabs .lbtab").forEach((x) => x.classList.toggle("active", x === b));
+    renderLeaderboard();
+  };
+});
 
 async function authBoot() {
   renderAuthArea();

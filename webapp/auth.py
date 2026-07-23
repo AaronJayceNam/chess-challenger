@@ -457,7 +457,7 @@ def register_auth(app: FastAPI) -> None:
 
     @app.get("/api/leaderboard")
     def leaderboard():
-        """Top registered accounts by rating (from their saved progress)."""
+        """Registered accounts ranked by rating, puzzles solved and best streak."""
         with _connect() as con:
             cur = con.cursor()
             cur.execute("SELECT id, progress FROM users")
@@ -465,12 +465,26 @@ def register_auth(app: FastAPI) -> None:
         entries = []
         for uid, prog in rows:
             try:
-                rating = int(json.loads(prog or "{}").get("rating", 0) or 0)
+                p = json.loads(prog or "{}")
             except (ValueError, TypeError, json.JSONDecodeError):
-                rating = 0
-            entries.append({"id": uid, "rating": max(0, rating)})
-        entries.sort(key=lambda e: -e["rating"])
-        return {"ok": True, "top": entries[:20], "total": len(entries)}
+                p = {}
+            def _int(v):
+                try: return max(0, int(v or 0))
+                except (ValueError, TypeError): return 0
+            pz = p.get("puzzles")
+            entries.append({
+                "id": uid,
+                "rating": _int(p.get("rating")),
+                "puzzles": len(pz) if isinstance(pz, list) else 0,
+                "pzStreakBest": _int(p.get("pzStreakBest")),
+            })
+        by_rating = sorted(entries, key=lambda e: -e["rating"])[:20]
+        by_puzzles = sorted([e for e in entries if e["puzzles"] > 0],
+                            key=lambda e: (-e["puzzles"], -e["pzStreakBest"]))[:20]
+        by_streak = sorted([e for e in entries if e["pzStreakBest"] > 0],
+                           key=lambda e: -e["pzStreakBest"])[:20]
+        return {"ok": True, "top": by_rating, "topPuzzles": by_puzzles,
+                "topStreak": by_streak, "total": len(entries)}
 
     @app.post("/api/auth/save")
     def auth_save(req: SaveRequest):

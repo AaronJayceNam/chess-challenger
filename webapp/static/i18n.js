@@ -483,6 +483,11 @@ var I18N = {
   lb_empty:  { ko: "아직 등록된 플레이어가 없습니다. 첫 주인공이 되어보세요!", en: "No players yet. Be the first!", ja: "まだ登録プレイヤーがいません。最初の一人になりましょう!", zh: "还没有注册玩家。来当第一人吧!", es: "Aún no hay jugadores. ¡Sé el primero!" },
   lb_fail:   { ko: "리더보드를 불러오지 못했습니다.", en: "Couldn't load the leaderboard.", ja: "ランキングを読み込めませんでした。", zh: "无法加载排行榜。", es: "No se pudo cargar la clasificación." },
   lb_me:     { ko: "(나)", en: "(you)", ja: "(あなた)", zh: "(你)", es: "(tú)" },
+  lb_by_rating:  { ko: "레이팅", en: "Rating", ja: "レート", zh: "等级分", es: "Rating" },
+  lb_by_puzzles: { ko: "퍼즐", en: "Puzzles", ja: "パズル", zh: "谜题", es: "Puzzles" },
+  lb_by_streak:  { ko: "연속 기록", en: "Streak", ja: "連続記録", zh: "连续纪录", es: "Racha" },
+  lb_empty_pz:   { ko: "아직 퍼즐 기록이 없습니다. 퍼즐을 풀어 순위에 올라보세요!", en: "No puzzle records yet. Solve puzzles to climb the ranks!", ja: "まだパズル記録がありません。パズルを解いてランクインしましょう!", zh: "还没有谜题纪录。解谜上榜吧!", es: "Aún no hay registros de puzzles. ¡Resuelve para subir!" },
+  lb_val_puzzles:{ ko: "{n}개", en: "{n}", ja: "{n}個", zh: "{n}个", es: "{n}" },
 
   // ----- auth (dynamic) -----
   auth_need:        { ko: "아이디와 비밀번호를 입력하세요.", en: "Enter your username and password.", ja: "ユーザー名とパスワードを入力してください。", zh: "请输入用户名和密码。", es: "Introduce tu usuario y contraseña." },
