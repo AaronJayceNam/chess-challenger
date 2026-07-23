@@ -206,6 +206,12 @@ def _init_db() -> None:
             code_hash TEXT NOT NULL,
             salt TEXT NOT NULL,
             expires TEXT NOT NULL)""")
+        # friends (one row per direction: user_id added friend_id)
+        cur.execute("""CREATE TABLE IF NOT EXISTS friends (
+            user_id TEXT NOT NULL,
+            friend_id TEXT NOT NULL,
+            created TEXT,
+            PRIMARY KEY (user_id, friend_id))""")
         con.commit()
 
 
@@ -283,6 +289,11 @@ class TokenRequest(BaseModel):
 class SaveRequest(BaseModel):
     token: str
     progress: dict
+
+
+class FriendRequest(BaseModel):
+    token: str
+    id: str
 
 
 # Korean text can arrive either precomposed (NFC) or decomposed (NFD, common on
@@ -485,6 +496,62 @@ def register_auth(app: FastAPI) -> None:
                            key=lambda e: -e["pzStreakBest"])[:20]
         return {"ok": True, "top": by_rating, "topPuzzles": by_puzzles,
                 "topStreak": by_streak, "total": len(entries)}
+
+    # ---- friends (⑧) ----
+    @app.post("/api/friends/add")
+    def friends_add(req: FriendRequest):
+        with _connect() as con:
+            uid = _user_for_token(con, req.token)
+            if uid is None:
+                raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인하세요.")
+            fid = _norm_id(req.id)
+            if fid == uid:
+                raise HTTPException(400, "자기 자신은 친구로 추가할 수 없습니다.")
+            cur = con.cursor()
+            cur.execute(f"SELECT id FROM users WHERE id = {_ph()}", (fid,))
+            if cur.fetchone() is None:
+                raise HTTPException(404, "그런 아이디의 플레이어가 없습니다.")
+            try:
+                cur.execute(
+                    f"INSERT INTO friends (user_id, friend_id, created) VALUES ({_ph()}, {_ph()}, {_ph()})",
+                    (uid, fid, _now()))
+                con.commit()
+            except Exception:
+                pass   # already friends → idempotent
+        return {"ok": True, "id": fid}
+
+    @app.post("/api/friends/remove")
+    def friends_remove(req: FriendRequest):
+        with _connect() as con:
+            uid = _user_for_token(con, req.token)
+            if uid is None:
+                raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인하세요.")
+            fid = _norm_id(req.id)
+            con.cursor().execute(
+                f"DELETE FROM friends WHERE user_id = {_ph()} AND friend_id = {_ph()}", (uid, fid))
+            con.commit()
+        return {"ok": True}
+
+    @app.post("/api/friends/list")
+    def friends_list(req: TokenRequest):
+        with _connect() as con:
+            uid = _user_for_token(con, req.token)
+            if uid is None:
+                raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인하세요.")
+            cur = con.cursor()
+            cur.execute(f"SELECT friend_id FROM friends WHERE user_id = {_ph()}", (uid,))
+            fids = [r[0] for r in cur.fetchall()]
+            out = []
+            for fid in fids:
+                cur.execute(f"SELECT progress FROM users WHERE id = {_ph()}", (fid,))
+                row = cur.fetchone()
+                rating = 0
+                if row:
+                    try: rating = max(0, int(json.loads(row[0] or "{}").get("rating", 0) or 0))
+                    except (ValueError, TypeError, json.JSONDecodeError): rating = 0
+                out.append({"id": fid, "rating": rating})
+            out.sort(key=lambda e: -e["rating"])
+        return {"ok": True, "friends": out}
 
     @app.post("/api/auth/save")
     def auth_save(req: SaveRequest):

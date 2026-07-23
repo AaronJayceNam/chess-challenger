@@ -157,6 +157,7 @@ app = FastAPI(title="Matevio", lifespan=lifespan)
 # --------------------------------------------------------------------------- #
 class LegalRequest(BaseModel):
     moves: list[str] = []           # UCI moves played so far
+    startFen: Optional[str] = None  # Chess960 / variant start position (None = standard)
 
 
 class AnalyzeRequest(BaseModel):
@@ -174,6 +175,7 @@ class AiMoveRequest(BaseModel):
     moves: list[str] = []
     level: int = 5
     style: str | None = None   # famous-player persona (AI matches only)
+    startFen: Optional[str] = None  # Chess960 / variant start position
 
 
 class PuzzleMoveRequest(BaseModel):
@@ -194,8 +196,8 @@ class StudyRequest(BaseModel):
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
-def _replay(moves: list[str]) -> chess.Board:
-    board = chess.Board()
+def _replay(moves: list[str], start_fen: str | None = None) -> chess.Board:
+    board = chess.Board(start_fen, chess960=True) if start_fen else chess.Board()
     for i, u in enumerate(moves):
         try:
             mv = chess.Move.from_uci(u)
@@ -228,9 +230,9 @@ def _legal_state(board: chess.Board) -> dict:
     }
 
 
-def _san_history(moves: list[str]) -> list[str]:
+def _san_history(moves: list[str], start_fen: str | None = None) -> list[str]:
     san: list[str] = []
-    b = chess.Board()
+    b = chess.Board(start_fen, chess960=True) if start_fen else chess.Board()
     for u in moves:
         mv = chess.Move.from_uci(u)
         san.append(b.san(mv))
@@ -303,10 +305,19 @@ def health():
 @app.post("/api/legal")
 def legal(req: LegalRequest):
     """Validate the moves so far and return the legal-move map for the position."""
-    board = _replay(req.moves)
+    board = _replay(req.moves, req.startFen)
     state = _legal_state(board)
-    state["san"] = _san_history(req.moves)
+    state["san"] = _san_history(req.moves, req.startFen)
     return state
+
+
+@app.get("/api/variant960")
+def variant960():
+    """A random Chess960 (Fischer random) starting position."""
+    import random
+    n = random.randint(0, 959)
+    board = chess.Board.from_chess960_pos(n)
+    return {"ok": True, "pos": n, "startFen": board.fen()}
 
 
 class FenRequest(BaseModel):
@@ -332,7 +343,7 @@ def ai_move(req: AiMoveRequest):
     """
     if not EngineConfig().path:
         raise HTTPException(500, "Stockfish 바이너리를 찾을 수 없습니다.")
-    board = _replay(req.moves)
+    board = _replay(req.moves, req.startFen)
     moves = list(req.moves)
     reply_uci = None
     reply_san = None
@@ -352,7 +363,7 @@ def ai_move(req: AiMoveRequest):
     state = _legal_state(board)
     state["move"] = reply_uci
     state["sanMove"] = reply_san
-    state["san"] = _san_history(moves)
+    state["san"] = _san_history(moves, req.startFen)
     return state
 
 

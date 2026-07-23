@@ -296,6 +296,7 @@ function switchTab(name) {
   window.scrollTo(0, 0);
   if (name === "online") {
     if (typeof loadLeaderboard === "function") loadLeaderboard();
+    if (typeof loadFriends === "function") loadFriends();
     if (typeof updateOgAuthGate === "function") updateOgAuthGate();
   }
   if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
@@ -882,7 +883,7 @@ $("rvShare").onclick = async () => {
 // =========================================================================== //
 // PLAY vs AI (levels 1-10) -> auto-evaluate when the game ends
 // =========================================================================== //
-const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false, style: "default" };
+const AIG = { moves: [], state: null, sel: null, orient: "w", level: 3, human: "w", over: false, thinking: false, started: false, style: "default", variant: false, startFen: null, hint: null };
 
 // Progress: the highest level beaten (persisted in localStorage). Shown as a
 // plain level number — no titles.
@@ -1069,7 +1070,7 @@ async function aiHumanMove(uci) {
   optimisticMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   const moves = [...AIG.moves, uci];
   let st;
-  try { st = await api("/api/legal", { moves }); }
+  try { st = await api("/api/legal", { moves, startFen: AIG.startFen }); }
   catch (e) { renderAiBoard(); setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
   AIG.moves = moves; AIG.state = st;
   renderAiBoard(); renderAiMoves(); updateAiTurn();   // authoritative — fixes any special move / check
@@ -1083,7 +1084,7 @@ async function aiReply() {
   // in-flight slide animation. Input is already gated by AIG.thinking.
   AIG.thinking = true; updateAiTurn();
   let res;
-  try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level, style: AIG.style }); }
+  try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level, style: AIG.style, startFen: AIG.startFen }); }
   catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_reply_err") + e.message, true); return; }
   AIG.thinking = false;
   if (res.move) AIG.moves.push(res.move);
@@ -1118,21 +1119,20 @@ function aiEndGame() {
   }
   const { white, black } = aiPlayerNames();
   const aiName = `AI ${aiTitle(lv)}`;
-  // AI games go into the history (with the moves, so they stay reviewable) but
-  // never move the rating (online-only).
-  addHistory({ mode: "ai", opponent: aiName, result: kind, ratingDelta: null,
-    moves: [...AIG.moves], white, black });
   setStatus("aiStatus", `${T("ai_over")} (${r}).`);
-  $("aiAnalyze").classList.remove("hidden");
-  // start the review analysis NOW (in the background) so it's ready instantly
-  const reviewReq = { moves: [...AIG.moves], white, black, movetime: REVIEW_MT };
-  prefetchAnalyze(reviewReq).catch(() => {});
-  const actions = [
-    { label: T("ai_review_btn"), primary: true,
-      onClick: () => runAnalyze(reviewReq) },
-    { label: T("ai_again_btn"), onClick: () => aiStart() },
-    { label: T("exit_btn"), onClick: () => exitImmersive() },
-  ];
+  // Chess960 games can't be replayed from the standard start, so they skip the
+  // review + history (which assume the normal opening position).
+  const actions = [];
+  if (!AIG.variant) {
+    addHistory({ mode: "ai", opponent: aiName, result: kind, ratingDelta: null,
+      moves: [...AIG.moves], white, black });
+    $("aiAnalyze").classList.remove("hidden");
+    const reviewReq = { moves: [...AIG.moves], white, black, movetime: REVIEW_MT };
+    prefetchAnalyze(reviewReq).catch(() => {});
+    actions.push({ label: T("ai_review_btn"), primary: true, onClick: () => runAnalyze(reviewReq) });
+  }
+  actions.push({ label: T("ai_again_btn"), onClick: () => aiStart() });
+  actions.push({ label: T("exit_btn"), onClick: () => exitImmersive() });
   const opts = kind === "win"
     ? { kind, icon: "🏆", title: T("res_win"), sub: T("won_vs").replace("{ai}", aiName) + streakSuffix(), badge, actions }
     : kind === "loss"
@@ -1149,10 +1149,16 @@ async function aiStart() {
   AIG.human = $("aiColor").value;
   AIG.style = $("aiStyle") ? $("aiStyle").value : "default";
   AIG.orient = AIG.human;
-  AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true;
+  AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true; AIG.hint = null;
+  AIG.variant = !!($("ai960") && $("ai960").checked);
+  AIG.startFen = null;
   $("aiAnalyze").classList.add("hidden");
   const T = (typeof t === "function") ? t : ((k) => k);
-  try { AIG.state = await api("/api/legal", { moves: [] }); }
+  if (AIG.variant) {
+    try { const v = await (await fetch("/api/variant960")).json(); AIG.startFen = v.startFen || null; }
+    catch (e) { AIG.variant = false; }
+  }
+  try { AIG.state = await api("/api/legal", { moves: [], startFen: AIG.startFen }); }
   catch (e) { AIG.started = false; setStatus("aiStatus", isOffline(e) ? t("offline_msg") : T("err_start") + ": " + e.message, true); return; }
   const who = AIG.style !== "default" ? T("style_" + AIG.style) : aiLevelText(AIG.level);
   const side = AIG.human === "w" ? T("side_white") : T("side_black");
@@ -1175,7 +1181,7 @@ async function aiTakeback() {
   const moves = AIG.moves.slice(0, cut);
   AIG.sel = null; AIG.hint = null;
   let st;
-  try { st = await api("/api/legal", { moves }); }
+  try { st = await api("/api/legal", { moves, startFen: AIG.startFen }); }
   catch (e) { setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
   AIG.moves = moves; AIG.state = st; AIG.over = false;
   renderAiBoard(); renderAiMoves(); updateAiTurn();
@@ -1294,7 +1300,29 @@ $("aiAnalyze").onclick = () => {
 // =========================================================================== //
 const PZ = { list: [], idx: 0, cat: 0, baseFen: null, fen: null, mateIn: 0, movesLeft: 0,
   sel: null, legal: {}, lastUci: null, hintSq: null, busy: false, locked: false, solved: pzLoadSolved() };
-function pzUnlocked(level) { return level === 1 || PZ.solved.has(level - 1); }
+// category (theme group) helpers — robust to variable per-category counts.
+function pzCatOf(idx) {
+  const p = PZ.list[idx];
+  return (p && typeof p.cat === "number") ? p.cat : Math.floor(idx / 25);
+}
+function pzCatRange(cat) {
+  let start = -1, count = 0;
+  for (let i = 0; i < PZ.list.length; i++) {
+    const c = (typeof PZ.list[i].cat === "number") ? PZ.list[i].cat : Math.floor(i / 25);
+    if (c === cat) { if (start < 0) start = i; count++; }
+  }
+  if (start < 0) { start = cat * 25; count = 25; }
+  return { start, count };
+}
+// unlocked by INDEX: first puzzle of a category is always open; otherwise the
+// previous puzzle in the same category must be solved.
+function pzUnlocked(idx) {
+  const p = PZ.list[idx]; if (!p) return false;
+  const { start } = pzCatRange(pzCatOf(idx));
+  if (idx === start) return true;
+  const prev = PZ.list[idx - 1];
+  return !!(prev && PZ.solved.has(prev.level));
+}
 
 function pzLoadSolved() {
   try { return new Set(JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]")); }
@@ -1317,12 +1345,14 @@ async function loadPuzzles() {
 
 function renderPzGrid() {
   const grid = $("pzGrid"); grid.innerHTML = "";
-  const start = PZ.cat * 25;
-  for (let i = 0; i < 25; i++) {
-    const idx = start + i, lvl = idx + 1;
-    const unlocked = pzUnlocked(lvl);
+  const { start, count } = pzCatRange(PZ.cat);
+  for (let i = 0; i < count; i++) {
+    const idx = start + i;
+    const p = PZ.list[idx]; if (!p) continue;
+    const lvl = p.level;
+    const unlocked = pzUnlocked(idx);
     const b = document.createElement("button");
-    b.textContent = unlocked ? lvl : "";
+    b.textContent = unlocked ? (i + 1) : "";
     if (idx === PZ.idx) b.classList.add("cur");
     if (PZ.solved.has(lvl)) b.classList.add("solved");
     if (!unlocked) b.classList.add("locked");
@@ -1335,13 +1365,13 @@ function renderPzGrid() {
 
 async function loadPuzzle(idx) {
   if (idx < 0 || idx >= PZ.list.length) return;
-  PZ.idx = idx; PZ.cat = Math.floor(idx / 25);
+  PZ.idx = idx; PZ.cat = pzCatOf(idx);
   PZ.fails = 0;                     // reset wrong-attempt counter (auto-hint after 3)
   document.querySelectorAll("#pzCats button").forEach((b) =>
     b.classList.toggle("active", +b.dataset.cat === PZ.cat));
   const p = PZ.list[idx];
   renderPzGrid();
-  if (!pzUnlocked(p.level)) {       // sequential lock — must beat the previous level first
+  if (!pzUnlocked(idx)) {           // sequential lock — must beat the previous level first
     PZ.locked = true; PZ.fen = p.fen; PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
     PZ.legal = { legal: {} };
     $("pzPrompt").innerHTML = t("pz_locked").replace("{n}", p.level).replace("{prev}", p.level - 1);
@@ -1351,8 +1381,11 @@ async function loadPuzzle(idx) {
   }
   PZ.locked = false;
   PZ.baseFen = p.fen; PZ.fen = p.fen; PZ.mateIn = p.mateIn; PZ.movesLeft = p.mateIn;
+  PZ.line = p.solution || []; PZ.played = []; PZ.theme = p.theme || (p.mateIn ? "mate" : "tactic");
   PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
-  $("pzPrompt").innerHTML = t("pz_prompt").replace("{n}", p.level).replace("{mate}", p.mateIn);
+  $("pzPrompt").innerHTML = p.mateIn
+    ? t("pz_prompt").replace("{n}", p.level).replace("{mate}", p.mateIn)
+    : t("pz_prompt_tac").replace("{n}", p.level).replace("{theme}", t("pztheme_" + PZ.theme));
   $("pzFeedback").textContent = ""; $("pzFeedback").className = "status";
   try { PZ.legal = await api("/api/legal_fen", { fen: PZ.fen }); }
   catch (e) { PZ.legal = { legal: {} }; }
@@ -1415,6 +1448,7 @@ function pzWrongEffect() {
 }
 
 async function pzUserMove(uci) {
+  if (!PZ.mateIn) return pzUserMoveLine(uci);   // tactical puzzles: verify against the solution line
   PZ.busy = true; PZ.sel = null; renderPzBoard();
   const prevFen = PZ.fen, prevLast = PZ.lastUci;
   let res;
@@ -1459,6 +1493,66 @@ async function pzUserMove(uci) {
   renderPzBoard();
 }
 
+// Tactical (non-mate) puzzles: verify the move against the stored solution line
+// and auto-play the opponent's forced reply. Position updates come from the
+// engine's apply-moves endpoint (base FEN + all confirmed moves).
+async function pzApply(moves) {
+  return api("/api/eval_fen", { fen: PZ.baseFen, moves, movetime: 1 });
+}
+async function pzUserMoveLine(uci) {
+  PZ.busy = true; PZ.sel = null; renderPzBoard();
+  const base = PZ.played.slice();
+  const expected = PZ.line[base.length];
+  const prevFen = PZ.fen, prevLast = PZ.lastUci;
+  let uf;
+  try { uf = await pzApply([...base, uci]); }
+  catch (e) { PZ.busy = false; setStatus("pzFeedback", isOffline(e) ? t("offline_msg") : t("pz_err") + e.message, true); renderPzBoard(); return; }
+
+  if (uci !== expected) {
+    if (uf && uf.fen) {
+      PZ.fen = uf.fen; PZ.lastUci = uci; renderPzBoard();
+      animateMove($("pzBoard"), uci.slice(0, 2), uci.slice(2, 4), "w");
+      await sleep(260);
+    }
+    pzWrongEffect();
+    await sleep(760);
+    PZ.fen = prevFen; PZ.lastUci = prevLast; PZ.busy = false; renderPzBoard();
+    PZ.fails = (PZ.fails || 0) + 1;
+    if (PZ.fails >= 3) { pzShowHint(); setStatus("pzFeedback", t("pz_autohint"), false); }
+    return;
+  }
+  // correct — show the player's move
+  PZ.played.push(uci);
+  PZ.fen = uf.fen; PZ.lastUci = uci;
+  PZ.legal = { legal: uf.legal || {}, turn: uf.turn, check: uf.check };
+  renderPzBoard();
+  animateMove($("pzBoard"), uci.slice(0, 2), uci.slice(2, 4), "w");
+
+  if (PZ.played.length >= PZ.line.length) {   // solved: that was the last move of the line
+    PZ.busy = false; PZ.legal = { legal: {} };
+    await sleep(320); pzSolved(); return;
+  }
+  // opponent's forced reply
+  const reply = PZ.line[PZ.played.length];
+  PZ.played.push(reply);
+  await sleep(240);
+  let rf;
+  try { rf = await pzApply(PZ.played); } catch (e) { rf = null; }
+  if (rf && rf.fen) {
+    PZ.fen = rf.fen; PZ.lastUci = reply;
+    PZ.legal = { legal: rf.legal || {}, turn: rf.turn, check: rf.check };
+    renderPzBoard();
+    animateMove($("pzBoard"), reply.slice(0, 2), reply.slice(2, 4), "w");
+  }
+  if (PZ.played.length >= PZ.line.length) {   // (defensive) line ended on the reply
+    PZ.busy = false; PZ.legal = { legal: {} };
+    await sleep(320); pzSolved(); return;
+  }
+  setStatus("pzFeedback", t("pz_correct_tac"), false);
+  $("pzFeedback").style.color = "#7bd88f";
+  PZ.busy = false;
+}
+
 function pzSolved() {
   const p = PZ.list[PZ.idx];
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
@@ -1466,7 +1560,10 @@ function pzSolved() {
   if (typeof checkAchievements === "function") checkAchievements();
   showResult({
     kind: "win", icon: "🏆", title: t("pz_solved_title"),
-    sub: t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn) + pzStreakSuffix(),
+    sub: (p.mateIn
+        ? t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn)
+        : t("pz_solved_sub_tac").replace("{n}", p.level).replace("{theme}", t("pztheme_" + (p.theme || "tactic"))))
+      + pzStreakSuffix(),
     actions: [
       { label: t("pz_next_btn"), primary: true, onClick: () => loadPuzzle(Math.min(PZ.list.length - 1, PZ.idx + 1)) },
       { label: t("pz_retry_btn"), onClick: () => loadPuzzle(PZ.idx) },
@@ -1489,16 +1586,20 @@ function renderPzStreak() {
   const el = document.getElementById("pzStreakLine"); if (!el) return;
   el.innerHTML = t("pzstreak_line").replace("{n}", pzStreak()).replace("{best}", pzStreakBest());
 }
-// show the first-move hint (used by the button AND auto after 3 wrong tries)
+// show the next-move hint (used by the button AND auto after 3 wrong tries)
 async function pzShowHint() {
   const p = PZ.list[PZ.idx];
+  if (!p.mateIn) {                                   // tactical: hint the next move in the line
+    PZ.hintSq = ((PZ.line[PZ.played.length] || p.solution[0] || "")).slice(0, 2);
+    renderPzBoard(); return;
+  }
   if (PZ.fen !== PZ.baseFen) await loadPuzzle(PZ.idx);
   PZ.hintSq = (p.solution[0] || "").slice(0, 2);
   renderPzBoard();
 }
 
 document.querySelectorAll("#pzCats button").forEach((b) => {
-  b.onclick = () => { PZ.cat = +b.dataset.cat; loadPuzzle(PZ.cat * 25); };
+  b.onclick = () => { PZ.cat = +b.dataset.cat; loadPuzzle(pzCatRange(PZ.cat).start); };
 });
 $("pzPrev").onclick = () => loadPuzzle(PZ.idx - 1);
 $("pzNext").onclick = () => loadPuzzle(PZ.idx + 1);
@@ -3186,3 +3287,59 @@ function checkSharedGame() {
 }
 if ($("rvShare")) $("rvShare").onclick = () => shareGame(LAST_REQ);
 checkSharedGame();
+
+// =========================================================================== //
+// ⑧ Friends list + challenge/rematch (reuses the online invite-code flow)
+// =========================================================================== //
+async function loadFriends() {
+  const list = $("frList"); if (!list) return;
+  if (!AUTH.token) {
+    list.innerHTML = `<div class="hist-empty">${t("fr_login")}</div>`;
+    return;
+  }
+  let r;
+  try { r = await api("/api/friends/list", { token: AUTH.token }); }
+  catch (e) { list.innerHTML = `<div class="hist-empty">${t("fr_fail")}</div>`; return; }
+  renderFriends(r.friends || []);
+}
+function renderFriends(friends) {
+  const list = $("frList"); if (!list) return;
+  if (!friends.length) { list.innerHTML = `<div class="hist-empty">${t("fr_empty")}</div>`; return; }
+  list.innerHTML = friends.map((f) =>
+    `<div class="fr-row">` +
+      `<span class="fr-name">${escapeHtml(f.id)}</span>` +
+      `<span class="fr-rating">${ratingHTML(f.rating)}</span>` +
+      `<button class="ghost fr-play" data-fid="${escapeHtml(f.id)}">${t("fr_challenge")}</button>` +
+      `<button class="ghost fr-del" data-fid="${escapeHtml(f.id)}" title="${t("fr_remove")}">✕</button>` +
+    `</div>`).join("");
+  list.querySelectorAll(".fr-play").forEach((b) => b.onclick = () => frChallenge(b.dataset.fid));
+  list.querySelectorAll(".fr-del").forEach((b) => b.onclick = () => frRemove(b.dataset.fid));
+}
+async function frAdd() {
+  if (!AUTH.token) { setStatus("frStatus", t("fr_login"), true); return; }
+  const id = ($("frAddInput").value || "").trim();
+  if (!id) return;
+  try {
+    const r = await api("/api/friends/add", { token: AUTH.token, id });
+    $("frAddInput").value = "";
+    setStatus("frStatus", t("fr_added").replace("{id}", r.id), false);
+    loadFriends();
+  } catch (e) { setStatus("frStatus", (e && e.message) || t("fr_fail"), true); }
+}
+async function frRemove(id) {
+  if (!AUTH.token) return;
+  try { await api("/api/friends/remove", { token: AUTH.token, id }); loadFriends(); }
+  catch (e) { setStatus("frStatus", (e && e.message) || t("fr_fail"), true); }
+}
+// Challenge / rematch: create an invite room, then tell the user to send the
+// code (shown in #ogCodeBox) to that friend.
+function frChallenge(id) {
+  if (!requireLogin()) return;
+  const btn = $("ogCreate");
+  if (btn) btn.click();                     // create a room → code appears in #ogCodeBox
+  setStatus("ogSetupStatus", t("fr_challenge_sent").replace("{id}", id), false);
+  const board = document.getElementById("tab-online");
+  if (board) board.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+if ($("frAddBtn")) $("frAddBtn").onclick = frAdd;
+if ($("frAddInput")) $("frAddInput").addEventListener("keydown", (e) => { if (e.key === "Enter") frAdd(); });
