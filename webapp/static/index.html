@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=64">
+<link rel="stylesheet" href="/static/style.css?v=65">
 </head>
 <body>
 
@@ -261,6 +261,8 @@
       <div class="pbar hidden" id="aiBottomBar"></div>
       <div class="turn" id="aiTurn"><span class="pill"></span><span data-i18n="turn_start">새 대국을 시작하세요.</span></div>
       <div class="controls">
+        <button class="ghost" id="aiHint" data-i18n="btn_hint">💡 힌트</button>
+        <button class="ghost" id="aiUndo" data-i18n="btn_undo">↩️ 무르기</button>
         <button class="ghost" id="aiResign" data-i18n="btn_resign_ai">🏳️ 기권하고 평가받기</button>
         <button class="ghost" id="aiFlip" data-i18n="btn_flip">⇅ 보드 뒤집기</button>
       </div>
@@ -651,8 +653,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=64"></script>
-<script src="/static/app.js?v=64"></script>
+<script src="/static/i18n.js?v=65"></script>
+<script src="/static/app.js?v=65"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

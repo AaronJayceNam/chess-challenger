@@ -264,6 +264,11 @@ var I18N = {
   btn_newgame:   { ko: "▶ 새 대국 시작", en: "▶ New game", ja: "▶ 新しい対局", zh: "▶ 开始新对局", es: "▶ Nueva partida" },
   btn_resign_ai: { ko: "🏳️ 기권하고 평가받기", en: "🏳️ Resign & review", ja: "🏳️ 投了して評価", zh: "🏳️ 认输并复盘", es: "🏳️ Rendirse y analizar" },
   btn_flip:      { ko: "⇅ 보드 뒤집기", en: "⇅ Flip board", ja: "⇅ 盤を反転", zh: "⇅ 翻转棋盘", es: "⇅ Girar tablero" },
+  btn_hint:      { ko: "💡 힌트", en: "💡 Hint", ja: "💡 ヒント", zh: "💡 提示", es: "💡 Pista" },
+  btn_undo:      { ko: "↩️ 무르기", en: "↩️ Takeback", ja: "↩️ 待った", zh: "↩️ 悔棋", es: "↩️ Deshacer" },
+  hint_thinking: { ko: "💡 최선의 수를 찾는 중…", en: "💡 Finding the best move…", ja: "💡 最善手を探索中…", zh: "💡 正在寻找最佳着法…", es: "💡 Buscando la mejor jugada…" },
+  hint_shown:    { ko: "💡 추천 수: {sq}", en: "💡 Suggested move: {sq}", ja: "💡 おすすめの手: {sq}", zh: "💡 推荐着法：{sq}", es: "💡 Jugada sugerida: {sq}" },
+  hint_none:     { ko: "힌트를 낼 수 없어요.", en: "No hint available.", ja: "ヒントを出せません。", zh: "无法提供提示。", es: "No hay pista disponible." },
 
   // ----- account deletion (settings) -----
   set_del_label: { ko: "계정 삭제", en: "Delete account", ja: "アカウント削除", zh: "删除账号", es: "Eliminar cuenta" },

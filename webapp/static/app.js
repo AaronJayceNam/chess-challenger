@@ -958,6 +958,7 @@ function renderAiBoard() {
       const div = document.createElement("div");
       div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
       if (sq === lf || sq === lt) div.classList.add("last");
+      if (AIG.hint && (sq === AIG.hint.from || sq === AIG.hint.to)) div.classList.add("hintsq");
       if (AIG.sel === sq) div.classList.add("sel");
       if (st.check && sq === kingSq) div.classList.add("check");
       const p = map[sq];
@@ -1064,7 +1065,7 @@ function renderAiMoves() {
 
 async function aiHumanMove(uci) {
   // Instant feedback: move the piece right away, don't wait for the server.
-  AIG.sel = null;
+  AIG.sel = null; AIG.hint = null;
   optimisticMove($("aiBoard"), uci.slice(0, 2), uci.slice(2, 4), AIG.orient);
   const moves = [...AIG.moves, uci];
   let st;
@@ -1161,6 +1162,43 @@ async function aiStart() {
   if (AIG.human === "b") await aiReply();   // AI (white) moves first
 }
 
+// ---- ⑤ takeback + hint (AI games) ----
+// Undo the player's last move (and the AI's reply). Re-derives the authoritative
+// position from the trimmed move list; if it lands on the AI's turn (e.g. player
+// is Black and undid their first move down to the empty start), the AI replays.
+async function aiTakeback() {
+  if (!AIG.started || AIG.over || AIG.thinking) return;
+  const hp = AIG.human === "w" ? 0 : 1;          // parity of the human's plies
+  let cut = -1;
+  for (let i = AIG.moves.length - 1; i >= 0; i--) { if ((i % 2) === hp) { cut = i; break; } }
+  if (cut < 0) return;                            // no human move to undo yet
+  const moves = AIG.moves.slice(0, cut);
+  AIG.sel = null; AIG.hint = null;
+  let st;
+  try { st = await api("/api/legal", { moves }); }
+  catch (e) { setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
+  AIG.moves = moves; AIG.state = st; AIG.over = false;
+  renderAiBoard(); renderAiMoves(); updateAiTurn();
+  if (st.turn !== AIG.human && !st.gameOver) await aiReply();   // hand the move back to the AI when needed
+}
+
+// Ask the engine for the best move in the current position and flash it.
+async function aiHint() {
+  if (!AIG.started || AIG.over || AIG.thinking || !AIG.state) return;
+  if (AIG.state.turn !== AIG.human) return;       // only when it's your move
+  setStatus("aiStatus", t("hint_thinking"), false);
+  let r;
+  try { r = await api("/api/eval_fen", { fen: AIG.state.fen, movetime: 300 }); }
+  catch (e) { setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
+  const uci = r && r.bestUci;
+  if (!uci) { setStatus("aiStatus", t("hint_none"), false); return; }
+  AIG.hint = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
+  renderAiBoard();
+  setStatus("aiStatus", t("hint_shown").replace("{sq}", uci.slice(0, 2) + "→" + uci.slice(2, 4)), false);
+  clearTimeout(aiHint._t);
+  aiHint._t = setTimeout(() => { AIG.hint = null; renderAiBoard(); }, 4000);
+}
+
 $("aiLevel").oninput = (e) => {
   $("aiLevelLabel").textContent = aiLevelText(+e.target.value);
 };
@@ -1223,6 +1261,8 @@ function syncSegmentedControls() {
 syncSegmentedControls();
 
 $("aiFlip").onclick = () => { AIG.orient = AIG.orient === "w" ? "b" : "w"; renderAiBoard(); };
+$("aiUndo").onclick = aiTakeback;
+$("aiHint").onclick = aiHint;
 $("aiResign").onclick = () => {
   if (!AIG.moves.length) { setStatus("aiStatus", t("ai_need_move"), true); return; }
   AIG.over = true; markGameOver(); renderAiBoard(); updateAiTurn();   // stay full-screen
