@@ -260,7 +260,7 @@ def _game_from_moves(moves: list[str], white: str, black: str) -> chess.pgn.Game
 # --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def index():
     # no-cache: browsers must revalidate the HTML on every visit (cheap 304 via
     # ETag). Without this, heuristic caching kept serving a stale page after
@@ -290,7 +290,8 @@ def service_worker():
                         headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 
 
-@app.get("/api/health")
+# GET + HEAD so uptime monitors (which default to HEAD) get 200, not 405.
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health():
     cfg = EngineConfig()
     import webapp.auth as _auth
