@@ -229,6 +229,12 @@ input[type=range]{ accent-color:var(--accent); }
 .svgboard{ width:var(--rvboard); height:var(--rvboard); border-radius:10px; overflow:hidden;
   box-shadow:0 0 0 1px rgba(16,24,40,.10), 0 22px 46px -22px rgba(16,24,40,.35); }
 .svgboard svg{ width:100% !important; height:100% !important; display:block; }
+/* analysis board: its eval bar sits next to a .cboard (var(--board)), not the
+   review svgboard, so match that height. */
+#tab-analysis .evalbar{ height:var(--board); }
+#tab-analysis .an-eval{ font-size:26px; font-weight:800; color:var(--ink); line-height:1.2; }
+#tab-analysis .an-best{ margin-top:6px; font-size:14px; color:var(--muted); min-height:18px; }
+#tab-analysis .an-eval.w{ color:#e6e9ee; }
 .controls{ margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .controls input[type=range]{ flex:1; accent-color:var(--accent); }
 .graph{ width:100%; height:96px; display:block; cursor:pointer; }

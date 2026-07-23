@@ -300,6 +300,7 @@ function switchTab(name) {
   }
   if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
   if (name === "ai" && typeof refreshDashboard === "function") refreshDashboard();
+  if (name === "analysis" && typeof initAnalysis === "function") initAnalysis();
 }
 // empty-state "go analyze" buttons
 document.querySelectorAll("[data-goto]").forEach((b) => {
@@ -2126,6 +2127,271 @@ enableBoardDrag($("pzBoard"), {
   legal: () => (PZ.legal && PZ.legal.legal) || {},
   commit: (from, to) => { PZ.hintSq = null; pzUserMove(from + to); },
 });
+
+// =========================================================================== //
+// ANALYSIS BOARD — a free board where the user can play ANY legal move for
+// EITHER side. After every move the quick engine evaluates the position and
+// shows who's better + the best move. Reuses the shared board helpers
+// (parseFen / GLYPH / addCoords / applyBoardTheme / enableBoardDrag).
+//
+// Position tracking: we keep a base FEN (the standard start, or a loaded FEN)
+// plus a UCI move list from it. /api/eval_fen applies those moves server-side
+// (python-chess is the source of legality) and returns the resulting
+// fen/legal/turn/check/san PLUS the engine evaluation — one authoritative call.
+// =========================================================================== //
+const AN_START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const AN = {
+  baseFen: AN_START,   // position the move list starts from
+  moves: [],           // UCI moves played from baseFen
+  fen: AN_START,       // current (resulting) position
+  orient: "w",
+  legal: {},
+  turn: "w",
+  check: false,
+  san: [],
+  over: false,
+  ev: null,            // last eval: { bestUci, bestSan, cp, mate, pv, gameOver }
+  sel: null,
+  busy: false,
+  inited: false,
+};
+
+function renderAnBoard() {
+  const board = $("anBoard"); if (!board) return;
+  board.innerHTML = "";
+  const map = parseFen(AN.fen);
+  const files = AN.orient === "w" ? [..."abcdefgh"] : [..."hgfedcba"];
+  const ranks = AN.orient === "w" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
+  const lastUci = AN.moves.length ? AN.moves[AN.moves.length - 1] : null;
+  const lf = lastUci ? lastUci.slice(0, 2) : null, lt = lastUci ? lastUci.slice(2, 4) : null;
+  const kingChar = AN.turn === "w" ? "K" : "k";
+  let kingSq = null;
+  for (const s in map) if (map[s] === kingChar) kingSq = s;
+  const legal = AN.over ? {} : (AN.legal || {});   // any side to move can move
+  for (const rank of ranks) {
+    for (const f of files) {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const div = document.createElement("div");
+      div.className = "sq " + ((fi + rank) % 2 === 0 ? "light" : "dark");
+      if (sq === lf || sq === lt) div.classList.add("last");
+      if (AN.sel === sq) div.classList.add("sel");
+      if (AN.check && sq === kingSq) div.classList.add("check");
+      const p = map[sq];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "pc " + (p === p.toUpperCase() ? "w" : "b");
+        s.textContent = GLYPH[p.toLowerCase()];
+        div.appendChild(s);
+      }
+      if (SETTINGS.showDots && AN.sel && legal[AN.sel] && legal[AN.sel].includes(sq)) {
+        const d = document.createElement("div"); d.className = "dot" + (map[sq] ? " cap" : "");
+        div.appendChild(d);
+      }
+      addCoords(div, f, rank, files, ranks);
+      div.dataset.sq = sq;
+      div.onclick = () => onAnClick(sq);
+      board.appendChild(div);
+    }
+  }
+}
+
+function onAnClick(sq) {
+  if (_dragJustMoved) return;
+  if (AN.busy || AN.over) return;
+  const map = parseFen(AN.fen), legal = AN.legal || {};
+  if (AN.sel) {
+    if (legal[AN.sel] && legal[AN.sel].includes(sq)) {
+      const from = AN.sel, piece = map[from], r = +sq[1];
+      AN.sel = null;
+      if (piece && piece.toLowerCase() === "p" && (r === 8 || r === 1)) {
+        promoChooser($("anBoard"), piece === "P", (pp) => anPlay(from + sq + pp));
+      } else {
+        anPlay(from + sq);
+      }
+      return;
+    }
+    if (legal[sq]) { AN.sel = sq; renderAnBoard(); return; }
+    AN.sel = null; renderAnBoard(); return;
+  }
+  if (legal[sq]) { AN.sel = sq; renderAnBoard(); }
+}
+
+// Play one move (from either side) and re-sync from the server.
+async function anPlay(uci) {
+  AN.sel = null;
+  optimisticMove($("anBoard"), uci.slice(0, 2), uci.slice(2, 4), AN.orient);
+  AN.moves.push(uci);
+  await anSync(true);
+}
+
+// Ask the server for the resulting position + evaluation, then render.
+async function anSync(animate) {
+  AN.busy = true;
+  anShowThinking();
+  let st;
+  try {
+    st = await api("/api/eval_fen", { fen: AN.baseFen, moves: AN.moves, movetime: 350 });
+  } catch (e) {
+    // roll back an illegal/failed move so state stays consistent
+    if (animate && AN.moves.length) AN.moves.pop();
+    AN.busy = false;
+    setStatus("anFenStatus", isOffline(e) ? t("offline_msg") : e.message, true);
+    renderAnBoard();
+    return;
+  }
+  AN.busy = false;
+  AN.fen = st.fen;
+  AN.legal = st.legal || {};
+  AN.turn = st.turn;
+  AN.check = st.check;
+  AN.san = st.san || [];
+  AN.over = !!st.gameOver;
+  AN.ev = st;
+  renderAnBoard();
+  if (animate && AN.moves.length) {
+    const u = AN.moves[AN.moves.length - 1];
+    animateMove($("anBoard"), u.slice(0, 2), u.slice(2, 4), AN.orient);
+  }
+  playMoveSfx(st);
+  anUpdatePanel();
+  anRenderMoves();
+}
+
+function anShowThinking() {
+  const b = $("anBest"); if (b) b.textContent = t("an_thinking");
+}
+
+// Decide who is better from a side-to-move-POV score. Returns white-POV cp and
+// a {text, side} verdict. side: "w" | "b" | "" (equal).
+function anWhoBetter(cp, mate, turn) {
+  // convert to White POV
+  let wMate = mate, wCp = cp;
+  if (turn === "b") { if (mate != null) wMate = -mate; if (cp != null) wCp = -cp; }
+  if (wMate != null) {
+    if (wMate === 0) return { side: turn === "w" ? "b" : "w", text: "" };
+    return { side: wMate > 0 ? "w" : "b", text: "", wCp: wMate > 0 ? 100000 : -100000 };
+  }
+  if (wCp == null) return { side: "", text: t("an_equal"), wCp: 0 };
+  const side = Math.abs(wCp) < 30 ? "" : (wCp > 0 ? "w" : "b");
+  return { side, wCp };
+}
+
+// White win probability (0–100) from a White-POV centipawn score.
+function anWinPct(wCp) {
+  if (wCp >= 100000) return 100;
+  if (wCp <= -100000) return 0;
+  return Math.round(100 / (1 + Math.pow(10, -(wCp / 400))));
+}
+
+function anUpdatePanel() {
+  const evEl = $("anEval"), bestEl = $("anBest");
+  const bar = $("anBar"), barLbl = $("anBarLbl");
+  if (!AN.ev) return;
+  const { cp, mate, bestSan, gameOver } = AN.ev;
+
+  // game over → show result-ish text, empty bar handling
+  if (gameOver) {
+    evEl.textContent = t("an_game_over");
+    evEl.className = "an-eval";
+    if (bestEl) bestEl.textContent = "";
+    // if it's mate, one side has a full bar
+    if (bar) { bar.style.height = AN.check ? (AN.turn === "w" ? "0%" : "100%") : "50%"; }
+    if (barLbl) barLbl.textContent = "";
+    return;
+  }
+
+  const who = anWhoBetter(cp, mate, AN.turn);
+  let label, verdict;
+  if (mate != null) {
+    label = t("an_mate_in") + " " + Math.abs(mate);
+    verdict = who.side === "w" ? t("an_white_better") : (who.side === "b" ? t("an_black_better") : "");
+  } else {
+    const wCp = who.wCp != null ? who.wCp : 0;
+    const pawns = (Math.abs(wCp) / 100).toFixed(1);
+    const sign = wCp > 0 ? "+" : (wCp < 0 ? "-" : "");
+    label = sign + pawns;
+    verdict = who.side === "w" ? t("an_white_better") : (who.side === "b" ? t("an_black_better") : t("an_equal"));
+  }
+  evEl.textContent = verdict ? `${label} (${verdict})` : label;
+  evEl.className = "an-eval";
+
+  if (bestEl) bestEl.textContent = bestSan ? `${t("an_best_prefix")}: ${bestSan}` : "";
+
+  // eval bar (white fill from the bottom, like the review rvBar)
+  if (bar) {
+    const wCp = mate != null ? (who.side === "w" ? 100000 : (who.side === "b" ? -100000 : 0)) : (who.wCp || 0);
+    bar.style.height = anWinPct(wCp) + "%";
+  }
+  if (barLbl) barLbl.textContent = label;
+}
+
+function anRenderMoves() {
+  const el = $("anMoves"); if (!el) return;
+  const san = AN.san || [];
+  if (!san.length) { el.innerHTML = `<span class="num">${t("an_moves_empty")}</span>`; return; }
+  let html = "";
+  san.forEach((s, i) => {
+    if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
+    html += `<span class="mv" style="cursor:default">${s}</span> `;
+  });
+  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+}
+
+function anReset() {
+  AN.baseFen = AN_START; AN.moves = []; AN.sel = null; AN.over = false;
+  setStatus("anFenStatus", "");
+  anSync(false);
+}
+function anUndo() {
+  if (!AN.moves.length || AN.busy) return;
+  AN.moves.pop(); AN.sel = null; AN.over = false;
+  anSync(false);
+}
+function anFlip() {
+  AN.orient = AN.orient === "w" ? "b" : "w";
+  renderAnBoard();
+}
+async function anLoadFen() {
+  const raw = ($("anFen").value || "").trim();
+  if (!raw) return;
+  let st;
+  try {
+    st = await api("/api/eval_fen", { fen: raw, moves: [], movetime: 350 });
+  } catch (e) {
+    setStatus("anFenStatus", isOffline(e) ? t("offline_msg") : t("an_fen_bad"), true);
+    return;
+  }
+  // switch the base to the loaded FEN; the move list restarts from here
+  AN.baseFen = st.fen; AN.moves = []; AN.sel = null;
+  AN.fen = st.fen; AN.legal = st.legal || {}; AN.turn = st.turn;
+  AN.check = st.check; AN.san = st.san || []; AN.over = !!st.gameOver; AN.ev = st;
+  setStatus("anFenStatus", "");
+  $("anFen").value = "";
+  renderAnBoard(); anUpdatePanel(); anRenderMoves();
+}
+
+function initAnalysis() {
+  if (AN.inited) return;
+  AN.inited = true;
+  const wire = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
+  wire("anReset", anReset);
+  wire("anUndo", anUndo);
+  wire("anFlip", anFlip);
+  wire("anLoadFen", anLoadFen);
+  const fenInput = $("anFen");
+  if (fenInput) fenInput.addEventListener("keydown", (e) => { if (e.key === "Enter") anLoadFen(); });
+  enableBoardDrag($("anBoard"), {
+    movable: () => !AN.busy && !AN.over,      // analysis: either colour can move
+    legal: () => AN.legal || {},
+    commit: (from, to) => {
+      const p = parseFen(AN.fen)[from], r = +to[1]; AN.sel = null;
+      if (p && p.toLowerCase() === "p" && (r === 8 || r === 1)) promoChooser($("anBoard"), p === "P", (pp) => anPlay(from + to + pp));
+      else anPlay(from + to);
+    },
+  });
+  renderAnBoard();
+  anSync(false);   // start position + its eval
+}
 
 // =========================================================================== //
 // GROWTH REPORT — rating graph (⑨), future projection (⑪), adaptive rec (③)

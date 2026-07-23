@@ -465,6 +465,90 @@ def puzzle_move(req: PuzzleMoveRequest):
     }
 
 
+class EvalFenRequest(BaseModel):
+    fen: str
+    moves: list[str] = []             # optional UCI moves to apply to `fen` first
+    movetime: Optional[int] = 300     # ms per position
+
+
+@app.post("/api/eval_fen")
+def eval_fen(req: EvalFenRequest):
+    """Evaluate a position for the free analysis board.
+
+    Starts from `fen`, optionally applies `moves` (UCI, played from that FEN),
+    then returns the legal-move map / turn / check for the resulting position
+    (same shape as /api/legal_fen so the frontend board renderer can reuse it),
+    the resulting `fen` and `san` history, PLUS a full-strength quick-engine
+    evaluation of the position (best move + cp/mate from the side-to-move POV).
+    Never raises into the request path: engine failures return best-effort JSON
+    with a null evaluation.
+    """
+    try:
+        board = chess.Board(req.fen)
+    except ValueError:
+        raise HTTPException(400, "잘못된 FEN")
+
+    san_hist: list[str] = []
+    for i, u in enumerate(req.moves):
+        try:
+            mv = chess.Move.from_uci(u)
+        except ValueError:
+            raise HTTPException(400, f"잘못된 수 표기: {u} (#{i+1})")
+        if mv not in board.legal_moves:
+            raise HTTPException(400, f"불법 수: {u} (#{i+1})")
+        san_hist.append(board.san(mv))
+        board.push(mv)
+
+    state = _legal_state(board)
+    resp = {
+        "legal": state["legal"],
+        "turn": state["turn"],
+        "check": state["check"],
+        "fen": state["fen"],
+        "san": san_hist,
+        "gameOver": state["gameOver"],
+        "result": state["result"] if state["gameOver"] else None,
+        "bestUci": None,
+        "bestSan": None,
+        "cp": None,
+        "mate": None,
+        "pv": [],
+    }
+
+    if state["gameOver"] or not EngineConfig().path:
+        return resp
+
+    mt = max(50, min(3000, req.movetime or 300))
+
+    def _eval_full(b):
+        qe = _quick_engine()
+        qe.config.multipv, qe.config.depth, qe.config.movetime_ms = 1, None, mt
+        # the shared quick engine may have UCI_LimitStrength set by ai_move;
+        # analysis wants full strength.
+        try:
+            qe._engine.configure({"UCI_LimitStrength": False})
+        except Exception:
+            pass
+        return qe.evaluate(b)
+
+    try:
+        with _qlock:
+            try:
+                pe = _eval_full(board)
+            except Exception:
+                _quick_reset()
+                pe = _eval_full(board)
+        resp["bestUci"] = pe.best_move.uci() if pe.best_move else None
+        resp["bestSan"] = pe.best_move_san
+        resp["cp"] = pe.cp
+        resp["mate"] = pe.mate
+        resp["pv"] = pe.pv or []
+    except Exception:
+        pass
+
+    return resp
+
+
 @app.post("/api/study_html", response_class=PlainTextResponse)
 def study_html(req: StudyRequest):
     """Bake the annotated line into a standalone, shareable HTML document."""
