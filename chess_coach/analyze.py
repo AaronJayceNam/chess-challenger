@@ -156,6 +156,31 @@ def build_boards(game: chess.pgn.Game) -> list[chess.Board]:
     return boards
 
 
+# Leading half-moves treated as "book": not sent to the engine at all. This is
+# the dominant cost saver on the tiny free-tier CPU (per-position engine IPC is
+# the floor, so evaluating fewer positions is the only real speed-up). Standard
+# practice on Lichess/chess.com. We stop early at the first capture or check so
+# any early tactic is still fully analysed.
+_BOOK_SKIP_MAX = 8   # up to the first 4 full moves
+
+
+def _book_skip(boards: list[chess.Board]) -> int:
+    n = min(_BOOK_SKIP_MAX, len(boards) - 1)
+    for i in range(n):
+        after = boards[i + 1]
+        if after.is_check():
+            return i
+        if chess.popcount(after.occupied) < chess.popcount(boards[i].occupied):
+            return i   # a capture happened on this ply
+    return n
+
+
+def _book_eval() -> PositionEval:
+    """Neutral placeholder for a skipped opening position (equal, no best move)."""
+    return PositionEval(cp=0, mate=None, best_move=None, best_move_san=None,
+                        pv=[], pv_uci=[], multipv=[])
+
+
 def evaluate_boards_parallel(boards: list[chess.Board], engines: list[Engine]) -> list[PositionEval]:
     """Evaluate every position once, spread across a pool of engines.
 
@@ -193,8 +218,9 @@ def analyze_game(
     classify_cfg: ClassifyConfig | None = None,
 ) -> GameAnalysis:
     boards = build_boards(game)
-    evals = [engine.evaluate(b) for b in boards]
-    return _assemble(game, boards, evals, engine.config.describe(), classify_cfg)
+    skip = _book_skip(boards)
+    evals = [_book_eval() for _ in range(skip)] + [engine.evaluate(b) for b in boards[skip:]]
+    return _assemble(game, boards, evals, engine.config.describe(), classify_cfg, skip)
 
 
 def analyze_game_parallel(
@@ -204,10 +230,11 @@ def analyze_game_parallel(
 ) -> GameAnalysis:
     """Same as analyze_game but spreads position evaluation over an engine pool."""
     boards = build_boards(game)
-    evals = evaluate_boards_parallel(boards, engines)
+    skip = _book_skip(boards)
+    evals = [_book_eval() for _ in range(skip)] + evaluate_boards_parallel(boards[skip:], engines)
     desc = engines[0].config.describe()
     desc["workers"] = len(engines)
-    return _assemble(game, boards, evals, desc, classify_cfg)
+    return _assemble(game, boards, evals, desc, classify_cfg, skip)
 
 
 def _assemble(
@@ -216,6 +243,7 @@ def _assemble(
     evals: list[PositionEval],
     engine_desc: dict,
     classify_cfg: ClassifyConfig | None = None,
+    skip: int = 0,
 ) -> GameAnalysis:
     classify_cfg = classify_cfg or ClassifyConfig()
     moves = list(game.mainline_moves())
@@ -303,6 +331,16 @@ def _assemble(
                 cls = Classification("Brilliant", "!!", cls.missed_win)
             elif only_move:
                 cls = Classification("Great", "!", cls.missed_win)
+
+        # Opening "book" plies were not engine-analysed — present them neutrally
+        # so their placeholder eval never skews classification, cpl or the graph.
+        if i < skip:
+            cls = Classification("Good", "", False)
+            cpl = 0
+            win_before = win_after = 50.0
+            is_best = False
+            only_move = False
+            w_cp, w_mate = 0, None
 
         san = replay.san(mv)
         replay.push(mv)
