@@ -1054,14 +1054,33 @@ function updateAiTurn() {
 function renderAiMoves() {
   const el = $("aiMoves");
   const san = (AIG.state && AIG.state.san) ? AIG.state.san : [];
-  if (!san.length) { el.innerHTML = `<span class="num">${t("ai_moves_empty")}</span>`; return; }
+  if (!san.length) { el.innerHTML = `<span class="num">${t("ai_moves_empty")}</span>`; }
+  else {
+    let html = "";
+    san.forEach((s, i) => {
+      if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
+      html += `<span class="mv" style="cursor:default">${s}</span> `;
+    });
+    el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  }
+  renderMoveStrip("aiMoveStrip", san);
+  updateOpeningLine("aiOpening", AIG.moves);
+}
+
+// Compact horizontal notation strip shown in the board column — stays visible
+// during full-screen (immersive) play so you can glance back at earlier moves.
+function renderMoveStrip(elId, san) {
+  const el = document.getElementById(elId); if (!el) return;
+  if (!san || !san.length) { el.innerHTML = ""; el.classList.add("empty"); return; }
+  el.classList.remove("empty");
   let html = "";
   san.forEach((s, i) => {
-    if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
-    html += `<span class="mv" style="cursor:default">${s}</span> `;
+    if (i % 2 === 0) html += `<span class="ms-num">${i / 2 + 1}.</span>`;
+    const last = i === san.length - 1;
+    html += `<span class="ms-mv${last ? " cur" : ""}">${s}</span>`;
   });
-  el.innerHTML = html; el.scrollTop = el.scrollHeight;
-  updateOpeningLine("aiOpening", AIG.moves);
+  el.innerHTML = html;
+  el.scrollLeft = el.scrollWidth;   // keep the latest move in view
 }
 
 async function aiHumanMove(uci) {
@@ -1961,13 +1980,16 @@ function onOgClick(sq) {
 function renderOgMoves() {
   const el = $("ogMoves");
   const san = (OG.state && OG.state.san) ? OG.state.san : [];
-  if (!san.length) { el.innerHTML = `<span class="num">${t("og_moves_empty")}</span>`; return; }
-  let html = "";
-  san.forEach((s, i) => {
-    if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
-    html += `<span class="mv" style="cursor:default">${s}</span> `;
-  });
-  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  if (!san.length) { el.innerHTML = `<span class="num">${t("og_moves_empty")}</span>`; }
+  else {
+    let html = "";
+    san.forEach((s, i) => {
+      if (i % 2 === 0) html += `<span class="num">${i / 2 + 1}.</span>`;
+      html += `<span class="mv" style="cursor:default">${s}</span> `;
+    });
+    el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  }
+  renderMoveStrip("ogMoveStrip", san);
   updateOpeningLine("ogOpening", OG.moves);
 }
 

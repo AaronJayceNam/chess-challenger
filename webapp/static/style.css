@@ -903,3 +903,17 @@ body.ingame .resultgate{ bottom:24px; }
   border:1px solid var(--line); border-radius:12px; cursor:pointer; }
 .v960-toggle input{ margin-top:3px; width:18px; height:18px; flex:0 0 auto; accent-color:var(--accent); }
 .v960-toggle .setdesc{ margin-top:2px; }
+
+/* ---- in-game move notation strip (visible in immersive play) ---- */
+.movestrip{ display:none; }
+body.ingame .movestrip{
+  display:flex; gap:5px; align-items:center; overflow-x:auto; white-space:nowrap;
+  width:var(--board); max-width:96vw; margin:8px auto 0; padding:7px 11px;
+  background:var(--card2,#fff); border:1px solid var(--line); border-radius:10px;
+  font-size:13px; scrollbar-width:thin; -webkit-overflow-scrolling:touch;
+}
+body.ingame .movestrip.empty{ display:none; }
+.movestrip .ms-num{ color:var(--muted); font-weight:600; margin-left:5px; }
+.movestrip .ms-num:first-child{ margin-left:0; }
+.movestrip .ms-mv{ font-weight:600; color:var(--ink); }
+.movestrip .ms-mv.cur{ color:#fff; background:var(--accent); border-radius:5px; padding:1px 6px; }
