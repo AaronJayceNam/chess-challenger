@@ -949,7 +949,7 @@ body.ingame .movenav{
 /* roomier boards on desktop (board-first) */
 @media (min-width:761px){
   /* generous board: no tight vh clamp (that shrank it on short windows) */
-  :root{ --board:min(560px, 44vw, 78vh); --rvboard:min(560px, calc(44vw - 34px), calc(78vh - 34px)); }
+  :root{ --board:min(680px, 56vw, 82vh); --rvboard:min(680px, calc(56vw - 34px), calc(82vh - 34px)); }
 }
 
 /* in-game controls → a cohesive centered pill bar right under the board */
@@ -1123,3 +1123,46 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
   .hub-stats{ grid-template-columns:repeat(2,1fr); gap:10px; }
   .hub-head h2{ font-size:20px; }
 }
+
+/* ============================================================
+   PLAY SCREEN v3 (v-play) — a big, un-squishable board and a
+   deliberately-designed opponent/setup panel. My call, not tweaks.
+   ============================================================ */
+@media (min-width:761px){
+  .cols{ align-items:flex-start !important; gap:28px !important; justify-content:flex-start; }
+  .cols > div:first-child{ flex:0 0 auto !important; }             /* board never shrinks */
+  #tab-ai .cols > div:last-child, #tab-online .cols > div:last-child{
+    flex:1 1 300px !important; min-width:300px !important; max-width:390px !important; }
+}
+
+/* --- the AI "새 대국 설정" card, redesigned as an opponent panel --- */
+.setup-card{ padding:22px 22px 24px; }
+/* header line: title muted+small, record chip to the right */
+.setup-head h3{ font-size:12.5px !important; color:var(--faint) !important; font-weight:600 !important;
+  text-transform:uppercase; letter-spacing:.08em; }
+
+/* rating becomes the hero: huge number, tier caption, thin accent track */
+.strength-pick > .field{ display:none !important; }                /* drop the long caption */
+.strength-val{ font-size:36px !important; letter-spacing:-1px !important; margin:8px 0 14px !important; }
+.strength-pick input[type=range]{ height:4px !important; }
+.strength-pick input[type=range]::-webkit-slider-thumb{ width:24px !important; height:24px !important; }
+
+/* group labels: quiet uppercase, generous top divider */
+.setup-card > .field{ font-size:11px !important; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--faint) !important; margin-top:22px !important; padding-top:18px; border-top:1px solid var(--line); }
+
+/* style + color chips: bigger, confident */
+.seg-btn{ padding:11px 15px !important; font-size:14px !important; border-radius:12px; }
+.seg-color .seg-btn{ padding:14px !important; font-size:15px !important; }
+
+/* Chess960: a clean switch row, not a boxed checkbox */
+.v960-toggle{ background:transparent !important; border:none !important; border-top:1px solid var(--line);
+  border-radius:0 !important; margin-top:22px; padding:18px 0 4px !important; }
+
+/* start button: big, full width, prominent */
+.setup-go{ margin-top:22px !important; }
+.setup-go .primary{ padding:16px !important; font-size:16px !important; border-radius:14px; }
+
+/* --- online panel: same language --- */
+.og-rating-head b#ogRating{ font-size:40px !important; letter-spacing:-1px; }
+.og-actions .primary{ padding:16px !important; font-size:16px !important; border-radius:14px; }
