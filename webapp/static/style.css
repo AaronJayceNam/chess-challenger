@@ -1109,12 +1109,12 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .hub-card .hc-head span{ display:block; font-size:12px; color:var(--muted); margin-top:2px; }
 .hub-card .hc-cta{ width:100%; text-align:center; }
 
-.miniboard{ display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1/1; width:100%;
-  container-type:inline-size;
+.miniboard{ display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  aspect-ratio:1/1; width:100%; container-type:inline-size;
   border-radius:9px; overflow:hidden; border:1px solid var(--line); }
-.miniboard .msq{ display:grid; place-items:center; font-size:24px; line-height:1; }
-/* match the real board's proportion: glyph = board width / 11 (~73% of a square) */
-@supports (font-size:1cqw){ .miniboard .msq{ font-size:10.6cqw; } }
+.miniboard .msq{ display:grid; place-items:center; font-size:20px; line-height:1; overflow:hidden; }
+/* glyph ~ square*0.78 so pieces sit cleanly inside each square */
+@supports (font-size:1cqw){ .miniboard .msq{ font-size:9.6cqw; } }
 .miniboard .msq.light{ background:var(--light); }
 .miniboard .msq.dark{ background:var(--dark); }
 
@@ -1242,3 +1242,13 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .hub-art{ position:absolute; right:14px; top:50%; transform:translateY(-50%); z-index:0;
   font-size:64px; opacity:.9; letter-spacing:6px; filter:drop-shadow(0 6px 14px rgba(0,0,0,.4)); }
 @media (max-width:560px){ .hub-art{ font-size:40px; right:8px; opacity:.55; } }
+
+/* ---- more emoji / colour touches ---- */
+.hc-emo{ margin-right:6px; font-size:16px; }
+.hub-card .hc-head b{ display:flex; align-items:center; }
+/* colour the mini-board frame per card */
+.hub-cards .hub-card:nth-child(1) .miniboard{ box-shadow:0 0 0 2px rgba(79,184,119,.35); }
+.hub-cards .hub-card:nth-child(2) .miniboard{ box-shadow:0 0 0 2px rgba(90,150,255,.30); }
+.hub-cards .hub-card:nth-child(3) .miniboard{ box-shadow:0 0 0 2px rgba(233,178,58,.30); }
+/* section headings across tabs get a soft accent underline */
+.card > h3{ position:relative; }

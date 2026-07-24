@@ -3535,16 +3535,19 @@ function renderHome() {
       if (nxt && nxt.fen) pzFen = nxt.fen;
     }
   } catch (e) {}
+  // distinct, recognizable positions per card (not three identical starts)
+  const LEARN_FEN = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+  const REVIEW_FEN = "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 6 5";
   const cards = [
-    { title: T("hub_c_puzzle"), sub: T("hub_c_puzzle_s"), cta: T("hub_c_puzzle_cta"), fen: pzFen,        go: () => switchTab("puzzle") },
-    { title: T("hub_c_learn"),  sub: T("hub_c_learn_s"),  cta: T("hub_c_learn_cta"),  fen: HUB_START_FEN, go: () => switchTab("learn") },
-    { title: T("hub_c_review"), sub: T("hub_c_review_s"), cta: T("hub_c_review_cta"), fen: HUB_START_FEN, go: () => switchTab("review") },
+    { emo: "🧩", title: T("hub_c_puzzle"), sub: T("hub_c_puzzle_s"), cta: T("hub_c_puzzle_cta"), fen: pzFen,      go: () => switchTab("puzzle") },
+    { emo: "📖", title: T("hub_c_learn"),  sub: T("hub_c_learn_s"),  cta: T("hub_c_learn_cta"),  fen: LEARN_FEN,  go: () => switchTab("learn") },
+    { emo: "📊", title: T("hub_c_review"), sub: T("hub_c_review_s"), cta: T("hub_c_review_cta"), fen: REVIEW_FEN, go: () => switchTab("review") },
   ];
   const cel = $("hubCards");
   if (cel) {
     cel.innerHTML = cards.map((c, i) =>
       '<div class="hub-card" data-i="' + i + '">' +
-        '<div class="hc-head"><b>' + c.title + "</b><span>" + c.sub + "</span></div>" +
+        '<div class="hc-head"><b><span class="hc-emo">' + c.emo + "</span>" + c.title + "</b><span>" + c.sub + "</span></div>" +
         miniBoard(c.fen) +
         '<button class="ghost hc-cta">' + c.cta + "</button></div>").join("");
     cel.querySelectorAll(".hub-card").forEach((d) => { d.onclick = () => cards[+d.dataset.i].go(); });
