@@ -106,6 +106,9 @@ def build_view_data(game: chess.pgn.Game, ga: GameAnalysis) -> dict:
     """
     svgs, white_win, eval_labels = _build_svgs_and_series(game, ga)
 
+    # Korean piece name → language-neutral code, so the client can build a
+    # localized causal "why" (the Korean `explain` text is shown only to ko users).
+    _K2C = {"폰": "pawn", "나이트": "knight", "비숍": "bishop", "룩": "rook", "퀸": "queen", "킹": "king"}
     moves_payload = [{
         "ply": m.ply,
         "moveNumber": m.move_number,
@@ -124,6 +127,18 @@ def build_view_data(game: chess.pgn.Game, ga: GameAnalysis) -> dict:
         "missedWin": m.missed_win,
         "explain": explain_move(m),
         "clsColor": _COLOR.get(m.classification, "#ddd"),
+        # ---- language-neutral causal facts (for the localized "why" coach) ----
+        "replySan": m.reply_san,
+        "replyCapType": _K2C.get(m.reply_captures),
+        "capturedType": _K2C.get(m.captured_piece),
+        "movedType": _K2C.get(m.piece_moved),
+        "bestIsCapture": m.best_is_capture,
+        "isCapture": m.is_capture,
+        "isCastle": m.is_castle,
+        "givesCheck": m.gives_check,
+        "develops": m.develops,
+        "onlyMove": m.only_move,
+        "isMate": m.is_mate,
     } for m in ga.moves]
 
     h = ga.headers

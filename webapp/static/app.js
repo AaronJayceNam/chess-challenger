@@ -695,6 +695,7 @@ async function runAnalyze(req, statusId = "aiStatus") {
   try {
     const view = await prefetchAnalyze(req);   // reuse the in-flight/finished prefetch
     loadReview(view);
+    if (typeof questBump === "function") questBump("reviews");   // daily quest progress
     switchTab("review");
   } catch (e) {
     _analyzeOnProg = null;
@@ -752,11 +753,30 @@ function moveCoachText(m) {
     Inaccuracy: "move_cmt_inaccuracy", Mistake: "move_cmt_mistake", Blunder: "move_cmt_blunder",
   })[m.classification] || (m.isBest ? "move_cmt_best" : "move_cmt_good");
   let s = t(key).replace("{mv}", m.san + (m.symbol || ""));
-  // on a sub-optimal move, tell (and read) the better move the engine found
-  if (m.best && (m.classification === "Inaccuracy" || m.classification === "Mistake" || m.classification === "Blunder")) {
-    s += " " + t("move_cmt_better").replace("{best}", m.best);
+  const weak = (m.classification === "Inaccuracy" || m.classification === "Mistake" || m.classification === "Blunder");
+  const strong = !weak && (m.classification === "Brilliant" || m.classification === "Great" || m.classification === "Best" || m.isBest);
+  const pieceName = (code) => code ? t("piece_" + code) : t("piece_pawn");
+  // ---- causal WHY (localized; the rich Korean `explain` is shown separately to ko users) ----
+  if (m.isMate) {
+    // checkmate — the classification comment already says it
+  } else if (weak) {
+    if (m.replyCapType && m.replySan) {
+      s += " " + t("why_hangs").replace("{mv}", m.replySan).replace("{piece}", pieceName(m.replyCapType));
+    } else {
+      const pts = Math.round((m.cpl || 0) / 100);
+      if (pts >= 1) s += " " + t("why_loss").replace("{n}", pts);
+    }
+    if (m.best) s += " " + (m.bestIsCapture ? t("why_better_cap") : t("move_cmt_better")).replace("{best}", m.best);
+    if (m.missedWin) s += " " + t("rv_missed_win");
+  } else if (strong) {
+    let why = "";
+    if (m.onlyMove) why = t("why_only");
+    else if (m.capturedType) why = t("why_capture").replace("{piece}", pieceName(m.capturedType));
+    else if (m.isCastle) why = t("why_castle");
+    else if (m.givesCheck) why = t("why_check");
+    else if (m.develops) why = t("why_develop").replace("{piece}", pieceName(m.movedType));
+    if (why) s += " " + why;
   }
-  if (m.missedWin) s += " " + t("rv_missed_win");
   return s;
 }
 function coachVoiceOn() { return localStorage.getItem("cc_coach_voice") !== "0"; }
@@ -778,7 +798,10 @@ function rvDetail() {
       ? `<span class="tag" style="background:#2e7d32;color:#fff">${t("cls_best")}</span>`
       : `<span class="tag" style="background:${m.clsColor}">${clsLabel(m.classification)} ${m.symbol}</span>`;
   const missed = m.missedWin ? ` <b style="color:#c62828">${t("rv_missed_win")}</b>` : "";
-  const explain = m.explain
+  // the rich rule-based `explain` text is Korean-only; show it only to ko users.
+  // Other languages get the localized causal "why" inside moveCoachText instead.
+  const koUI = (typeof CC_LANG === "undefined" || CC_LANG === "ko");
+  const explain = (m.explain && koUI)
     ? `<div class="aiexplain">🤖 ${escapeHtml(m.explain)}</div>` : "";
   const pv = (m.pv || []).slice(0, 8).join(" ");
   const pvRow = pv ? `<div class="r">${t("rv_pv_label")}<span class="pv">${pv}</span></div>` : "";
@@ -1282,6 +1305,7 @@ function aiEndGame() {
   let kind = "draw";
   if (r === "1-0") kind = AIG.human === "w" ? "win" : "loss";
   else if (r === "0-1") kind = AIG.human === "b" ? "win" : "loss";
+  if (typeof questBump === "function") questBump("aiGames");   // daily quest progress
   if (kind === "win" && typeof suggestSaveProgress === "function") suggestSaveProgress();   // guests: save nudge
 
   // Beating this level grants its title (if it's a new personal best).
@@ -1707,6 +1731,39 @@ function renderDaily() {
   const b = document.getElementById("pzDailyBtn"); if (b) b.onclick = loadDaily;
 }
 
+// =========================================================================== //
+// SPACED-REPETITION REVIEW QUEUE (Leitner) — a puzzle you fail comes back after
+// 1, then 3, then 7 days; solve it each time to graduate, fail and it resets.
+// Retrieval practice is what makes a pattern actually stick.
+// =========================================================================== //
+const REVIEW_BOXES = [1, 3, 7];   // days until next review, per Leitner box
+function addDays(ds, n) { const d = new Date(ds + "T00:00:00"); d.setDate(d.getDate() + n); return dateStr(d); }
+function reviewQueue() { try { return JSON.parse(localStorage.getItem("cc_review_queue") || "{}") || {}; } catch (e) { return {}; } }
+function saveReviewQueue(q) { localStorage.setItem("cc_review_queue", JSON.stringify(q)); if (typeof authSchedulePush === "function") authSchedulePush(); }
+function reviewAdd(level) {                          // a failed puzzle → schedule (box 0)
+  if (!level) return;
+  const q = reviewQueue();
+  q[level] = { box: 0, due: addDays(dateStr(), REVIEW_BOXES[0]) };
+  saveReviewQueue(q);
+}
+function reviewSolved(level) {                       // solved a queued puzzle → advance/graduate
+  const q = reviewQueue(); if (!q[level]) return;
+  const nb = (q[level].box || 0) + 1;
+  if (nb >= REVIEW_BOXES.length) delete q[level];    // graduated out of the queue
+  else q[level] = { box: nb, due: addDays(dateStr(), REVIEW_BOXES[nb]) };
+  saveReviewQueue(q);
+}
+function reviewDue() {                               // puzzle levels due today or earlier
+  const q = reviewQueue(), today = dateStr(), due = [];
+  for (const lv in q) { if ((q[lv].due || "") <= today) due.push(+lv); }
+  return due;
+}
+function loadReviewPuzzle() {
+  const due = reviewDue(); if (!due.length) return;
+  switchTab("puzzle");
+  loadPuzzle(due[0] - 1, { force: true });          // level is 1-based; index is level-1
+}
+
 async function loadPuzzles() {
   $("pzPrompt").textContent = t("pz_loading");
   try { PZ.list = await (await fetch("/static/puzzles.json")).json(); }
@@ -1935,6 +1992,8 @@ function pzSolved() {
   const p = PZ.list[PZ.idx];
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
   pzStreakInc();   // consecutive-solve streak
+  if (typeof reviewSolved === "function") reviewSolved(p.level);   // advance/graduate in the review queue
+  if (typeof questBump === "function") questBump("puzzles");        // daily quest progress
   if (typeof suggestSaveProgress === "function") suggestSaveProgress();   // guests: gentle save nudge
   // if this was today's daily puzzle, log it for the streak + calendar
   const wasDaily = (typeof dailyIndex === "function" && PZ.idx === dailyIndex() && !isDailySolved());
@@ -2033,6 +2092,7 @@ function renderPzStreak() {
 // show the next-move hint (used by the button AND auto after 3 wrong tries)
 async function pzShowHint() {
   const p = PZ.list[PZ.idx];
+  if (p && typeof reviewAdd === "function") reviewAdd(p.level);   // needed help → schedule a review
   if (!p.mateIn) {                                   // tactical: hint the next move in the line
     PZ.hintSq = ((PZ.line[PZ.played.length] || p.solution[0] || "")).slice(0, 2);
     renderPzBoard(); return;
@@ -2761,6 +2821,7 @@ function collectProgress() {
     dailySolved: (typeof dailySolvedDates === "function") ? dailySolvedDates() : [],
     freezeDates: (typeof frozenDates === "function") ? frozenDates() : [],
     streakMiles: (typeof streakMilesReached === "function") ? streakMilesReached() : [],
+    reviewQueue: (typeof reviewQueue === "function") ? reviewQueue() : {},
   };
 }
 
@@ -2793,6 +2854,15 @@ function applyProgress(p) {
   if (Array.isArray(p.streakMiles)) {   // union reached milestones
     const cur = (typeof streakMilesReached === "function") ? streakMilesReached() : [];
     localStorage.setItem("cc_streak_miles", JSON.stringify([...new Set([...cur, ...p.streakMiles])].sort((a, b) => a - b)));
+  }
+  if (p.reviewQueue && typeof p.reviewQueue === "object") {   // merge review queue (keep more-graduated box)
+    const cur = (typeof reviewQueue === "function") ? reviewQueue() : {};
+    const merged = { ...cur };
+    for (const lv in p.reviewQueue) {
+      const a = merged[lv], b = p.reviewQueue[lv];
+      if (!a || (b && (b.box || 0) > (a.box || 0))) merged[lv] = b;
+    }
+    localStorage.setItem("cc_review_queue", JSON.stringify(merged));
   }
   updateRatingChip(); renderHistory(); updateRankBadge();
   if (typeof renderAchievements === "function") renderAchievements();
@@ -3329,11 +3399,39 @@ function currentStreak() {
 }
 
 function renderGrowth() {
+  renderWeakness();
   renderGoal();
   renderAchievements();
   renderGrowthAdapt();
   renderGrowthChart();
   renderGrowthProjection();
+}
+
+// ---- weakness report + one-click prescription (⑨) ----
+// The tactics you most often FAIL — aggregated from failed (review-queued)
+// puzzles, which are theme-tagged — with a button straight to more of that theme.
+const THEME_CAT = { mate: 0, fork: 1, pin: 2, skewer: 3, discovered: 4, hanging: 5 };
+function weaknessByTheme() {
+  const q = (typeof reviewQueue === "function") ? reviewQueue() : {};
+  const counts = {};
+  for (const lv in q) {
+    const p = PZ.list && PZ.list[(+lv) - 1];
+    if (p && p.theme && THEME_CAT[p.theme] != null) counts[p.theme] = (counts[p.theme] || 0) + 1;
+  }
+  return Object.keys(counts).map((theme) => ({ theme, n: counts[theme], cat: THEME_CAT[theme] })).sort((a, b) => b.n - a.n);
+}
+function practiceTheme(cat) { PZ.cat = cat; switchTab("puzzle"); loadPuzzle(pzCatRange(cat).start); }
+function renderWeakness() {
+  const el = document.getElementById("weakReport"); if (!el) return;
+  const w = weaknessByTheme();
+  if (!w.length) { el.innerHTML = '<div class="weak-empty">' + t("weak_empty") + "</div>"; return; }
+  el.innerHTML =
+    '<div class="weak-head"><b>🎯 ' + t("weak_title") + "</b></div>" +
+    '<div class="weak-list">' + w.slice(0, 3).map((x) =>
+      '<div class="weak-row"><span class="weak-name">' + t("pztheme_" + x.theme) + "</span>" +
+      '<span class="weak-count">' + t("weak_count").replace("{n}", x.n) + "</span>" +
+      '<button class="weak-cta" data-cat="' + x.cat + '">' + t("weak_practice") + "</button></div>").join("") + "</div>";
+  el.querySelectorAll(".weak-cta").forEach((b) => { b.onclick = () => practiceTheme(+b.dataset.cat); });
 }
 
 // ---- weekly goals (⑳) ----
@@ -4082,6 +4180,11 @@ function pickToday() {
     const sub = s >= 2 ? T("today_daily_warn").replace("{n}", s) : T("today_daily_s");   // loss-aversion
     return { ic: "🗓️", label: T("today_daily"), sub, go: () => loadDaily() };
   }
+  // 1.5) spaced-repetition reviews due → retrieval practice
+  if (typeof reviewDue === "function") {
+    const rd = reviewDue();
+    if (rd.length) return { ic: "🔁", label: T("today_review_q").replace("{n}", rd.length), sub: T("today_review_q_s"), go: () => loadReviewPuzzle() };
+  }
   // 2) a recent game to review
   const lastG = (typeof lastPlayedGame === "function") ? lastPlayedGame() : null;
   if (lastG && lastG.moves && lastG.moves.length) {
@@ -4108,9 +4211,42 @@ function renderHubToday() {
   el.onclick = a.go;
 }
 
+// ---- daily quests: 3 light goals that reset each day (drives session depth) ----
+const QUEST_DEFS = [
+  { k: "puzzles", goal: 3, ic: "🧩", key: "quest_puzzles" },
+  { k: "aiGames", goal: 1, ic: "🤖", key: "quest_ai" },
+  { k: "reviews", goal: 1, ic: "📊", key: "quest_review" },
+];
+function questsToday() {
+  let q; try { q = JSON.parse(localStorage.getItem("cc_quests") || "{}") || {}; } catch (e) { q = {}; }
+  if (q.date !== dateStr()) q = { date: dateStr(), puzzles: 0, aiGames: 0, reviews: 0 };
+  return q;
+}
+function questBump(kind) {
+  const q = questsToday(); q[kind] = (q[kind] || 0) + 1;
+  localStorage.setItem("cc_quests", JSON.stringify(q));
+  const home = document.getElementById("tab-home");
+  if (home && home.classList.contains("active")) renderQuests();
+}
+function renderQuests() {
+  const el = document.getElementById("hubQuests"); if (!el) return;
+  const q = questsToday();
+  const allDone = QUEST_DEFS.every((d) => (q[d.k] || 0) >= d.goal);
+  el.innerHTML =
+    '<div class="hq-head"><b>' + t("quest_title") + "</b>" +
+      (allDone ? '<span class="hq-done">✓ ' + t("quest_all") + "</span>" : "") + "</div>" +
+    '<div class="hq-list">' + QUEST_DEFS.map((d) => {
+      const n = Math.min(q[d.k] || 0, d.goal), ok = n >= d.goal;
+      return '<div class="hq-item' + (ok ? " ok" : "") + '"><span class="hq-ic">' + (ok ? "✅" : d.ic) + "</span>" +
+        '<span class="hq-txt">' + t(d.key) + "</span>" +
+        '<span class="hq-prog">' + n + "/" + d.goal + "</span></div>";
+    }).join("") + "</div>";
+}
+
 function renderHome() {
   const T = (typeof t === "function") ? t : ((k) => k);
   renderHubToday();
+  renderQuests();
   const hello = $("hubHello");
   if (hello) hello.textContent = (AUTH && AUTH.id) ? T("hub_hi").replace("{id}", AUTH.id) : "Matevio";
 
