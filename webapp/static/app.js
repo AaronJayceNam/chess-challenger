@@ -979,7 +979,8 @@ function showResult(o) {
   if (o.kind === "win") SFX.win(); else if (o.kind === "loss") SFX.lose();
   const conf = $("confetti"); conf.innerHTML = "";
   if (o.kind === "win") {
-    const colors = ["#f5b301", "#6d5cff", "#3fb950", "#ff7a00", "#9ecbff", "#ff5c7a"];
+    // brand palette: green + gold + white (was a random 6-colour rainbow)
+    const colors = ["#4fb877", "#e9b23a", "#ffffff", "#3fa268", "#f5c451"];
     for (let i = 0; i < 44; i++) {
       const p = document.createElement("i");
       p.style.left = Math.round(Math.random() * 100) + "%";
@@ -2761,11 +2762,16 @@ if ($("gateLoginBtn")) $("gateLoginBtn").onclick = () => { hideLoginGate(); open
 // ---- first-signup onboarding: pick skill → seed starting rating ----
 function showSkillModal() { const m = $("skillModal"); if (m) m.classList.remove("hidden"); }
 function hideSkillModal() { const m = $("skillModal"); if (m) m.classList.add("hidden"); }
+// map the seeded rating → a coarse skill bucket, stored so the home CTA can route
+// true beginners to lessons instead of a checkmate puzzle (see pickToday).
+function skillFromRating(r) { return r <= 250 ? "new" : r <= 700 ? "beg" : r <= 1000 ? "mid" : "adv"; }
 document.querySelectorAll("#skillModal .skill-opt").forEach((btn) => {
   btn.onclick = () => {
     const r = +btn.getAttribute("data-rating") || RATING_START;
     setMyRating(r);
+    localStorage.setItem("cc_skill", skillFromRating(r));
     hideSkillModal();
+    if (typeof renderHome === "function") renderHome();   // refresh the "today" CTA for the new skill
   };
 });
 
@@ -3845,6 +3851,22 @@ function miniBoard(fen) {
 // button. Removes choice paralysis; picks by the player's current state.
 function pickToday() {
   const T = (typeof t === "function") ? t : ((k) => k);
+  // 0) BRAND-NEW user (no games, no puzzles solved): guarantee a first SUCCESS
+  // instead of dropping them on a checkmate puzzle. True beginners → lessons.
+  const hist0 = (typeof gameHistory === "function") ? gameHistory() : [];
+  const solvedN = (PZ && PZ.solved) ? PZ.solved.size : 0;
+  const brandNew = (!hist0 || hist0.length === 0) && solvedN === 0;
+  if (brandNew && PZ && PZ.list && PZ.list.length) {
+    const skill = localStorage.getItem("cc_skill") || "";
+    if (skill === "new") {   // doesn't know the rules yet → learn first
+      return { ic: "📖", label: T("today_learn"), sub: T("today_learn_s"), go: () => switchTab("learn") };
+    }
+    // easiest theme = "hanging piece" (cat 5); force past the sequential lock
+    let easy = 0;
+    try { easy = pzCatRange(5).start; } catch (e) { easy = 0; }
+    return { ic: "🧩", label: T("today_first"), sub: T("today_first_s"),
+      go: () => { switchTab("puzzle"); loadPuzzle(easy, { force: true }); } };
+  }
   // 1) today's daily puzzle, if not done yet → strongest daily hook
   if (PZ && PZ.list && PZ.list.length && typeof isDailySolved === "function" && !isDailySolved()) {
     return { ic: "🗓️", label: T("today_daily"), sub: T("today_daily_s"), go: () => loadDaily() };
@@ -3890,8 +3912,11 @@ function renderHome() {
   try { solved = (JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]") || []).length; } catch (e) {}
   const total = (PZ && PZ.list && PZ.list.length) ? PZ.list.length : 100;
   const st = $("hubStats");
+  // 🔥 tile now shows the DAILY-visit streak (the number to defend each day),
+  // not the all-time AI win streak — the retention metric belongs on the home.
+  const dstreak = (typeof dailyStreakCount === "function") ? dailyStreakCount() : 0;
   if (st) st.innerHTML = [
-    { ic: "🔥", k: T("hub_streak"),  v: String(typeof bestStreak === "function" ? bestStreak() : 0) },
+    { ic: "🔥", k: T("hub_streak"),  v: String(dstreak) },
     { ic: "🧩", k: T("hub_puzzles"), v: solved + "<span class='hs-sm'>/" + total + "</span>" },
     { ic: "♟️", k: T("hub_rating"),  v: (typeof ratingHTML === "function" ? ratingHTML(myRating()) : myRating()) },
     { ic: "📊", k: T("hub_winrate"), v: wr + "<span class='hs-sm'>%</span>" },

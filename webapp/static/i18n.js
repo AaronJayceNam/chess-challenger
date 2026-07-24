@@ -18,7 +18,7 @@ var I18N = {
   navs_home:  { ko: "홈", en: "Home", ja: "ホーム", zh: "首页", es: "Inicio" },
   hub_sub:    { ko: "한 판 두고, 퍼즐 풀고, 복기하며 실력을 키워보세요.", en: "Play a game, solve puzzles, review — and get better.", ja: "対局して、パズルを解いて、振り返って上達しよう。", zh: "下一盘、解谜题、复盘——一起变强。", es: "Juega, resuelve puzzles, analiza y mejora." },
   hub_hi:     { ko: "반가워요, {id}", en: "Welcome back, {id}", ja: "おかえり、{id}", zh: "欢迎回来，{id}", es: "Hola de nuevo, {id}" },
-  hub_streak:  { ko: "연속 기록", en: "Streak", ja: "連続記録", zh: "连续纪录", es: "Racha" },
+  hub_streak:  { ko: "연속 접속", en: "Day streak", ja: "連続日数", zh: "连续天数", es: "Racha diaria" },
   hub_puzzles: { ko: "푼 퍼즐", en: "Puzzles", ja: "解いたパズル", zh: "已解谜题", es: "Puzzles" },
   hub_rating:  { ko: "레이팅", en: "Rating", ja: "レーティング", zh: "等级分", es: "Rating" },
   hub_winrate: { ko: "승률", en: "Win rate", ja: "勝率", zh: "胜率", es: "Victorias" },
@@ -709,6 +709,10 @@ var I18N = {
   today_puzzle_s: { ko: "전술 감각을 한 문제씩 키워보세요", en: "Sharpen your tactics one at a time", ja: "戦術力を一問ずつ鍛えよう", zh: "一题一题磨练战术", es: "Afina tu táctica de a poco" },
   today_ai:       { ko: "AI와 한 판 두기", en: "Play a game vs AI", ja: "AIと一局指す", zh: "与 AI 下一盘", es: "Juega contra la IA" },
   today_ai_s:     { ko: "실력에 맞는 상대와 바로 시작하세요", en: "Jump into a game at your level", ja: "自分のレベルの相手とすぐ対局", zh: "与合适对手立即开局", es: "Empieza a tu nivel enseguida" },
+  today_first:    { ko: "첫 퍼즐 풀어보기", en: "Solve your first puzzle", ja: "最初のパズルを解く", zh: "解你的第一道谜题", es: "Resuelve tu primer puzzle" },
+  today_first_s:  { ko: "쉬운 문제부터 — 한 수로 기물을 따내보세요", en: "Start easy — win a piece in one move", ja: "やさしい問題から — 一手で駒を取ろう", zh: "从简单开始 — 一步吃子", es: "Empieza fácil — gana una pieza en una jugada" },
+  today_learn:    { ko: "체스 규칙부터 배우기", en: "Learn the rules first", ja: "まずはルールを学ぶ", zh: "先学规则", es: "Aprende las reglas primero" },
+  today_learn_s:  { ko: "기물 움직임과 특수 규칙을 보드에서 직접 익혀요", en: "Learn how pieces move, hands-on", ja: "駒の動きを盤で直接覚えよう", zh: "在棋盘上直接学习走子", es: "Aprende cómo se mueven las piezas" },
 
   // ----- growth report (dynamic) -----
   gr_chart_empty: { ko: "온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.", en: "Play online games and your rating changes will be charted here.", ja: "オンライン対局をすると、レートの変化がグラフに表示されます。", zh: "进行在线对局后，等级分变化会绘制成图表。", es: "Juega partidas en línea y tu evolución de rating aparecerá aquí." },

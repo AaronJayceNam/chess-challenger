@@ -1219,23 +1219,23 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 /* in-game opponent avatar shows the AI's emoji face */
 .pv-ava.face{ background:linear-gradient(160deg,#20303f,#182430) !important; font-size:19px; }
 
-/* colourful hub action icons — a distinct hue per row */
+/* hub action icons — restrained to brand green + gold (+ one soft slate) */
 .hub-act .ha-ic{ width:44px; height:44px; border-radius:13px; display:grid; place-items:center; font-size:23px; }
 .hub-actions .hub-act:nth-child(1) .ha-ic{ background:rgba(79,184,119,.20); }
-.hub-actions .hub-act:nth-child(2) .ha-ic{ background:rgba(90,150,255,.20); }
-.hub-actions .hub-act:nth-child(3) .ha-ic{ background:rgba(233,178,58,.20); }
-.hub-actions .hub-act:nth-child(4) .ha-ic{ background:rgba(180,120,240,.20); }
+.hub-actions .hub-act:nth-child(2) .ha-ic{ background:rgba(233,178,58,.18); }
+.hub-actions .hub-act:nth-child(3) .ha-ic{ background:rgba(79,184,119,.14); }
+.hub-actions .hub-act:nth-child(4) .ha-ic{ background:rgba(140,160,180,.16); }
 
-/* colourful stat tiles — tinted icon chips */
+/* stat tiles — gold (streak) · green (puzzles/rating) · slate (winrate) */
 .hub-stat .hs-ic{ width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:20px; }
-.hub-stats .hub-stat:nth-child(1) .hs-ic{ background:rgba(240,110,90,.20); }
-.hub-stats .hub-stat:nth-child(2) .hs-ic{ background:rgba(120,190,120,.20); }
-.hub-stats .hub-stat:nth-child(3) .hs-ic{ background:rgba(233,178,58,.20); }
-.hub-stats .hub-stat:nth-child(4) .hs-ic{ background:rgba(90,150,255,.20); }
+.hub-stats .hub-stat:nth-child(1) .hs-ic{ background:rgba(233,178,58,.20); }
+.hub-stats .hub-stat:nth-child(2) .hs-ic{ background:rgba(79,184,119,.20); }
+.hub-stats .hub-stat:nth-child(3) .hs-ic{ background:rgba(79,184,119,.14); }
+.hub-stats .hub-stat:nth-child(4) .hs-ic{ background:rgba(140,160,180,.16); }
 
-/* a colourful illustrated banner in the hub header */
+/* hub header banner — a single cohesive green gradient (was navy→green→purple) */
 .hub-head{ position:relative; overflow:hidden; padding:22px 24px; border-radius:20px;
-  background:linear-gradient(120deg,#16324a 0%,#173a2c 60%,#2a2140 100%);
+  background:linear-gradient(135deg,#15452e 0%,#0f3123 55%,#122a2c 100%);
   border:1px solid var(--line); }
 .hub-head h2{ color:#fff; position:relative; z-index:1; }
 .hub-head p{ color:rgba(255,255,255,.72) !important; position:relative; z-index:1; }
@@ -1248,7 +1248,7 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .hub-card .hc-head b{ display:flex; align-items:center; }
 /* colour the mini-board frame per card */
 .hub-cards .hub-card:nth-child(1) .miniboard{ box-shadow:0 0 0 2px rgba(79,184,119,.35); }
-.hub-cards .hub-card:nth-child(2) .miniboard{ box-shadow:0 0 0 2px rgba(90,150,255,.30); }
+.hub-cards .hub-card:nth-child(2) .miniboard{ box-shadow:0 0 0 2px rgba(79,184,119,.22); }
 .hub-cards .hub-card:nth-child(3) .miniboard{ box-shadow:0 0 0 2px rgba(233,178,58,.30); }
 /* section headings across tabs get a soft accent underline */
 .card > h3{ position:relative; }
