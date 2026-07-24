@@ -632,10 +632,16 @@ function maybeLoadLastReview() {
 // Review speed: analysis is PREFETCHED the moment a game ends and cached, so by
 // the time the player opens the review it's usually already done. Keyed by the
 // exact request so the button and the prefetch share one in-flight call.
-const REVIEW_MT = 50;          // per-position engine budget (ms) — kept low for a
-                               // fast review (prefetch at game end hides most of it).
-                               // Trade-off: Brilliant/Great detection is less
-                               // reliable at this depth than at 120ms.
+const REVIEW_MT = 180;         // per-position engine budget (ms). The SERVER's native
+                               // Stockfish is used for review (far stronger per ms than
+                               // the client asm.js build, which searched too shallow and
+                               // produced wrong move evaluations). Prefetch at game end
+                               // hides most of the wait.
+// The client-side asm.js engine proved far too weak for evaluation (shallow
+// depth → bad best-moves/classifications), so review, hints and AI moves now
+// run on the server's native engine. The client engine stays wired but disabled;
+// flip this to true only with a genuinely fast (WASM) engine.
+const USE_CLIENT_ENGINE = false;
 const ANALYZE_CACHE = {};
 const EVALS_CACHE = {};            // movesKey -> per-position evals (reused for the coach re-request)
 const CLIENT_REVIEW_MT = 300;      // client per-position budget (asm.js on the user's CPU)
@@ -676,7 +682,7 @@ async function analyzeClient(req, coach) {
 function prefetchAnalyze(req) {
   const k = _ckey(req);
   if (!ANALYZE_CACHE[k]) {
-    const p = (window.SF && SF.available) ? analyzeClient(req, false) : api("/api/analyze", req);
+    const p = (USE_CLIENT_ENGINE && window.SF && SF.available) ? analyzeClient(req, false) : api("/api/analyze", req);
     ANALYZE_CACHE[k] = p.catch((e) => { delete ANALYZE_CACHE[k]; throw e; });
   }
   return ANALYZE_CACHE[k];
@@ -909,8 +915,7 @@ async function genCoach() {
   overlay(true, t("coach_running"));
   try {
     const lang = (typeof CC_LANG !== "undefined") ? CC_LANG : "ko";
-    // reuse the client evals (cached) so coaching doesn't re-run the engine on the server
-    const view = (window.SF && SF.available)
+    const view = (USE_CLIENT_ENGINE && window.SF && SF.available)
       ? await analyzeClient(LAST_REQ, true)
       : await api("/api/analyze", { ...LAST_REQ, coach: true, lang });
     RV.view.coach = view.coach;
@@ -1226,6 +1231,7 @@ function randomLegalUci(state) {
   return uci;
 }
 async function aiComputeMoveLocal() {
+  if (!USE_CLIENT_ENGINE) return null;                     // client engine too weak → use the server
   if (!(window.SF && SF.available)) return null;
   if (AIG.variant) return null;                            // Chess960 castling → server
   if (AIG.style && AIG.style !== "default") return null;   // famous-player styles → server
@@ -1320,7 +1326,7 @@ async function aiStart() {
   AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true; AIG.hint = null;
   AIG.variant = !!($("ai960") && $("ai960").checked);
   AIG.startFen = null;
-  if (window.SF && SF.available) { SF.warmup(); SF.newGame(); }   // preload engine + clear hash
+  if (USE_CLIENT_ENGINE && window.SF && SF.available) { SF.warmup(); SF.newGame(); }   // preload engine + clear hash
   $("aiAnalyze").classList.add("hidden");
   const T = (typeof t === "function") ? t : ((k) => k);
   if (AIG.variant) {
@@ -1362,9 +1368,9 @@ async function aiHint() {
   if (!AIG.started || AIG.over || AIG.thinking || !AIG.state) return;
   if (AIG.state.turn !== AIG.human) return;       // only when it's your move
   setStatus("aiStatus", t("hint_thinking"), false);
-  // local engine first (best hint offloads the server); fall back to the server.
+  // hint from the server's native engine (the client asm.js build is too weak).
   let uci = null;
-  if (window.SF && SF.available && !AIG.variant) {
+  if (USE_CLIENT_ENGINE && window.SF && SF.available && !AIG.variant) {
     try { const lr = await SF.bestMove(AIG.state.fen, { movetime: 500 }); uci = lr && lr.bestmove; } catch (e) {}
   }
   if (!uci) {
