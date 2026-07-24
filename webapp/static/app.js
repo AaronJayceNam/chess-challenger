@@ -2957,6 +2957,7 @@ function rerenderBoards() {
   if (AIG.state) renderAiBoard();
   if (OG.state) renderOgBoard();
   if (PZ.fen) renderPzBoard();
+  if (typeof AN !== "undefined" && AN.fen && typeof renderAnBoard === "function") renderAnBoard();
 }
 $("settingsBtn").onclick = () => {
   $("setShowDots").checked = SETTINGS.showDots;
