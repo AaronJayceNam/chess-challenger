@@ -924,3 +924,33 @@ body.ingame .movenav{
 .movestrip .ms-num:first-child{ margin-left:0; }
 .movestrip .ms-mv{ font-weight:600; color:var(--ink); }
 .movestrip .ms-mv.cur{ color:#fff; background:var(--accent); border-radius:5px; padding:1px 6px; }
+
+/* ============================================================
+   BOARD-FIRST STRUCTURE (v-bf) — the board is the hero.
+   Big green hero banners collapse into compact page headers;
+   slimmer stat strip; roomier board; controls become a pill bar.
+   ============================================================ */
+/* compact page header instead of the big gradient hero banner */
+.hero{ display:block !important; background:none !important; box-shadow:none !important;
+  color:var(--ink); padding:0 !important; margin:0 0 16px !important; border-radius:0 !important; overflow:visible; }
+.hero::before, .hero::after{ display:none !important; }
+.hero-art{ display:none !important; }
+.hero-txt{ max-width:100% !important; }
+.hero h2{ font-size:21px; letter-spacing:-.4px; color:var(--ink); margin:0; }
+.hero p{ font-size:13px; color:var(--muted) !important; opacity:1 !important; margin:3px 0 0; line-height:1.45; max-width:680px; }
+
+/* slimmer, quieter stat strip so the board leads */
+.statstrip{ gap:8px; margin-bottom:16px; }
+.stat{ padding:11px 13px; border-radius:12px; }
+.stat .k{ font-size:11px; }
+.stat .v{ font-size:19px; }
+.stat .ic{ font-size:17px; opacity:.25; }
+
+/* roomier boards on desktop (board-first) */
+@media (min-width:761px){
+  :root{ --board:min(524px, 58vh, 48vw); --rvboard:min(524px, 58vh, calc(48vw - 34px)); }
+}
+
+/* in-game controls → a cohesive centered pill bar right under the board */
+.cols > div:first-child > .controls{ justify-content:center; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.cols > div:first-child > .controls .ghost{ border-radius:999px; padding:9px 15px; }
