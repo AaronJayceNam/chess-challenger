@@ -303,6 +303,7 @@ function switchTab(name) {
   if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
   if (name === "ai" && typeof refreshDashboard === "function") refreshDashboard();
   if (name === "analysis" && typeof initAnalysis === "function") initAnalysis();
+  if (name === "review" && typeof maybeLoadLastReview === "function") maybeLoadLastReview();
 }
 // empty-state "go analyze" buttons
 document.querySelectorAll("[data-goto]").forEach((b) => {
@@ -578,6 +579,18 @@ function renderHistory() {
 // ANALYZE -> REVIEW
 // =========================================================================== //
 let LAST_REQ = null;
+
+// the most recent finished game that can be replayed/reviewed
+function lastPlayedGame() {
+  return gameHistory().find((g) => g && Array.isArray(g.moves) && g.moves.length >= 2);
+}
+// opening the Review tab with nothing loaded auto-shows your latest game
+function maybeLoadLastReview() {
+  if (RV.view) return;
+  const g = lastPlayedGame();
+  if (!g) return;
+  runAnalyze({ moves: g.moves, white: g.white || "White", black: g.black || "Black", movetime: REVIEW_MT });
+}
 
 // Review speed: analysis is PREFETCHED the moment a game ends and cached, so by
 // the time the player opens the review it's usually already done. Keyed by the
@@ -3543,14 +3556,27 @@ function renderHome() {
     { emo: "📖", title: T("hub_c_learn"),  sub: T("hub_c_learn_s"),  cta: T("hub_c_learn_cta"),  fen: LEARN_FEN,  go: () => switchTab("learn") },
     { emo: "📊", title: T("hub_c_review"), sub: T("hub_c_review_s"), cta: T("hub_c_review_cta"), fen: REVIEW_FEN, go: () => switchTab("review") },
   ];
+  // the Review card shows YOUR last game's final position (fetched async)
+  const lastG = (typeof lastPlayedGame === "function") ? lastPlayedGame() : null;
+  if (lastG) {
+    cards[2].sub = T("hub_c_last").replace("{opp}", lastG.opponent || "");
+    cards[2].go = () => switchTab("review");   // review tab auto-loads it
+  }
   const cel = $("hubCards");
   if (cel) {
     cel.innerHTML = cards.map((c, i) =>
       '<div class="hub-card" data-i="' + i + '">' +
         '<div class="hc-head"><b><span class="hc-emo">' + c.emo + "</span>" + c.title + "</b><span>" + c.sub + "</span></div>" +
-        miniBoard(c.fen) +
+        '<div class="hc-mini" data-mini="' + i + '">' + miniBoard(c.fen) + "</div>" +
         '<button class="ghost hc-cta">' + c.cta + "</button></div>").join("");
     cel.querySelectorAll(".hub-card").forEach((d) => { d.onclick = () => cards[+d.dataset.i].go(); });
+    // replace the review thumbnail with the last game's final position
+    if (lastG) {
+      api("/api/legal", { moves: lastG.moves }).then((st) => {
+        const slot = cel.querySelector('[data-mini="2"]');
+        if (slot && st && st.fen) slot.innerHTML = miniBoard(st.fen);
+      }).catch(() => {});
+    }
   }
 }
 try { renderHome(); } catch (e) {}

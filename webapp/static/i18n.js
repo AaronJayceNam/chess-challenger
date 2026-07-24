@@ -39,6 +39,7 @@ var I18N = {
   hub_c_review:     { ko: "복기", en: "Review", ja: "振り返り", zh: "复盘", es: "Análisis" },
   hub_c_review_s:   { ko: "AI 코치가 내 실수를 짚어줘요", en: "An AI coach explains your mistakes", ja: "AIコーチがミスを解説", zh: "AI教练点评你的失误", es: "Un coach IA explica tus errores" },
   hub_c_review_cta: { ko: "복기 보기", en: "Open review", ja: "振り返りを見る", zh: "查看复盘", es: "Ver análisis" },
+  hub_c_last:       { ko: "최근 경기: {opp}", en: "Last game: {opp}", ja: "直近の対局: {opp}", zh: "最近对局：{opp}", es: "Última partida: {opp}" },
   nav_ai:     { ko: "AI 대국", en: "vs Computer", ja: "AI対局", zh: "人机对弈", es: "vs. IA" },
   nav_online: { ko: "온라인 대국", en: "Online", ja: "オンライン対局", zh: "在线对弈", es: "En línea" },
   nav_puzzle: { ko: "퍼즐", en: "Puzzles", ja: "パズル", zh: "谜题", es: "Puzzles" },
