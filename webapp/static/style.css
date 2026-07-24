@@ -994,3 +994,36 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 
 /* start / quick-match buttons: full width + prominent */
 .setup-go .primary, .og-actions .primary{ width:100%; font-size:15.5px; padding:15px; }
+
+/* ============================================================
+   STRUCTURE OVERHAUL (v-so) — flip the skeleton:
+   • left sidebar rail  →  horizontal top nav pill bar
+   • remove the noisy home stat strip
+   • center the content column; board leads
+   Mobile keeps its bottom nav (unchanged).
+   ============================================================ */
+.statstrip{ display:none !important; }
+
+@media (min-width:761px){
+  .shell{ display:block !important; max-width:1120px; margin:0 auto; padding:14px 24px 48px; }
+
+  /* the tab list becomes a centered horizontal pill bar under the header */
+  .tabs{ position:sticky; top:60px; z-index:6;
+    flex:none !important; width:auto !important; flex-direction:row !important; align-items:center;
+    justify-content:center; gap:5px; overflow-x:auto; scrollbar-width:none;
+    padding:7px; margin:0 0 22px; border:1px solid var(--line); border-radius:16px;
+    background:rgba(22,27,35,.72); backdrop-filter:blur(12px); box-shadow:var(--shadow); }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tabs button{ width:auto !important; flex:0 0 auto; justify-content:center; text-align:center;
+    padding:9px 16px; font-size:14px; font-weight:650; border-radius:11px; }
+  .tabs button .ti{ margin-right:7px; font-size:16px; width:auto; }
+
+  /* the old sidebar extras don't belong in a top bar */
+  .side-profile, .side-tip{ display:none !important; }
+
+  .content{ width:100%; }
+  .content .tab{ padding:0; max-width:none; }
+
+  /* center the board + setup group so the board is the visual anchor */
+  .cols{ justify-content:center; }
+}

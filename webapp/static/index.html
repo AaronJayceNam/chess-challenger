@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=75">
+<link rel="stylesheet" href="/static/style.css?v=76">
 </head>
 <body>
 
@@ -686,8 +686,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=75"></script>
-<script src="/static/app.js?v=75"></script>
+<script src="/static/i18n.js?v=76"></script>
+<script src="/static/app.js?v=76"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {
@@ -697,9 +697,17 @@
   if ("serviceWorker" in navigator) {
     var rl = document.getElementById("updateReload");
     if (rl) rl.onclick = function () { location.reload(); };
+    // AUTO-UPDATE: when a newly-installed SW takes control, refresh once so the
+    // user always sees the latest version (no more "stuck on the old build").
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (reloadedForUpdate || !hadController) return;   // skip the very first install
+      reloadedForUpdate = true;
+      location.reload();
+    });
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js").then(function (reg) {
-        // a new version was pushed → SW re-installs; tell the user right away
         reg.addEventListener("updatefound", function () {
           var nw = reg.installing;
           if (!nw) return;
@@ -707,6 +715,9 @@
             if (nw.state === "installed" && navigator.serviceWorker.controller) showUpdateBanner();
           });
         });
+        // proactively check for a new version now and every minute
+        try { reg.update(); } catch (e) {}
+        setInterval(function () { try { reg.update(); } catch (e) {} }, 60000);
       }).catch(function () {});
     });
   }
