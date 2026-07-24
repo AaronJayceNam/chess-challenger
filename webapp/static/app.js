@@ -1874,6 +1874,7 @@ const OG = {
   state: null, moves: [], sel: null, orient: "w", lastUci: null, pingTimer: null,
   viewState: null, viewLast: null, viewIdx: null,
   oppRating: RATING_START, ratingApplied: false,
+  gid: null, reconnecting: false, reconnectDeadline: null,   // mid-game reconnect
   clock: { w: 600, b: 600 }, clockSyncedAt: 0,
 };
 
@@ -1953,13 +1954,43 @@ function ogConnect(then) {
   ws.onmessage = (e) => { try { ogHandle(JSON.parse(e.data)); } catch (err) {} };
   ws.onclose = () => {
     if (OG.pingTimer) { clearInterval(OG.pingTimer); OG.pingTimer = null; }
-    if (OG.started && !OG.over) {
-      OG.over = true; updateOgTurn();
-      setStatus("ogStatus", t("og_disconnected"), true);
-    }
     OG.ws = null;
+    // dropped mid-game → try to resume (server holds the game for 60s) instead
+    // of forfeiting. Only give up once that window elapses.
+    if (OG.started && !OG.over && OG.gid) { ogTryReconnect(); }
   };
   ws.onerror = () => { setStatus("ogSetupStatus", t("og_conn_err"), true); };
+}
+
+// Reconnect after an unexpected drop: repeatedly open a socket and ask the
+// server to resume our game. The server keeps it alive for 60s (our clock keeps
+// running), so we retry until we're back in or the window elapses.
+function ogTryReconnect() {
+  if (OG.over || !OG.gid) return;
+  if (!OG.reconnectDeadline) OG.reconnectDeadline = Date.now() + 60000;
+  if (Date.now() >= OG.reconnectDeadline) {           // grace elapsed — truly lost
+    OG.reconnecting = false; OG.reconnectDeadline = null;
+    if (!OG.over) { OG.over = true; updateOgTurn(); }
+    setStatus("ogStatus", t("og_disconnected"), true);
+    return;
+  }
+  OG.reconnecting = true;
+  setStatus("ogStatus", t("og_reconnecting"), true);
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  OG.ws = ws;
+  ws.onopen = () => {
+    if (OG.pingTimer) clearInterval(OG.pingTimer);
+    OG.pingTimer = setInterval(() => ogSend({ type: "ping" }), 25000);
+    ogSend({ type: "resume", gid: OG.gid, token: ogToken() });
+  };
+  ws.onmessage = (e) => { try { ogHandle(JSON.parse(e.data)); } catch (err) {} };
+  ws.onclose = () => {
+    if (OG.pingTimer) { clearInterval(OG.pingTimer); OG.pingTimer = null; }
+    OG.ws = null;
+    if (OG.reconnecting && !OG.over) setTimeout(ogTryReconnect, 2000);
+  };
+  ws.onerror = () => {};
 }
 
 function ogName() { return ($("ogName").value || t("og_player")).trim().slice(0, 20) || t("og_player"); }
@@ -1975,6 +2006,7 @@ function ogFresh(then) {
     OG.ws = null;
   }
   OG.started = false; OG.over = false;
+  OG.reconnecting = false; OG.reconnectDeadline = null;   // fresh match, not a resume
   ogConnect(then);
 }
 
@@ -1997,6 +2029,7 @@ function ogHandle(msg) {
       break;
     case "start":
       OG.started = true; OG.over = false; OG.ratingApplied = false;
+      OG.gid = msg.gid || null; OG.reconnecting = false; OG.reconnectDeadline = null;
       OG.oppRating = +(msg.opponentRating || RATING_START);
       OG.color = msg.color; OG.orient = msg.color;
       OG.opponent = msg.opponent || t("og_opp");
@@ -2032,7 +2065,46 @@ function ogHandle(msg) {
       ogAppendChat(OG.opponent || t("og_opp"), msg.text || "", false);
       break;
     case "end":
+      // a real result ends the game for good — stop any reconnect attempts
+      OG.reconnecting = false; OG.reconnectDeadline = null;
       ogEnd(msg.result, msg.reason, msg.rating);
+      break;
+    case "opp_disconnected":
+      setStatus("ogStatus", t("og_opp_disconnected").replace("{s}", msg.seconds || 60), true);
+      break;
+    case "opp_reconnected":
+      setStatus("ogStatus", t("og_opp_reconnected"));
+      break;
+    case "resume_ok":
+      OG.reconnecting = false; OG.reconnectDeadline = null;
+      OG.started = true; OG.over = false;
+      OG.gid = msg.gid || OG.gid;
+      OG.color = msg.color; OG.orient = msg.color;
+      OG.opponent = msg.opponent || t("og_opp");
+      OG.oppRating = +(msg.opponentRating || RATING_START);
+      OG.state = msg.state; OG.moves = (msg.state && msg.state.moves) || []; OG.sel = null; OG.lastUci = null;
+      OG.viewState = null; OG.viewIdx = null; OG.viewLast = null;
+      ogSyncClock(msg.state);
+      $("ogSetup").classList.add("hidden");
+      $("ogGameInfo").classList.remove("hidden");
+      $("ogCancel").classList.add("hidden"); $("ogCodeBox").classList.add("hidden");
+      $("ogVs").innerHTML = `${escapeHtml(ogName())} (${ratingHTML(myRating())}) vs ${escapeHtml(OG.opponent)} (${ratingHTML(OG.oppRating)})`;
+      ogEnterGame();
+      renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
+      setStatus("ogStatus", t("og_reconnected"));
+      break;
+    case "resume_fail":
+      // maybe the server hasn't noticed our old socket drop yet — retry within
+      // the window; only surface failure once the 60s grace has elapsed.
+      if (OG.reconnecting && OG.reconnectDeadline && Date.now() < OG.reconnectDeadline) {
+        try { if (OG.ws) { OG.ws.onclose = null; OG.ws.close(); } } catch (e) {}
+        OG.ws = null;
+        setTimeout(ogTryReconnect, 2500);
+      } else {
+        OG.reconnecting = false; OG.reconnectDeadline = null;
+        if (!OG.over) { OG.over = true; updateOgTurn(); }
+        setStatus("ogStatus", t("og_resume_fail"), true);
+      }
       break;
     case "error":
       setStatus(OG.started ? "ogStatus" : "ogSetupStatus", msg.message || t("og_error"), true);
@@ -2187,6 +2259,7 @@ function ogEnd(result, reason, rInfo) {
 function ogReset() {
   hideResult();
   OG.started = false; OG.over = false; OG.color = null; OG.opponent = null;
+  OG.gid = null; OG.reconnecting = false; OG.reconnectDeadline = null;
   OG.state = null; OG.moves = []; OG.sel = null; OG.lastUci = null;
   $("ogSetup").classList.remove("hidden");
   $("ogGameInfo").classList.add("hidden");

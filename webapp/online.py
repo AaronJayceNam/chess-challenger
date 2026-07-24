@@ -48,6 +48,11 @@ _CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 # 10 minutes per player; env-overridable so tests can use a tiny clock.
 CLOCK_START = float(os.environ.get("CC_CLOCK_SECS", "600"))
 
+# On a mid-game disconnect the player gets this many seconds to reconnect before
+# they forfeit. Their game clock KEEPS RUNNING during the grace (the clock is
+# time-based), so they can still flag while away.
+RECONNECT_GRACE = float(os.environ.get("CC_RECONNECT_GRACE", "60"))
+
 
 def _new_code(taken) -> str:
     while True:
@@ -66,14 +71,21 @@ async def _send(ws: WebSocket, payload: dict) -> None:
 
 class Game:
     def __init__(self, w_ws: WebSocket, w_name: str, b_ws: WebSocket, b_name: str,
-                 w_uid: str | None = None, b_uid: str | None = None):
+                 w_uid: str | None = None, b_uid: str | None = None,
+                 w_rating: int = 400, b_rating: int = 400, gid: str = ""):
+        self.gid = gid                 # stable id so a dropped player can reconnect
         self.board = chess.Board()
         self.moves: list[str] = []
         self.san: list[str] = []
+        # a seat's ws is None while that player is disconnected (in reconnect grace)
         self.ws = {chess.WHITE: w_ws, chess.BLACK: b_ws}
         self.names = {chess.WHITE: w_name, chess.BLACK: b_name}
-        # account ids (None for a guest) — used for server-authoritative rating.
+        self.ratings = {chess.WHITE: w_rating, chess.BLACK: b_rating}
+        # account ids (None for a guest) — used for server-authoritative rating
+        # and to verify a reconnecting player owns the seat.
         self.uids = {chess.WHITE: w_uid, chess.BLACK: b_uid}
+        # monotonic time each seat's reconnect grace expires (None = seat present)
+        self.disc_deadline = {chess.WHITE: None, chess.BLACK: None}
         self.rated_done = False        # ensure the Elo change is applied at most once
         self.over = False
         # chess clock: each side gets CLOCK_START seconds; only the side to
@@ -117,6 +129,7 @@ class Lobby:
         self.queue: list[tuple[WebSocket, str, int, str | None]] = []
         self.rooms: dict[str, tuple[WebSocket, str, int, str | None]] = {}
         self.games: dict[WebSocket, Game] = {}
+        self.by_gid: dict[str, Game] = {}   # live games (authoritative set; used by the sweeper)
         self._sweeper: asyncio.Task | None = None
 
     # ------------------------------------------------------------------ #
@@ -149,25 +162,28 @@ class Lobby:
         """a/b are (ws, name, rating, uid); colors are assigned randomly."""
         if secrets.randbelow(2):
             a, b = b, a
-        game = Game(a[0], a[1], b[0], b[1], a[3], b[3])
+        gid = secrets.token_hex(8)
+        game = Game(a[0], a[1], b[0], b[1], a[3], b[3], a[2], b[2], gid)
         self.games[a[0]] = game
         self.games[b[0]] = game
+        self.by_gid[gid] = game
         game.turn_started = time.monotonic()
         if self._sweeper is None or self._sweeper.done():
             self._sweeper = asyncio.create_task(self._sweep_clocks())
         st = self._state(game)
         await _send(a[0], {"type": "start", "color": "w", "opponent": b[1],
-                           "opponentRating": b[2], "state": st})
+                           "opponentRating": b[2], "gid": gid, "state": st})
         await _send(b[0], {"type": "start", "color": "b", "opponent": a[1],
-                           "opponentRating": a[2], "state": st})
+                           "opponentRating": a[2], "gid": gid, "state": st})
 
     def _drop_from_lobby(self, ws: WebSocket) -> None:
         self.queue = [e for e in self.queue if e[0] is not ws]
         self.rooms = {c: e for c, e in self.rooms.items() if e[0] is not ws}
 
     def _cleanup_game(self, game: Game) -> None:
+        self.by_gid.pop(game.gid, None)
         for w in (game.ws[chess.WHITE], game.ws[chess.BLACK]):
-            if self.games.get(w) is game:
+            if w is not None and self.games.get(w) is game:
                 self.games.pop(w, None)
 
     # ------------------------------------------------------------------ #
@@ -270,15 +286,25 @@ class Lobby:
         await self._finish(game, result, "resign")
 
     async def _sweep_clocks(self) -> None:
-        """End games on the clock: if the side to move runs out of time and
-        never moves, they lose. Runs once per second while games exist."""
+        """Once per second, end games whose clock flagged OR whose disconnected
+        player didn't reconnect within the grace window."""
         while True:
             await asyncio.sleep(1.0)
-            ended: list[tuple[Game, str]] = []
+            ended: list[tuple[Game, str, str]] = []
             async with self.lock:
-                for game in set(self.games.values()):
+                now = time.monotonic()
+                for game in set(self.by_gid.values()):
                     if game.over:
                         continue
+                    # 1) reconnect grace expired → the absent player forfeits
+                    gone = next((c for c in (chess.WHITE, chess.BLACK)
+                                 if game.disc_deadline[c] is not None and now > game.disc_deadline[c]), None)
+                    if gone is not None:
+                        game.over = True
+                        self._cleanup_game(game)
+                        ended.append((game, "0-1" if gone == chess.WHITE else "1-0", "forfeit"))
+                        continue
+                    # 2) clock flag (the disconnected side's clock still runs)
                     rw, rb = game.remaining()
                     loser = None
                     if game.board.turn == chess.WHITE and rw <= 0:
@@ -288,11 +314,11 @@ class Lobby:
                     if loser is not None:
                         game.over = True
                         self._cleanup_game(game)
-                        ended.append((game, "0-1" if loser == chess.WHITE else "1-0"))
-                if not self.games and not ended:
+                        ended.append((game, "0-1" if loser == chess.WHITE else "1-0", "timeout"))
+                if not self.by_gid and not ended:
                     break                      # idle — stop; restarted on next game
-            for game, result in ended:
-                await self._finish(game, result, "timeout")
+            for game, result, reason in ended:
+                await self._finish(game, result, reason)
 
     async def draw_offer(self, ws: WebSocket) -> None:
         agree = False
@@ -354,21 +380,63 @@ class Lobby:
         await _send(other, {"type": "chat", "text": text})
 
     async def disconnect(self, ws: WebSocket) -> None:
-        game = None
-        result = None
+        """A socket dropped. If it's in a live game, DON'T forfeit yet: vacate the
+        seat, start a 60s reconnect grace (clock keeps running), and tell the
+        opponent. The sweeper forfeits only if the grace expires. Reconnecting
+        with the same account within the window (see resume) resumes the game."""
+        notify_opp = None
         async with self.lock:
             self._drop_from_lobby(ws)
             g = self.games.get(ws)
-            if g is not None:
-                color = g.color_of(ws)
-                self._cleanup_game(g)
-                if not g.over:
-                    g.over = True
-                    game = g
-                    # the player who left loses to their opponent
-                    result = "1-0" if color == chess.BLACK else "0-1"
-        if game is not None:
-            await self._finish(game, result, "forfeit")
+            if g is None:
+                return
+            self.games.pop(ws, None)          # this dead socket no longer maps
+            if g.over:
+                return
+            color = g.color_of(ws)
+            if color is None:
+                return
+            opp = g.ws[not color]
+            g.ws[color] = None                # seat now vacant; resume() refills it
+            g.disc_deadline[color] = time.monotonic() + RECONNECT_GRACE
+            if self._sweeper is None or self._sweeper.done():
+                self._sweeper = asyncio.create_task(self._sweep_clocks())
+            notify_opp = opp
+        if notify_opp is not None:
+            await _send(notify_opp, {"type": "opp_disconnected", "seconds": int(RECONNECT_GRACE)})
+
+    async def resume(self, ws: WebSocket, gid: str, token: str) -> None:
+        """Reattach a reconnecting player to their in-progress game. The account
+        (resolved from the token) must own a currently-vacant seat in the game —
+        this both authenticates the resume and prevents seat hijacking."""
+        uid = None
+        if self._resolve:
+            r = self._resolve(token)
+            if r is not None:
+                uid = r[0]
+        game = None
+        color = None
+        opp_ws = None
+        async with self.lock:
+            g = self.by_gid.get(gid)
+            if g is not None and not g.over and uid is not None:
+                for c in (chess.WHITE, chess.BLACK):
+                    if g.uids[c] == uid and g.disc_deadline[c] is not None:
+                        g.ws[c] = ws
+                        g.disc_deadline[c] = None
+                        self.games[ws] = g
+                        game, color, opp_ws = g, c, g.ws[not c]
+                        break
+        if game is None:
+            return await _send(ws, {"type": "resume_fail"})
+        st = self._state(game)
+        await _send(ws, {"type": "resume_ok",
+                         "color": "w" if color == chess.WHITE else "b",
+                         "opponent": game.names[not color],
+                         "opponentRating": game.ratings[not color],
+                         "gid": game.gid, "state": st})
+        if opp_ws is not None:
+            await _send(opp_ws, {"type": "opp_reconnected"})
 
 
 def register_online(app: FastAPI, legal_state, rating_hooks: dict | None = None) -> Lobby:
@@ -406,6 +474,8 @@ def register_online(app: FastAPI, legal_state, rating_hooks: dict | None = None)
                     await lobby.create(ws, name, rating, uid)
                 elif t == "join":
                     await lobby.join(ws, str(msg.get("code") or "").strip().upper(), name, rating, uid)
+                elif t == "resume":
+                    await lobby.resume(ws, str(msg.get("gid") or ""), str(msg.get("token") or ""))
                 elif t == "cancel":
                     await lobby.cancel(ws)
                 elif t == "move":
