@@ -1109,8 +1109,11 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .hub-card .hc-cta{ width:100%; text-align:center; }
 
 .miniboard{ display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1/1; width:100%;
+  container-type:inline-size;
   border-radius:9px; overflow:hidden; border:1px solid var(--line); }
-.miniboard .msq{ display:grid; place-items:center; font-size:min(2.1vw,15px); line-height:1; }
+.miniboard .msq{ display:grid; place-items:center; font-size:20px; line-height:1; }
+/* match the real board's proportion: glyph = board width / 11 (~73% of a square) */
+@supports (font-size:1cqw){ .miniboard .msq{ font-size:9.1cqw; } }
 .miniboard .msq.light{ background:var(--light); }
 .miniboard .msq.dark{ background:var(--dark); }
 
@@ -1118,5 +1121,4 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 @media (max-width:560px){
   .hub-stats{ grid-template-columns:repeat(2,1fr); gap:10px; }
   .hub-head h2{ font-size:20px; }
-  .miniboard .msq{ font-size:16px; }
 }
