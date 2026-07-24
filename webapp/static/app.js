@@ -159,17 +159,25 @@ const SFX = {
   move() { this._wood(900, 0.075, 0.5); },
   capture() { this._wood(520, 0.12, 0.7); },
   check() { this._wood(1300, 0.09, 0.5); },
-  win() { this._beep(523, 0.12, "sine", 0.07); setTimeout(() => this._beep(784, 0.18, "sine", 0.07), 130); },
-  lose() { this._beep(300, 0.22, "sine", 0.06); },
+  castle() { this._wood(700, 0.08, 0.5); setTimeout(() => this._wood(700, 0.07, 0.45), 70); },   // two-part knock
+  turn() { this._beep(660, 0.09, "sine", 0.05); setTimeout(() => this._beep(880, 0.1, "sine", 0.05), 90); },   // "your turn" cue
+  win() { this._beep(523, 0.12, "sine", 0.07); setTimeout(() => this._beep(784, 0.18, "sine", 0.07), 130); haptic([15, 40, 20]); },
+  lose() { this._beep(300, 0.22, "sine", 0.06); haptic(40); },
 };
+// subtle haptic feedback (mobile), bundled with the sound/feedback setting
+function haptic(pattern) {
+  if (!SETTINGS.sound) return;
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+}
 // pick the right sound from the just-played SAN (…x = capture, + = check, # = mate)
 function playMoveSfx(state) {
   if (!SETTINGS.sound || !state || !state.san || !state.san.length) return;
   const san = state.san[state.san.length - 1] || "";
-  if (san.includes("#")) return;                 // checkmate → the result screen sound covers it
-  if (san.includes("+")) SFX.check();
-  else if (san.includes("x")) SFX.capture();
-  else SFX.move();
+  if (san.includes("#")) { haptic([15, 40, 20]); return; }   // checkmate → the result screen sound covers it
+  if (san.charAt(0) === "O") { SFX.castle(); haptic(10); }    // castling (O-O / O-O-O)
+  else if (san.includes("+")) { SFX.check(); haptic([10, 30, 10]); }
+  else if (san.includes("x")) { SFX.capture(); haptic([12, 8]); }
+  else { SFX.move(); haptic(6); }
 }
 
 // a–h / 1–8 coordinates: rank number on the left column, file letter on the
@@ -1048,7 +1056,8 @@ function showResult(o) {
   });
   if (o.kind === "win") SFX.win(); else if (o.kind === "loss") SFX.lose();
   const conf = $("confetti"); conf.innerHTML = "";
-  if (o.kind === "win") {
+  const reduceMotion = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  if (o.kind === "win" && !reduceMotion) {
     // brand palette: green + gold + white (was a random 6-colour rainbow)
     const colors = ["#4fb877", "#e9b23a", "#ffffff", "#3fa268", "#f5c451"];
     for (let i = 0; i < 44; i++) {
@@ -2416,6 +2425,14 @@ function ogName() { return ($("ogName").value || t("og_player")).trim().slice(0,
 // auth token → the server resolves it to the account and owns the rating.
 function ogToken() { return (typeof AUTH !== "undefined" && AUTH && AUTH.token) || ""; }
 
+// it's your turn online — a triple cue (sound + haptic + board pulse) so mobile
+// players don't miss their move and lose on the clock.
+function ogMyTurnCue() {
+  SFX.turn(); haptic([12, 30, 12]);
+  const b = document.getElementById("ogBoard");
+  if (b) { b.classList.remove("myturn-pulse"); void b.offsetWidth; b.classList.add("myturn-pulse"); }
+}
+
 // quick-match empty-lobby BOT BACKFILL: the queue is often empty on a small
 // free-tier server, so a lone new player would wait forever. After ~15s with no
 // opponent we honestly offer an AI game at a level matched to their rating —
@@ -2522,6 +2539,8 @@ function ogHandle(msg) {
       renderOgBoard(); renderOgMoves(); updateOgTurn(); renderPbars();
       if (OG.lastUci) animateMove($("ogBoard"), OG.lastUci.slice(0, 2), OG.lastUci.slice(2, 4), OG.orient);
       playMoveSfx(OG.state);
+      // it's now MY turn (opponent just moved) → cue so I don't miss it and flag
+      if (!OG.over && OG.state.turn === OG.color) ogMyTurnCue();
       break;
     case "draw_offered":
       $("ogDrawPrompt").classList.remove("hidden");
