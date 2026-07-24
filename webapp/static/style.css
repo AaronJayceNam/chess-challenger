@@ -1027,3 +1027,31 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
   /* center the board + setup group so the board is the visual anchor */
   .cols{ justify-content:center; }
 }
+
+/* ============================================================
+   SETUP PANELS v2 (v-sp2) — bolder: the rating becomes a big
+   headline number, controls sit on clean divided rows, and the
+   panel reads like a modern settings sheet instead of nested boxes.
+   ============================================================ */
+/* AI rating: headline number, quiet caption, slim track */
+.strength-pick{ background:transparent !important; border:none !important; padding:2px 0 4px !important; }
+.strength-pick > .field{ font-size:11.5px !important; color:var(--faint) !important; letter-spacing:.02em; margin:0 0 2px !important; }
+.strength-val{ font-size:30px !important; font-weight:800 !important; color:var(--ink) !important;
+  letter-spacing:-.8px !important; margin:0 0 12px !important; }
+.strength-pick input[type=range]{ height:4px !important; }
+.strength-ticks{ margin-top:8px; }
+
+/* each control group becomes a divided row block */
+.setup-card > .field{ margin-top:18px !important; padding-top:16px; border-top:1px solid var(--line);
+  font-size:11.5px !important; color:var(--faint) !important; letter-spacing:.02em; }
+.setup-card .segmented{ margin-top:9px; }
+
+/* online: rating headline matches, box goes flat */
+.og-rating{ background:transparent !important; border:none !important; border-bottom:1px solid var(--line) !important;
+  border-radius:0 !important; padding:2px 0 14px !important; margin-bottom:4px; }
+.og-rating-head b#ogRating{ font-size:38px !important; color:var(--ink) !important; }
+.og-rating-head .ogr-label{ font-size:11.5px; color:var(--faint); }
+
+/* 960 toggle + invite block share the same quiet framing */
+.v960-toggle{ background:var(--panel2); }
+.og-friend{ margin-top:18px; padding-top:16px; }
