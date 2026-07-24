@@ -352,10 +352,9 @@ var I18N = {
 
   // ----- puzzle tab -----
   pz_desc:       { ko: "백이 두어 정해진 수 안에 체크메이트를 만드세요. 상대는 가장 오래 버티는 수로 응수합니다.", en: "Play White and force checkmate within the given moves. Black defends as long as possible.", ja: "白番で、指定手数以内にチェックメイトを。相手は最も長く粘る手で応じます。", zh: "执白在规定步数内将杀。黑方以最顽强的方式抵抗。", es: "Juega con blancas y da mate en las jugadas indicadas. Las negras resisten lo máximo posible." },
-  pz_c1:         { ko: "1수 (1–25)", en: "Mate in 1 (1–25)", ja: "1手詰 (1–25)", zh: "1步杀 (1–25)", es: "Mate en 1 (1–25)" },
-  pz_c2:         { ko: "2수 (26–50)", en: "Mate in 2 (26–50)", ja: "2手詰 (26–50)", zh: "2步杀 (26–50)", es: "Mate en 2 (26–50)" },
-  pz_c3:         { ko: "3수 (51–75)", en: "Mate in 3 (51–75)", ja: "3手詰 (51–75)", zh: "3步杀 (51–75)", es: "Mate en 3 (51–75)" },
-  pz_c4:         { ko: "4수 (76–100)", en: "Mate in 4 (76–100)", ja: "4手詰 (76–100)", zh: "4步杀 (76–100)", es: "Mate en 4 (76–100)" },
+  pz_c1:         { ko: "♚ 메이트", en: "♚ Mate", ja: "♚ メイト", zh: "♚ 将杀", es: "♚ Mate" },
+  pz_c2:         { ko: "🍴 포크", en: "🍴 Fork", ja: "🍴 フォーク", zh: "🍴 双叉", es: "🍴 Horquilla" },
+  pz_c3:         { ko: "📌 핀", en: "📌 Pin", ja: "📌 ピン", zh: "📌 牵制", es: "📌 Clavada" },
   pztheme_mate:       { ko: "메이트", en: "mate", ja: "メイト", zh: "将杀", es: "mate" },
   pztheme_fork:       { ko: "포크", en: "fork", ja: "フォーク", zh: "双叉", es: "horquilla" },
   pztheme_pin:        { ko: "핀", en: "pin", ja: "ピン", zh: "牵制", es: "clavada" },
