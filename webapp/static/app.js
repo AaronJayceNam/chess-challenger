@@ -1599,21 +1599,27 @@ function _isoWeekKey(d) {
   return t.getUTCFullYear() + "-W" + wk;
 }
 function maintainStreak() {
-  const solved = new Set(dailySolvedDates());
-  if (!solved.size) return;
+  const solvedArr = dailySolvedDates();
+  if (!solvedArr.length) return;
+  const solved = new Set(solvedArr);
+  const earliest = solvedArr.slice().sort()[0];       // don't walk past the first solved day
   const frozen = new Set(frozenDates());
   const weekUsed = {};
   frozen.forEach((f) => { weekUsed[_isoWeekKey(new Date(f))] = true; });
-  // walk back from yesterday; a missing day is covered by a freeze if that week
-  // still has its freeze; if not, the streak legitimately breaks there.
+  // Walk back from yesterday to the earliest solved day. Pass THROUGH covered days
+  // (solved or already frozen); when a day is uncovered, spend that week's single
+  // freeze on it — if the week's freeze is already used, the streak truly breaks
+  // there and we stop (nothing before it matters to the current run).
   const d = new Date(); d.setDate(d.getDate() - 1);
   let guard = 0, changed = false;
-  while (guard++ < 400) {
+  while (guard++ < 800) {
     const ds = dateStr(d);
-    if (solved.has(ds) || frozen.has(ds)) break;      // run continues here
-    const wk = _isoWeekKey(d);
-    if (weekUsed[wk]) break;                           // no freeze left this week → break
-    frozen.add(ds); weekUsed[wk] = true; changed = true;
+    if (ds < earliest) break;                          // gone past all solved history
+    if (!solved.has(ds) && !frozen.has(ds)) {          // an uncovered gap
+      const wk = _isoWeekKey(d);
+      if (weekUsed[wk]) break;                          // no freeze left this week → streak ends here
+      frozen.add(ds); weekUsed[wk] = true; changed = true;
+    }
     d.setDate(d.getDate() - 1);
   }
   if (changed) {
