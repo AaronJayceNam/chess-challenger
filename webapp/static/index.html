@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=96">
+<link rel="stylesheet" href="/static/style.css?v=97">
 </head>
 <body>
 
@@ -37,6 +37,13 @@
   <button id="inappClose" aria-label="닫기" data-i18n-aria="tt_close" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;color:#664d03">×</button>
 </div>
 
+<!-- guests: after a first success, a gentle "save your progress" nudge (not a wall) -->
+<div id="saveBanner" class="hidden" style="align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:9px 12px;background:#123524;color:#d7f2e2;font-size:12.5px;border-bottom:1px solid #1e5236">
+  <span data-i18n="save_banner">🎉 잘했어요! 가입하면 스트릭·진행이 저장돼요.</span>
+  <button id="saveBannerBtn" data-i18n="save_banner_btn" style="border:none;background:linear-gradient(180deg,#4bb277,#2f7d4d);color:#fff;font-weight:700;border-radius:8px;padding:5px 12px;font-size:12.5px;cursor:pointer">저장하기</button>
+  <button id="saveBannerClose" aria-label="닫기" data-i18n-aria="tt_close" style="border:none;background:transparent;font-size:17px;line-height:1;cursor:pointer;color:#d7f2e2">×</button>
+</div>
+
 <header class="top">
   <h1>Matevio</h1>
   <div class="rating-chip hidden" id="ratingChip">레이팅 <b>400</b></div>
@@ -53,13 +60,10 @@
 <div class="shell">
 <div class="tabs">
   <button data-tab="home" class="active"><span class="ti">🏠</span><span data-i18n="nav_home">홈</span></button>
-  <button data-tab="ai"><span class="ti">🤖</span><span data-i18n="nav_ai">AI 대국</span></button>
-  <button data-tab="online"><span class="ti">🌐</span><span data-i18n="nav_online">온라인 대국</span></button>
+  <button data-tab="play"><span class="ti">♟️</span><span data-i18n="nav_play">대국</span></button>
   <button data-tab="puzzle"><span class="ti">🧩</span><span data-i18n="nav_puzzle">퍼즐</span></button>
   <button data-tab="learn"><span class="ti">📖</span><span data-i18n="nav_learn">체스 배우기</span></button>
-  <button data-tab="growth"><span class="ti">📈</span><span data-i18n="nav_growth">성장</span></button>
-  <button data-tab="review" id="tabReview"><span class="ti">📊</span><span data-i18n="nav_review">리뷰</span></button>
-  <button data-tab="analysis"><span class="ti">🔬</span><span data-i18n="nav_analysis">분석</span></button>
+  <button data-tab="my"><span class="ti">👤</span><span data-i18n="nav_my">나</span></button>
   <div class="side-profile" id="sideProfile"></div>
   <div class="side-tip" id="sideTip"><b data-i18n="tip_title">💡 오늘의 팁</b><br><span data-i18n="tip_body">기물을 잃지 않으려면 매 수마다 “상대가 나를 잡을 수 있나?”를 먼저 확인하세요.</span></div>
 </div>
@@ -67,13 +71,10 @@
 <!-- mobile bottom navigation (top chess-app pattern) -->
 <nav class="bottomnav">
   <button data-tab="home" class="active"><span class="bi">🏠</span><span class="bl" data-i18n="navs_home">홈</span></button>
-  <button data-tab="ai"><span class="bi">🤖</span><span class="bl" data-i18n="navs_ai">AI</span></button>
-  <button data-tab="online"><span class="bi">🌐</span><span class="bl" data-i18n="navs_online">온라인</span></button>
+  <button data-tab="play"><span class="bi">♟️</span><span class="bl" data-i18n="navs_play">대국</span></button>
   <button data-tab="puzzle"><span class="bi">🧩</span><span class="bl" data-i18n="navs_puzzle">퍼즐</span></button>
-  <button data-tab="growth"><span class="bi">📈</span><span class="bl" data-i18n="navs_growth">성장</span></button>
   <button data-tab="learn"><span class="bi">📖</span><span class="bl" data-i18n="navs_learn">배우기</span></button>
-  <button data-tab="review"><span class="bi">📊</span><span class="bl" data-i18n="navs_review">리뷰</span></button>
-  <button data-tab="analysis"><span class="bi">🔬</span><span class="bl" data-i18n="navs_analysis">분석</span></button>
+  <button data-tab="my"><span class="bi">👤</span><span class="bl" data-i18n="navs_my">나</span></button>
 </nav>
 
 <main class="content">
@@ -90,6 +91,19 @@
   <div class="hub-grid">
     <div class="hub-actions" id="hubActions"></div>
     <div class="hub-cards" id="hubCards"></div>
+  </div>
+</section>
+
+<!-- ====================== 대국 (모드 선택 허브) ====================== -->
+<section class="tab" id="tab-play">
+  <div class="hub-head"><span class="hub-art" aria-hidden="true">♟️♞♚</span>
+    <h2 data-i18n="play_title">대국 시작</h2>
+    <p data-i18n="play_sub">상대를 골라 바로 시작하세요.</p></div>
+  <div class="play-picker" id="playPicker">
+    <button class="play-mode" data-mode="quick"><span class="pm-ic">⚡</span><span class="pm-txt"><b data-i18n="play_quick">빠른 매치</b><span data-i18n="play_quick_s">실시간 온라인 레이팅전</span></span><span class="pm-go">›</span></button>
+    <button class="play-mode" data-mode="ai"><span class="pm-ic">🤖</span><span class="pm-txt"><b data-i18n="play_ai">AI와 대국</b><span data-i18n="play_ai_s">레벨 1~10, 내 실력에 맞게</span></span><span class="pm-go">›</span></button>
+    <button class="play-mode" data-mode="friend"><span class="pm-ic">🤝</span><span class="pm-txt"><b data-i18n="play_friend">친구와 대국</b><span data-i18n="play_friend_s">초대 코드로 함께</span></span><span class="pm-go">›</span></button>
+    <button class="play-mode" data-mode="v960"><span class="pm-ic">🎲</span><span class="pm-txt"><b data-i18n="play_960">Chess960</b><span data-i18n="play_960_s">무작위 시작 배치</span></span><span class="pm-go">›</span></button>
   </div>
 </section>
 
@@ -420,6 +434,7 @@
 
 <!-- ====================== 성장 리포트 ====================== -->
 <section class="tab" id="tab-growth">
+  <div class="my-subnav" data-mynav></div>
   <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_growth_t">성장 리포트</h2><p data-i18n="hero_growth_p">레이팅 추이·미래 예측·주간 목표로 실력이 어떻게 늘고 있는지 한눈에.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <path d="M42 34V90H128" stroke="#fff" stroke-width="2.5" opacity=".5" stroke-linecap="round"/>
     <polyline points="46,82 64,70 82,74 100,54 118,44" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -454,6 +469,7 @@
 
 <!-- ====================== REVIEW ====================== -->
 <section class="tab" id="tab-review">
+  <div class="my-subnav" data-mynav></div>
   <div class="empty-state" id="rvEmpty">
     <svg class="es-art" viewBox="0 0 200 150" fill="none" aria-hidden="true">
       <rect x="34" y="22" width="104" height="104" rx="10" fill="#f4f6ec" stroke="#dbe2ea" stroke-width="2"/>
@@ -528,6 +544,7 @@
 
 <!-- ====================== 분석 보드 (Analysis board) ====================== -->
 <section class="tab" id="tab-analysis">
+  <div class="my-subnav" data-mynav></div>
   <div class="hero"><div class="hero-txt"><h2 data-i18n="an_title">분석 보드</h2><p data-i18n="an_desc">양쪽 아무 수나 자유롭게 두면서 엔진의 평가와 추천 수를 실시간으로 확인하세요.</p></div></div>
   <div class="cols">
     <div>
@@ -684,6 +701,7 @@
       <button class="ghost skill-opt" data-rating="900"><b data-i18n="skill_mid">어느 정도 둬요</b><span data-i18n="skill_mid_sub">전술을 조금 알아요 · 레이팅 900</span></button>
       <button class="ghost skill-opt" data-rating="1250"><b data-i18n="skill_adv">잘 둬요</b><span data-i18n="skill_adv_sub">오프닝·전략을 알아요 · 레이팅 1250</span></button>
     </div>
+    <button class="skill-skip" id="skillSkip" data-i18n="skill_skip">나중에 정할게요</button>
   </div>
 </div>
 
@@ -708,9 +726,9 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=96"></script>
-<script src="/static/sfclient.js?v=96"></script>
-<script src="/static/app.js?v=96"></script>
+<script src="/static/i18n.js?v=97"></script>
+<script src="/static/sfclient.js?v=97"></script>
+<script src="/static/app.js?v=97"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

@@ -286,26 +286,62 @@ function markGameOver() {
   document.body.classList.add("gameover");
   const ge = document.getElementById("gameExit"); if (ge) ge.classList.remove("hidden");
 }
+// Top-level nav is 5 groups; several old sections fold under two of them:
+//   대국(play) ← ai + online   ·   나(my) ← growth + review + analysis
+const TAB_GROUP = { ai: "play", online: "play", growth: "my", review: "my", analysis: "my" };
+const MY_SECTIONS = ["growth", "review", "analysis"];
+
 function switchTab(name) {
   exitImmersive(); hideResult();              // leaving into a browse tab always exits immersive
-  if (name !== "review" && typeof coachStopSpeak === "function") coachStopSpeak();  // stop the coach voice
+  // resolve the section to actually show (virtual "my" tab lands on 성장)
+  const section = (name === "my") ? "growth" : name;
+  const navName = TAB_GROUP[section] || section;   // which top-level nav button lights up
+  if (section !== "review" && typeof coachStopSpeak === "function") coachStopSpeak();  // stop the coach voice
   document.querySelectorAll("[data-tab]").forEach((b) =>
-    b.classList.toggle("active", b.dataset.tab === name));
-  document.querySelectorAll(".tab").forEach((t) =>
-    t.classList.toggle("active", t.id === "tab-" + name));
+    b.classList.toggle("active", b.dataset.tab === navName));
+  document.querySelectorAll(".tab").forEach((tb) =>
+    tb.classList.toggle("active", tb.id === "tab-" + section));
   window.scrollTo(0, 0);
-  if (name === "online") {
+  if (MY_SECTIONS.includes(section) && typeof renderMySubnav === "function") renderMySubnav(section);
+  if (section === "online") {
     if (typeof loadLeaderboard === "function") loadLeaderboard();
     if (typeof loadFriends === "function") loadFriends();
     if (typeof updateOgAuthGate === "function") updateOgAuthGate();
   }
-  if (name === "home" && typeof renderHome === "function") renderHome();
-  if (name === "puzzle" && typeof renderDaily === "function") renderDaily();
-  if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
-  if (name === "ai" && typeof refreshDashboard === "function") refreshDashboard();
-  if (name === "analysis" && typeof initAnalysis === "function") initAnalysis();
-  if (name === "review" && typeof maybeLoadLastReview === "function") maybeLoadLastReview();
+  if (section === "home" && typeof renderHome === "function") renderHome();
+  if (section === "puzzle" && typeof renderDaily === "function") renderDaily();
+  if (section === "growth" && typeof renderGrowth === "function") renderGrowth();
+  if (section === "ai" && typeof refreshDashboard === "function") refreshDashboard();
+  if (section === "analysis" && typeof initAnalysis === "function") initAnalysis();
+  if (section === "review" && typeof maybeLoadLastReview === "function") maybeLoadLastReview();
 }
+
+// segmented sub-nav for the "나" group (성장 / 복기 / 분석), rendered into the
+// [data-mynav] placeholder at the top of each of the three sections.
+function renderMySubnav(active) {
+  const T = (typeof t === "function") ? t : ((k) => k);
+  const items = [["growth", "📈", T("nav_growth")], ["review", "📊", T("my_review")], ["analysis", "🔬", T("my_analysis")]];
+  const html = items.map((it) =>
+    '<button class="myseg' + (it[0] === active ? " on" : "") + '" data-seg="' + it[0] + '">' + it[1] + " " + it[2] + "</button>").join("");
+  document.querySelectorAll("[data-mynav]").forEach((el) => {
+    el.innerHTML = html;
+    el.querySelectorAll(".myseg").forEach((b) => { b.onclick = () => switchTab(b.dataset.seg); });
+  });
+}
+
+// "대국" hub → route each mode to the underlying section (kept intact)
+document.querySelectorAll("#playPicker .play-mode").forEach((b) => {
+  b.onclick = () => {
+    const mode = b.dataset.mode;
+    if (mode === "ai" || mode === "v960") {
+      switchTab("ai");
+      const c = document.getElementById("ai960"); if (c) c.checked = (mode === "v960");
+    } else {
+      switchTab("online");   // quick-match + friend both live in the online section
+      if (mode === "friend") { const f = document.getElementById("ogJoinCode"); if (f) setTimeout(() => f.focus(), 60); }
+    }
+  };
+});
 // empty-state "go analyze" buttons
 document.querySelectorAll("[data-goto]").forEach((b) => {
   b.onclick = () => switchTab(b.dataset.goto);
@@ -1238,6 +1274,7 @@ function aiEndGame() {
   let kind = "draw";
   if (r === "1-0") kind = AIG.human === "w" ? "win" : "loss";
   else if (r === "0-1") kind = AIG.human === "b" ? "win" : "loss";
+  if (kind === "win" && typeof suggestSaveProgress === "function") suggestSaveProgress();   // guests: save nudge
 
   // Beating this level grants its title (if it's a new personal best).
   const T = (typeof t === "function") ? t : ((k) => k);
@@ -1821,6 +1858,7 @@ function pzSolved() {
   const p = PZ.list[PZ.idx];
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
   pzStreakInc();   // consecutive-solve streak
+  if (typeof suggestSaveProgress === "function") suggestSaveProgress();   // guests: gentle save nudge
   // if this was today's daily puzzle, log it for the streak + calendar
   const wasDaily = (typeof dailyIndex === "function" && PZ.idx === dailyIndex() && !isDailySolved());
   if (wasDaily) { markDailySolved(); }
@@ -2751,13 +2789,29 @@ $("authPw").addEventListener("keydown", (e) => { if (e.key === "Enter") authSubm
 
 // ---- first-open login gate: sign in, or continue as guest ----
 function hideLoginGate() { const g = $("loginGate"); if (g) g.classList.add("hidden"); }
-function maybeShowLoginGate() {
-  if (AUTH.token) return;                                    // already signed in
-  if (sessionStorage.getItem("cc_guest") === "1") return;    // chose guest this session
-  const g = $("loginGate"); if (g) g.classList.remove("hidden");
-}
 if ($("gateGuestBtn")) $("gateGuestBtn").onclick = () => { sessionStorage.setItem("cc_guest", "1"); hideLoginGate(); };
 if ($("gateLoginBtn")) $("gateLoginBtn").onclick = () => { hideLoginGate(); openAuth(); };
+
+// First-ever entry: no login WALL. Land the visitor on the app; only ask their
+// skill once (so difficulty matches) — guest included. Account sign-up is
+// suggested later, after their first success (see suggestSaveProgress).
+function maybeFirstEntry() {
+  if (AUTH.token) return;
+  if (localStorage.getItem("cc_skill") || localStorage.getItem("cc_skill_seen")) return;
+  localStorage.setItem("cc_skill_seen", "1");
+  if (typeof showSkillModal === "function") showSkillModal();
+}
+// After a first win / first solve, gently offer to save progress (guests only,
+// once per session) — the "저장할 게 생긴 뒤" moment, not a boot wall. Uses a
+// dismissible top banner so it never blocks or stacks over the result screen.
+function suggestSaveProgress() {
+  if (AUTH.token) return;
+  if (sessionStorage.getItem("cc_savenudge") === "1") return;
+  sessionStorage.setItem("cc_savenudge", "1");
+  const b = document.getElementById("saveBanner"); if (b) b.classList.remove("hidden");
+}
+if ($("saveBannerBtn")) $("saveBannerBtn").onclick = () => { const b = $("saveBanner"); if (b) b.classList.add("hidden"); openAuth(); };
+if ($("saveBannerClose")) $("saveBannerClose").onclick = () => { const b = $("saveBanner"); if (b) b.classList.add("hidden"); };
 
 // ---- first-signup onboarding: pick skill → seed starting rating ----
 function showSkillModal() { const m = $("skillModal"); if (m) m.classList.remove("hidden"); }
@@ -2774,6 +2828,7 @@ document.querySelectorAll("#skillModal .skill-opt").forEach((btn) => {
     if (typeof renderHome === "function") renderHome();   // refresh the "today" CTA for the new skill
   };
 });
+if ($("skillSkip")) $("skillSkip").onclick = () => { localStorage.setItem("cc_skill", "beg"); hideSkillModal(); if (typeof renderHome === "function") renderHome(); };
 
 // =========================================================================== //
 // LEADERBOARD — top registered accounts by rating (server-computed)
@@ -2821,7 +2876,7 @@ document.querySelectorAll("#lbTabs .lbtab").forEach((b) => {
 async function authBoot() {
   renderAuthArea();
   updateOgAuthGate();
-  if (!AUTH.token) { maybeShowLoginGate(); return; }
+  if (!AUTH.token) { maybeFirstEntry(); return; }
   try {
     const r = await api("/api/auth/load", { token: AUTH.token });
     AUTH.id = r.id; localStorage.setItem("cc_uid", r.id);
