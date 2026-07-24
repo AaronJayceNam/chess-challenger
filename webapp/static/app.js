@@ -299,6 +299,7 @@ function switchTab(name) {
     if (typeof loadFriends === "function") loadFriends();
     if (typeof updateOgAuthGate === "function") updateOgAuthGate();
   }
+  if (name === "home" && typeof renderHome === "function") renderHome();
   if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
   if (name === "ai" && typeof refreshDashboard === "function") refreshDashboard();
   if (name === "analysis" && typeof initAnalysis === "function") initAnalysis();
@@ -3435,3 +3436,90 @@ function frChallenge(id) {
 }
 if ($("frAddBtn")) $("frAddBtn").onclick = frAdd;
 if ($("frAddInput")) $("frAddInput").addEventListener("keydown", (e) => { if (e.key === "Enter") frAdd(); });
+
+// =========================================================================== //
+// HOME HUB — a landing screen of entry points (stats, quick actions, and
+// preview cards) instead of dropping straight into a settings panel.
+// =========================================================================== //
+const HUB_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+// tiny non-interactive board used as a card thumbnail
+function miniBoard(fen) {
+  let map = {};
+  try { map = parseFen(fen || HUB_START_FEN); } catch (e) { map = {}; }
+  let html = '<div class="miniboard" aria-hidden="true">';
+  for (const rank of [8, 7, 6, 5, 4, 3, 2, 1]) {
+    for (const f of "abcdefgh") {
+      const sq = f + rank, fi = "abcdefgh".indexOf(f);
+      const shade = (fi + rank) % 2 === 0 ? "light" : "dark";
+      const p = map[sq];
+      html += '<div class="msq ' + shade + '">' +
+        (p ? '<span class="pc ' + (p === p.toUpperCase() ? "w" : "b") + '">' + GLYPH[p.toLowerCase()] + "</span>" : "") +
+        "</div>";
+    }
+  }
+  return html + "</div>";
+}
+
+function renderHome() {
+  const T = (typeof t === "function") ? t : ((k) => k);
+  const hello = $("hubHello");
+  if (hello) hello.textContent = (AUTH && AUTH.id) ? T("hub_hi").replace("{id}", AUTH.id) : "Matevio";
+
+  // ---- stat tiles ----
+  const hist = (typeof gameHistory === "function") ? gameHistory() : [];
+  const wins = hist.filter((g) => g.result === "win").length;
+  const losses = hist.filter((g) => g.result === "loss").length;
+  const wr = (wins + losses) ? Math.round(wins / (wins + losses) * 100) : 0;
+  let solved = 0;
+  try { solved = (JSON.parse(localStorage.getItem("cc_puzzles_solved") || "[]") || []).length; } catch (e) {}
+  const total = (PZ && PZ.list && PZ.list.length) ? PZ.list.length : 100;
+  const st = $("hubStats");
+  if (st) st.innerHTML = [
+    { ic: "🔥", k: T("hub_streak"),  v: String(typeof bestStreak === "function" ? bestStreak() : 0) },
+    { ic: "🧩", k: T("hub_puzzles"), v: solved + "<span class='hs-sm'>/" + total + "</span>" },
+    { ic: "♟️", k: T("hub_rating"),  v: (typeof ratingHTML === "function" ? ratingHTML(myRating()) : myRating()) },
+    { ic: "📊", k: T("hub_winrate"), v: wr + "<span class='hs-sm'>%</span>" },
+  ].map((s) => '<div class="hub-stat"><span class="hs-ic">' + s.ic + '</span>' +
+      '<div class="hs-txt"><div class="hs-k">' + s.k + '</div><div class="hs-v">' + s.v + "</div></div></div>").join("");
+
+  // ---- primary action list ----
+  const acts = [
+    { ic: "⚡", label: T("hub_a_quick"),  sub: T("hub_a_quick_s"),  go: () => { switchTab("online"); } },
+    { ic: "🤖", label: T("hub_a_ai"),     sub: T("hub_a_ai_s"),     go: () => { switchTab("ai"); } },
+    { ic: "🤝", label: T("hub_a_friend"), sub: T("hub_a_friend_s"), go: () => { switchTab("online"); } },
+    { ic: "🎲", label: T("hub_a_960"),    sub: T("hub_a_960_s"),    go: () => { switchTab("ai"); const c = $("ai960"); if (c) c.checked = true; } },
+  ];
+  const ael = $("hubActions");
+  if (ael) {
+    ael.innerHTML = acts.map((a, i) =>
+      '<button class="hub-act" data-i="' + i + '"><span class="ha-ic">' + a.ic + '</span>' +
+      '<span class="ha-txt"><b>' + a.label + "</b><span>" + a.sub + "</span></span>" +
+      '<span class="ha-go">›</span></button>').join("");
+    ael.querySelectorAll(".hub-act").forEach((b) => { b.onclick = () => acts[+b.dataset.i].go(); });
+  }
+
+  // ---- preview cards (board thumbnail + CTA) ----
+  let pzFen = HUB_START_FEN;
+  try {
+    if (PZ && PZ.list && PZ.list.length) {
+      const nxt = PZ.list.find((p) => !PZ.solved.has(p.level)) || PZ.list[0];
+      if (nxt && nxt.fen) pzFen = nxt.fen;
+    }
+  } catch (e) {}
+  const cards = [
+    { title: T("hub_c_puzzle"), sub: T("hub_c_puzzle_s"), cta: T("hub_c_puzzle_cta"), fen: pzFen,        go: () => switchTab("puzzle") },
+    { title: T("hub_c_learn"),  sub: T("hub_c_learn_s"),  cta: T("hub_c_learn_cta"),  fen: HUB_START_FEN, go: () => switchTab("learn") },
+    { title: T("hub_c_review"), sub: T("hub_c_review_s"), cta: T("hub_c_review_cta"), fen: HUB_START_FEN, go: () => switchTab("review") },
+  ];
+  const cel = $("hubCards");
+  if (cel) {
+    cel.innerHTML = cards.map((c, i) =>
+      '<div class="hub-card" data-i="' + i + '">' +
+        '<div class="hc-head"><b>' + c.title + "</b><span>" + c.sub + "</span></div>" +
+        miniBoard(c.fen) +
+        '<button class="ghost hc-cta">' + c.cta + "</button></div>").join("");
+    cel.querySelectorAll(".hub-card").forEach((d) => { d.onclick = () => cards[+d.dataset.i].go(); });
+  }
+}
+try { renderHome(); } catch (e) {}

@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=78">
+<link rel="stylesheet" href="/static/style.css?v=79">
 </head>
 <body>
 
@@ -52,7 +52,8 @@
 
 <div class="shell">
 <div class="tabs">
-  <button data-tab="ai" class="active"><span class="ti">🤖</span><span data-i18n="nav_ai">AI 대국</span></button>
+  <button data-tab="home" class="active"><span class="ti">🏠</span><span data-i18n="nav_home">홈</span></button>
+  <button data-tab="ai"><span class="ti">🤖</span><span data-i18n="nav_ai">AI 대국</span></button>
   <button data-tab="online"><span class="ti">🌐</span><span data-i18n="nav_online">온라인 대국</span></button>
   <button data-tab="puzzle"><span class="ti">🧩</span><span data-i18n="nav_puzzle">퍼즐</span></button>
   <button data-tab="learn"><span class="ti">📖</span><span data-i18n="nav_learn">체스 배우기</span></button>
@@ -65,7 +66,8 @@
 
 <!-- mobile bottom navigation (top chess-app pattern) -->
 <nav class="bottomnav">
-  <button data-tab="ai" class="active"><span class="bi">🤖</span><span class="bl" data-i18n="navs_ai">AI</span></button>
+  <button data-tab="home" class="active"><span class="bi">🏠</span><span class="bl" data-i18n="navs_home">홈</span></button>
+  <button data-tab="ai"><span class="bi">🤖</span><span class="bl" data-i18n="navs_ai">AI</span></button>
   <button data-tab="online"><span class="bi">🌐</span><span class="bl" data-i18n="navs_online">온라인</span></button>
   <button data-tab="puzzle"><span class="bi">🧩</span><span class="bl" data-i18n="navs_puzzle">퍼즐</span></button>
   <button data-tab="growth"><span class="bi">📈</span><span class="bl" data-i18n="navs_growth">성장</span></button>
@@ -75,6 +77,19 @@
 </nav>
 
 <main class="content">
+
+<!-- ====================== 홈 (허브) ====================== -->
+<section class="tab active" id="tab-home">
+  <div class="hub-head">
+    <h2 id="hubHello">Matevio</h2>
+    <p data-i18n="hub_sub">한 판 두고, 퍼즐 풀고, 복기하며 실력을 키워보세요.</p>
+  </div>
+  <div class="hub-stats" id="hubStats"></div>
+  <div class="hub-grid">
+    <div class="hub-actions" id="hubActions"></div>
+    <div class="hub-cards" id="hubCards"></div>
+  </div>
+</section>
 
 <!-- ====================== 온라인 대국 ====================== -->
 <section class="tab" id="tab-online">
@@ -261,7 +276,7 @@
 </section>
 
 <!-- ====================== AI와 대국 ====================== -->
-<section class="tab active" id="tab-ai">
+<section class="tab" id="tab-ai">
   <div class="hero"><div class="hero-txt"><h2 data-i18n="hero_ai_t">AI와 대국</h2><p data-i18n="hero_ai_p">난이도 1~15, 유명 선수 스타일까지 — 스톡피시 엔진과 겨뤄보세요. 대국이 끝나면 자동으로 AI가 복기해줍니다.</p></div><svg class="hero-art" viewBox="0 0 160 120" fill="none" aria-hidden="true">
     <g opacity=".16" fill="#fff"><rect x="6" y="84" width="14" height="14"/><rect x="20" y="70" width="14" height="14"/><rect x="34" y="84" width="14" height="14"/></g>
     <line x1="104" y1="18" x2="104" y2="34" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="104" cy="13" r="5" fill="#ffd968"/>
@@ -686,8 +701,8 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=78"></script>
-<script src="/static/app.js?v=78"></script>
+<script src="/static/i18n.js?v=79"></script>
+<script src="/static/app.js?v=79"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

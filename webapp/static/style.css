@@ -1002,30 +1002,13 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
    • center the content column; board leads
    Mobile keeps its bottom nav (unchanged).
    ============================================================ */
+/* the old cramped stat strip is replaced by the HOME hub's stat tiles */
 .statstrip{ display:none !important; }
 
+/* keep the left sidebar rail (chess.com-style) — just tidy it */
 @media (min-width:761px){
-  .shell{ display:block !important; max-width:1120px; margin:0 auto; padding:14px 24px 48px; }
-
-  /* the tab list becomes a centered horizontal pill bar under the header */
-  .tabs{ position:sticky; top:60px; z-index:6;
-    flex:none !important; width:auto !important; flex-direction:row !important; align-items:center;
-    justify-content:center; gap:5px; overflow-x:auto; scrollbar-width:none;
-    padding:7px; margin:0 0 22px; border:1px solid var(--line); border-radius:16px;
-    background:rgba(22,27,35,.72); backdrop-filter:blur(12px); box-shadow:var(--shadow); }
-  .tabs::-webkit-scrollbar{ display:none; }
-  .tabs button{ width:auto !important; flex:0 0 auto; justify-content:center; text-align:center;
-    padding:9px 16px; font-size:14px; font-weight:650; border-radius:11px; }
-  .tabs button .ti{ margin-right:7px; font-size:16px; width:auto; }
-
-  /* the old sidebar extras don't belong in a top bar */
-  .side-profile, .side-tip{ display:none !important; }
-
-  .content{ width:100%; }
-  .content .tab{ padding:0; max-width:none; }
-
-  /* center the board + setup group so the board is the visual anchor */
-  .cols{ justify-content:center; }
+  .tabs{ top:70px; }
+  .cols{ justify-content:flex-start; }
 }
 
 /* ============================================================
@@ -1083,3 +1066,57 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 
 /* the board column gets the turn line right under the board, controls under that */
 .cols > div:first-child > .turn{ margin:10px 0 2px !important; }
+
+/* ============================================================
+   HOME HUB (v-hub) — landing screen: stat tiles, a primary
+   action list, and preview cards with board thumbnails.
+   ============================================================ */
+.hub-head{ margin:0 0 18px; }
+.hub-head h2{ margin:0; font-size:24px; letter-spacing:-.5px; color:var(--ink); }
+.hub-head p{ margin:5px 0 0; font-size:13.5px; color:var(--muted); }
+
+.hub-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.hub-stat{ display:flex; align-items:center; gap:11px; padding:14px 15px; border-radius:14px;
+  background:var(--panel); border:1px solid var(--line); }
+.hub-stat .hs-ic{ font-size:22px; line-height:1; flex:0 0 auto; }
+.hub-stat .hs-k{ font-size:11.5px; color:var(--faint); font-weight:600; }
+.hub-stat .hs-v{ font-size:21px; font-weight:800; color:var(--ink); letter-spacing:-.5px; line-height:1.15; }
+.hub-stat .hs-sm{ font-size:13px; font-weight:600; color:var(--faint); }
+
+.hub-grid{ display:grid; grid-template-columns:320px 1fr; gap:18px; align-items:start; }
+
+/* primary actions — a stacked list of big tappable rows */
+.hub-actions{ display:flex; flex-direction:column; gap:10px; }
+.hub-act{ display:flex; align-items:center; gap:13px; width:100%; cursor:pointer; text-align:left;
+  padding:15px 16px; border-radius:14px; border:1px solid var(--line); background:var(--panel);
+  color:var(--ink); font-family:inherit; transition:background .15s, border-color .15s, transform .06s; }
+.hub-act:hover{ background:var(--panel2); border-color:var(--line2); }
+.hub-act:active{ transform:translateY(1px); }
+.hub-act .ha-ic{ font-size:24px; line-height:1; flex:0 0 auto; }
+.hub-act .ha-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+.hub-act .ha-txt b{ font-size:15px; font-weight:700; }
+.hub-act .ha-txt span{ font-size:12px; color:var(--muted); }
+.hub-act .ha-go{ margin-left:auto; color:var(--faint); font-size:20px; flex:0 0 auto; }
+
+/* preview cards with a board thumbnail */
+.hub-cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+.hub-card{ display:flex; flex-direction:column; gap:11px; padding:15px; border-radius:16px; cursor:pointer;
+  background:var(--panel); border:1px solid var(--line); transition:border-color .15s, transform .06s; }
+.hub-card:hover{ border-color:var(--line2); }
+.hub-card:active{ transform:translateY(1px); }
+.hub-card .hc-head b{ display:block; font-size:14.5px; font-weight:700; color:var(--ink); }
+.hub-card .hc-head span{ display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+.hub-card .hc-cta{ width:100%; text-align:center; }
+
+.miniboard{ display:grid; grid-template-columns:repeat(8,1fr); aspect-ratio:1/1; width:100%;
+  border-radius:9px; overflow:hidden; border:1px solid var(--line); }
+.miniboard .msq{ display:grid; place-items:center; font-size:min(2.1vw,15px); line-height:1; }
+.miniboard .msq.light{ background:var(--light); }
+.miniboard .msq.dark{ background:var(--dark); }
+
+@media (max-width:900px){ .hub-grid{ grid-template-columns:1fr; } }
+@media (max-width:560px){
+  .hub-stats{ grid-template-columns:repeat(2,1fr); gap:10px; }
+  .hub-head h2{ font-size:20px; }
+  .miniboard .msq{ font-size:16px; }
+}
