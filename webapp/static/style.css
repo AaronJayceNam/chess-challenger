@@ -1207,3 +1207,38 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .diflevel.active span{ color:rgba(255,255,255,.85); }
 .diflevels.dim{ opacity:.4; pointer-events:none; }
 @media (max-width:560px){ .diflevels{ grid-template-columns:repeat(3,1fr); } }
+
+/* ============================================================
+   AI FACES + COLOURFUL TOUCHES (v-face) — emoji faces for AI
+   opponents, and colour splashed across the hub/stats/panels.
+   ============================================================ */
+/* difficulty-button face */
+.diflevel .dif-face{ font-size:25px; line-height:1; margin-bottom:2px; filter:saturate(1.1); }
+.diflevel.active .dif-face{ filter:none; }
+
+/* in-game opponent avatar shows the AI's emoji face */
+.pv-ava.face{ background:linear-gradient(160deg,#20303f,#182430) !important; font-size:19px; }
+
+/* colourful hub action icons — a distinct hue per row */
+.hub-act .ha-ic{ width:44px; height:44px; border-radius:13px; display:grid; place-items:center; font-size:23px; }
+.hub-actions .hub-act:nth-child(1) .ha-ic{ background:rgba(79,184,119,.20); }
+.hub-actions .hub-act:nth-child(2) .ha-ic{ background:rgba(90,150,255,.20); }
+.hub-actions .hub-act:nth-child(3) .ha-ic{ background:rgba(233,178,58,.20); }
+.hub-actions .hub-act:nth-child(4) .ha-ic{ background:rgba(180,120,240,.20); }
+
+/* colourful stat tiles — tinted icon chips */
+.hub-stat .hs-ic{ width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:20px; }
+.hub-stats .hub-stat:nth-child(1) .hs-ic{ background:rgba(240,110,90,.20); }
+.hub-stats .hub-stat:nth-child(2) .hs-ic{ background:rgba(120,190,120,.20); }
+.hub-stats .hub-stat:nth-child(3) .hs-ic{ background:rgba(233,178,58,.20); }
+.hub-stats .hub-stat:nth-child(4) .hs-ic{ background:rgba(90,150,255,.20); }
+
+/* a colourful illustrated banner in the hub header */
+.hub-head{ position:relative; overflow:hidden; padding:22px 24px; border-radius:20px;
+  background:linear-gradient(120deg,#16324a 0%,#173a2c 60%,#2a2140 100%);
+  border:1px solid var(--line); }
+.hub-head h2{ color:#fff; position:relative; z-index:1; }
+.hub-head p{ color:rgba(255,255,255,.72) !important; position:relative; z-index:1; }
+.hub-art{ position:absolute; right:14px; top:50%; transform:translateY(-50%); z-index:0;
+  font-size:64px; opacity:.9; letter-spacing:6px; filter:drop-shadow(0 6px 14px rgba(0,0,0,.4)); }
+@media (max-width:560px){ .hub-art{ font-size:40px; right:8px; opacity:.55; } }

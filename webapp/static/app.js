@@ -1011,6 +1011,14 @@ const AI_STYLE_LABEL = { tal: "name_tal", fischer: "name_fischer", carlsen: "nam
 // 10-level ladder: title (호칭) per level + a friendly display rating that
 // shows the widening gap. Titles are translated via i18n (lvl_1..lvl_10).
 const AI_LEVEL_RATING = [0, 200, 400, 600, 800, 1100, 1400, 1700, 2000, 2300, 2850];
+// each AI opponent gets a face — friendlier at low levels, fiercer at the top
+const AI_FACE = { 1: "🐣", 2: "😀", 3: "🙂", 4: "😐", 5: "😎", 6: "🧐", 7: "🤨", 8: "🥷", 9: "🤖", 10: "👑" };
+const AI_STYLE_FACE = { tal: "⚔️", fischer: "🎯", carlsen: "♟️", petrosian: "🛡️" };
+function aiFace(n) { return AI_FACE[Math.max(1, Math.min(10, +n || 1))] || "🤖"; }
+function aiOppFace() {
+  if (AIG.style && AIG.style !== "default") return AI_STYLE_FACE[AIG.style] || "🤖";
+  return aiFace(AIG.level);
+}
 function aiTitle(n) { n = Math.max(1, Math.min(10, +n || 1)); return (typeof t === "function") ? t("lvl_" + n) : String(n); }
 function aiRatingOf(n) { return AI_LEVEL_RATING[Math.max(1, Math.min(10, +n || 1))] || 2850; }
 function aiLevelWord() { return (typeof t === "function") ? t("word_rating") : "레이팅"; }
@@ -1030,15 +1038,15 @@ function renderAiPbars() {
   const mine = AIG.human, theirs = mine === "w" ? "b" : "w";
   const turnOf = (c) => AIG.started && !AIG.over && AIG.state.turn === c;
   const mat = materialInfo(AIG.state.fen);
-  const html = (name, rating, isMe, active, color) =>
-    `<span class="pv-ava ${isMe ? "me" : ""}">${escapeHtml(String(name).charAt(0).toUpperCase())}</span>` +
+  const html = (name, rating, isMe, active, color, face) =>
+    `<span class="pv-ava ${isMe ? "me" : ""}${face ? " face" : ""}">${face || escapeHtml(String(name).charAt(0).toUpperCase())}</span>` +
     `<span class="pv-name">${escapeHtml(name)}</span>` +
     capHtml(mat, color) +
     `<span class="pv-rating">${typeof rating === "number" ? ratingHTML(rating) : escapeHtml(rating)}</span>` +
     `<span class="pv-turn ${active ? "active" : ""}"></span>`;
   const opp = aiOppInfo();
-  top.innerHTML = html(opp.name, opp.rating, false, turnOf(theirs), theirs);
-  bottom.innerHTML = html(AUTH.id || t("og_me"), myRating(), true, turnOf(mine), mine);
+  top.innerHTML = html(opp.name, opp.rating, false, turnOf(theirs), theirs, aiOppFace());
+  bottom.innerHTML = html(AUTH.id || t("og_me"), myRating(), true, turnOf(mine), mine, null);
 }
 
 function updateAiTurn() {
@@ -1274,6 +1282,7 @@ function renderAiLevels() {
   const T = (typeof t === "function") ? t : ((k) => k);
   el.innerHTML = AI_LEVEL_PRESETS.map((lv) =>
     '<button type="button" class="diflevel' + (lv === cur ? " active" : "") + '" data-lv="' + lv + '">' +
+      '<span class="dif-face">' + aiFace(lv) + "</span>" +
       "<b>" + aiTitle(lv) + "</b><span>" + aiLevelWord() + " " + aiRatingOf(lv) + "</span></button>").join("");
   el.querySelectorAll(".diflevel").forEach((b) => { b.onclick = () => setAiLevel(+b.dataset.lv); });
 }
