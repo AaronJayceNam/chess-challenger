@@ -607,7 +607,8 @@ var I18N = {
 
   // ----- analyze + overlay + review (dynamic) -----
   overlay_analyzing:{ ko: "엔진이 분석 중입니다…", en: "The engine is analyzing…", ja: "エンジンが分析中です…", zh: "引擎正在分析…", es: "El motor está analizando…" },
-  analyze_running: { ko: "엔진이 모든 수를 평가하고 있습니다… (보통 2~5초)", en: "The engine is evaluating every move… (usually 2–5 s)", ja: "エンジンが全ての手を評価中です…(通常2〜5秒)", zh: "引擎正在评估每一步…(通常 2–5 秒)", es: "El motor está evaluando cada jugada… (normalmente 2–5 s)" },
+  analyze_running: { ko: "엔진이 모든 수를 평가하고 있습니다…", en: "The engine is evaluating every move…", ja: "エンジンが全ての手を評価中です…", zh: "引擎正在评估每一步…", es: "El motor está evaluando cada jugada…" },
+  analyze_client_prog: { ko: "내 기기에서 분석 중… {n}/{m} 수", en: "Analyzing on your device… move {n}/{m}", ja: "端末で分析中… {n}/{m} 手", zh: "在你的设备上分析中… 第 {n}/{m} 手", es: "Analizando en tu dispositivo… jugada {n}/{m}" },
   analyze_fail:    { ko: "분석 실패: ", en: "Analysis failed: ", ja: "分析に失敗: ", zh: "分析失败：", es: "Error de análisis: " },
   rv_accuracy_label:{ ko: "정확도(둔 수가 최선에 얼마나 가까웠는지) — ", en: "Accuracy (how close your moves were to the best) — ", ja: "正確度(指し手が最善にどれだけ近いか) — ", zh: "准确率(你的着法有多接近最佳) — ", es: "Precisión (cuánto se acercaron tus jugadas a la mejor) — " },
   rv_start_pos:    { ko: "시작 포지션입니다. ▶ 또는 → 키로 진행하세요.", en: "Starting position. Use ▶ or → to step forward.", ja: "開始局面です。▶ または → キーで進めてください。", zh: "起始局面。用 ▶ 或 → 键前进。", es: "Posición inicial. Usa ▶ o → para avanzar." },

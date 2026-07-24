@@ -29,8 +29,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from chess_coach.config import EngineConfig
-from chess_coach.engine import Engine
-from chess_coach.analyze import analyze_game_parallel, read_first_game
+from chess_coach.engine import Engine, PositionEval
+from chess_coach.analyze import (
+    analyze_game_parallel, read_first_game,
+    build_boards, _book_skip, _book_eval, _assemble,
+)
 from chess_coach.visualize import build_view_data, render_study_html
 from chess_coach import coach as coach_mod
 
@@ -405,6 +408,96 @@ def analyze(req: AnalyzeRequest):
             ga = analyze_game_parallel(game, pool)
     view = build_view_data(game, ga)
 
+    if req.coach:
+        view["coach"] = coach_mod.generate_coaching(view, req.lang)
+    else:
+        view["coach"] = {"available": coach_mod.coaching_available()}
+    return JSONResponse(view)
+
+
+# --------------------------------------------------------------------------- #
+# Client-assisted analysis: the browser's Stockfish (stockfish.js) does the slow
+# per-position SEARCH; the server keeps ownership of move-gen + all the
+# classification/coaching view-building. /api/positions hands the client the
+# FENs to evaluate; /api/analyze_client turns the client's evals into the same
+# review the fully server-side /api/analyze produces.
+# --------------------------------------------------------------------------- #
+class PositionsRequest(BaseModel):
+    moves: list[str]
+
+
+class ClientEval(BaseModel):
+    cp: Optional[int] = None
+    mate: Optional[int] = None
+    bestUci: Optional[str] = None
+    pv: list[str] = []
+
+
+class AnalyzeClientRequest(BaseModel):
+    moves: list[str]
+    white: str = "White"
+    black: str = "Black"
+    evals: list[Optional[ClientEval]]
+    movetime: Optional[int] = 300
+    coach: bool = False
+    lang: str = "ko"
+
+
+@app.post("/api/positions")
+def positions(req: PositionsRequest):
+    """The N+1 position FENs of a game, plus how many opening plies to skip
+    (book moves the client needn't evaluate)."""
+    if not req.moves:
+        raise HTTPException(400, "분석할 수가 없습니다.")
+    if len(req.moves) > 600:
+        raise HTTPException(400, "너무 긴 게임입니다.")
+    game = _game_from_moves(req.moves, "White", "Black")
+    boards = build_boards(game)
+    return {"fens": [b.fen() for b in boards], "skip": _book_skip(boards), "count": len(boards)}
+
+
+@app.post("/api/analyze_client")
+def analyze_client(req: AnalyzeClientRequest):
+    """Build the review from client-computed evals (one PositionEval per board)."""
+    game = _game_from_moves(req.moves, req.white, req.black)
+    boards = build_boards(game)
+    if len(req.evals) != len(boards):
+        raise HTTPException(400, "평가 개수가 위치 수와 일치하지 않습니다.")
+    skip = _book_skip(boards)
+    evals: list[PositionEval] = []
+    for i, b in enumerate(boards):
+        ce = req.evals[i]
+        if i < skip or ce is None:
+            evals.append(_book_eval())
+            continue
+        best_move = best_san = None
+        if ce.bestUci:
+            try:
+                m = chess.Move.from_uci(ce.bestUci)
+                if m in b.legal_moves:
+                    best_move, best_san = m, b.san(m)
+            except Exception:
+                best_move = None
+        pv_uci = list(ce.pv or [])
+        pv_san: list[str] = []
+        if pv_uci:
+            bb = b.copy()
+            for u in pv_uci:
+                try:
+                    mm = chess.Move.from_uci(u)
+                except Exception:
+                    break
+                if mm not in bb.legal_moves:
+                    break
+                pv_san.append(bb.san(mm))
+                bb.push(mm)
+        cp = ce.cp if ce.mate is None else None
+        evals.append(PositionEval(cp=cp, mate=ce.mate, best_move=best_move,
+                                  best_move_san=best_san, pv=pv_san, pv_uci=pv_uci, multipv=[]))
+    desc = {"engine": "stockfish.js (client)", "movetime_ms": req.movetime, "depth": None,
+            "threads": 1, "hash_mb": 16, "workers": 1}
+    ga = _assemble(game, boards, evals, desc, None, skip)
+    view = build_view_data(game, ga)
     if req.coach:
         view["coach"] = coach_mod.generate_coaching(view, req.lang)
     else:

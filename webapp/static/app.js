@@ -601,26 +601,66 @@ const REVIEW_MT = 50;          // per-position engine budget (ms) — kept low f
                                // Trade-off: Brilliant/Great detection is less
                                // reliable at this depth than at 120ms.
 const ANALYZE_CACHE = {};
+const EVALS_CACHE = {};            // movesKey -> per-position evals (reused for the coach re-request)
+const CLIENT_REVIEW_MT = 300;      // client per-position budget (asm.js on the user's CPU)
+let _analyzeOnProg = null;         // set while the user is actively waiting, so prefetch stays silent
 function _ckey(req) { return (req.moves || []).join("") + "|" + (req.movetime || "") + "|" + (req.white || "") + "/" + (req.black || ""); }
+
+// Client-assisted analysis: the browser's Stockfish evaluates each position; the
+// server turns those evals into the same review /api/analyze produces. Any
+// failure (no engine, network) falls back to the fully server-side analysis.
+async function analyzeClient(req, coach) {
+  try {
+    const key = (req.moves || []).join("");
+    let evals = EVALS_CACHE[key];
+    if (!evals) {
+      if (window.SF && SF.newGame) SF.newGame();
+      const pos = await api("/api/positions", { moves: req.moves });
+      const fens = pos.fens || [], skip = pos.skip || 0;
+      evals = new Array(fens.length).fill(null);
+      const total = Math.max(1, fens.length - skip);
+      let done = 0;
+      for (let i = skip; i < fens.length; i++) {
+        const r = await SF.bestMove(fens[i], { movetime: CLIENT_REVIEW_MT });
+        evals[i] = { cp: r.cp, mate: r.mate, bestUci: r.bestmove, pv: (r.pv || []).slice(0, 12) };
+        done++;
+        if (_analyzeOnProg) _analyzeOnProg(done, total);
+      }
+      EVALS_CACHE[key] = evals;
+    }
+    const lang = (typeof CC_LANG !== "undefined") ? CC_LANG : "ko";
+    return await api("/api/analyze_client", { moves: req.moves, white: req.white, black: req.black,
+      evals, movetime: CLIENT_REVIEW_MT, coach: !!coach, lang });
+  } catch (e) {
+    const lang = (typeof CC_LANG !== "undefined") ? CC_LANG : "ko";
+    return api("/api/analyze", coach ? { ...req, coach: true, lang } : req);   // graceful server fallback
+  }
+}
+
 function prefetchAnalyze(req) {
   const k = _ckey(req);
   if (!ANALYZE_CACHE[k]) {
-    ANALYZE_CACHE[k] = api("/api/analyze", req).catch((e) => { delete ANALYZE_CACHE[k]; throw e; });
+    const p = (window.SF && SF.available) ? analyzeClient(req, false) : api("/api/analyze", req);
+    ANALYZE_CACHE[k] = p.catch((e) => { delete ANALYZE_CACHE[k]; throw e; });
   }
   return ANALYZE_CACHE[k];
 }
 async function runAnalyze(req, statusId = "aiStatus") {
   LAST_REQ = req;
   overlay(true, t("analyze_running"));
+  // show live per-position progress while the user waits (silent during prefetch)
+  _analyzeOnProg = (n, m) => overlay(true, t("analyze_client_prog").replace("{n}", n).replace("{m}", m));
   try {
     const view = await prefetchAnalyze(req);   // reuse the in-flight/finished prefetch
     loadReview(view);
     switchTab("review");
   } catch (e) {
+    _analyzeOnProg = null;
     overlay(false);
     setStatus(statusId, isOffline(e) ? t("offline_msg") : t("analyze_fail") + e.message, true);
     return;
   }
+  _analyzeOnProg = null;
   overlay(false);
 }
 
@@ -833,7 +873,10 @@ async function genCoach() {
   overlay(true, t("coach_running"));
   try {
     const lang = (typeof CC_LANG !== "undefined") ? CC_LANG : "ko";
-    const view = await api("/api/analyze", { ...LAST_REQ, coach: true, lang });
+    // reuse the client evals (cached) so coaching doesn't re-run the engine on the server
+    const view = (window.SF && SF.available)
+      ? await analyzeClient(LAST_REQ, true)
+      : await api("/api/analyze", { ...LAST_REQ, coach: true, lang });
     RV.view.coach = view.coach;
     renderCoach(view.coach);
   } catch (e) { renderCoach({ available: false, message: t("coach_err") + e.message }); }
