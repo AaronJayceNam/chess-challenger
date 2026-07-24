@@ -4,6 +4,10 @@ Design principles:
   * The SERVER is the single authority — every move is validated with
     python-chess and the resulting state (fen, legal-move map, san history,
     game-over) is broadcast to both players. Clients never need chess logic.
+  * The SERVER also owns RATING: each player's rating is resolved from their
+    auth token at match start (never trusted from the client), and the Elo
+    change is computed + persisted here on game end. The client only displays
+    the before/after/delta the server sends in the "end" message.
   * Two ways to match: a quick-match queue, and 4-letter invite codes for
     playing a specific friend.
   * In-memory state guarded by an asyncio.Lock — fine for the single-process
@@ -12,9 +16,9 @@ Design principles:
 
 Wire protocol (JSON messages):
   client -> server:
-    {type:"quick",  name}          join the quick-match queue
-    {type:"create", name}          create an invite room -> {type:"room", code}
-    {type:"join",   name, code}    join a friend's room
+    {type:"quick",  name, token}          join the quick-match queue
+    {type:"create", name, token}          create an invite room -> {type:"room", code}
+    {type:"join",   name, token, code}    join a friend's room
     {type:"cancel"}                leave queue / close my room
     {type:"move",   uci}           play a move
     {type:"resign"}                resign the game
@@ -24,8 +28,9 @@ Wire protocol (JSON messages):
     {type:"room", code}                             invite code created
     {type:"start", color:"w"|"b", opponent, state}  game begins
     {type:"state", lastUci, state}                  after every move
-    {type:"end", result:"1-0"|"0-1"|"1/2-1/2", reason}
+    {type:"end", result:"1-0"|"0-1"|"1/2-1/2", reason, rating?}
     {type:"error", message}
+  In "end", `rating` (when present) is this player's {before, after, delta}.
 """
 from __future__ import annotations
 
@@ -60,12 +65,16 @@ async def _send(ws: WebSocket, payload: dict) -> None:
 
 
 class Game:
-    def __init__(self, w_ws: WebSocket, w_name: str, b_ws: WebSocket, b_name: str):
+    def __init__(self, w_ws: WebSocket, w_name: str, b_ws: WebSocket, b_name: str,
+                 w_uid: str | None = None, b_uid: str | None = None):
         self.board = chess.Board()
         self.moves: list[str] = []
         self.san: list[str] = []
         self.ws = {chess.WHITE: w_ws, chess.BLACK: b_ws}
         self.names = {chess.WHITE: w_name, chess.BLACK: b_name}
+        # account ids (None for a guest) — used for server-authoritative rating.
+        self.uids = {chess.WHITE: w_uid, chess.BLACK: b_uid}
+        self.rated_done = False        # ensure the Elo change is applied at most once
         self.over = False
         # chess clock: each side gets CLOCK_START seconds; only the side to
         # move's clock runs. turn_started marks when the current turn began.
@@ -96,12 +105,17 @@ class Game:
 
 
 class Lobby:
-    def __init__(self, legal_state):
+    def __init__(self, legal_state, rating_hooks: dict | None = None):
         self._legal_state = legal_state   # server.py's board -> state dict
+        # optional server-authoritative rating hooks (from auth.py):
+        #   resolve(token) -> (uid, rating) | None
+        #   apply(uid_w, uid_b, result) -> {'white':{before,after,delta}, 'black':{...}} | None
+        self._resolve = (rating_hooks or {}).get("resolve")
+        self._apply = (rating_hooks or {}).get("apply")
         self.lock = asyncio.Lock()
-        # queue entries / rooms values are (ws, name, rating)
-        self.queue: list[tuple[WebSocket, str, int]] = []
-        self.rooms: dict[str, tuple[WebSocket, str, int]] = {}
+        # queue entries / rooms values are (ws, name, rating, uid)
+        self.queue: list[tuple[WebSocket, str, int, str | None]] = []
+        self.rooms: dict[str, tuple[WebSocket, str, int, str | None]] = {}
         self.games: dict[WebSocket, Game] = {}
         self._sweeper: asyncio.Task | None = None
 
@@ -115,11 +129,27 @@ class Lobby:
         st["clockB"] = round(rb, 1)
         return st
 
+    async def _finish(self, game: Game, result: str, reason: str) -> None:
+        """End a game: persist the server-authoritative Elo change exactly once
+        and send each player their {before, after, delta} in the end message."""
+        info = None
+        if self._apply is not None and not game.rated_done:
+            game.rated_done = True
+            try:
+                info = self._apply(game.uids[chess.WHITE], game.uids[chess.BLACK], result)
+            except Exception:
+                info = None
+        for c in (chess.WHITE, chess.BLACK):
+            end = {"type": "end", "result": result, "reason": reason}
+            if info:
+                end["rating"] = info["white"] if c == chess.WHITE else info["black"]
+            await _send(game.ws[c], end)
+
     async def _start_game(self, a, b) -> None:
-        """a/b are (ws, name, rating); colors are assigned randomly."""
+        """a/b are (ws, name, rating, uid); colors are assigned randomly."""
         if secrets.randbelow(2):
             a, b = b, a
-        game = Game(a[0], a[1], b[0], b[1])
+        game = Game(a[0], a[1], b[0], b[1], a[3], b[3])
         self.games[a[0]] = game
         self.games[b[0]] = game
         game.turn_started = time.monotonic()
@@ -141,27 +171,27 @@ class Lobby:
                 self.games.pop(w, None)
 
     # ------------------------------------------------------------------ #
-    async def quick(self, ws: WebSocket, name: str, rating: int) -> None:
+    async def quick(self, ws: WebSocket, name: str, rating: int, uid: str | None = None) -> None:
         async with self.lock:
             if ws in self.games:
                 return await _send(ws, {"type": "error", "message": "이미 대국 중입니다."})
             self._drop_from_lobby(ws)          # re-queue cleanly
             if self.queue:
                 other = self.queue.pop(0)
-                return await self._start_game(other, (ws, name, rating))
-            self.queue.append((ws, name, rating))
+                return await self._start_game(other, (ws, name, rating, uid))
+            self.queue.append((ws, name, rating, uid))
         await _send(ws, {"type": "waiting"})
 
-    async def create(self, ws: WebSocket, name: str, rating: int) -> None:
+    async def create(self, ws: WebSocket, name: str, rating: int, uid: str | None = None) -> None:
         async with self.lock:
             if ws in self.games:
                 return await _send(ws, {"type": "error", "message": "이미 대국 중입니다."})
             self._drop_from_lobby(ws)
             code = _new_code(self.rooms)
-            self.rooms[code] = (ws, name, rating)
+            self.rooms[code] = (ws, name, rating, uid)
         await _send(ws, {"type": "room", "code": code})
 
-    async def join(self, ws: WebSocket, code: str, name: str, rating: int) -> None:
+    async def join(self, ws: WebSocket, code: str, name: str, rating: int, uid: str | None = None) -> None:
         async with self.lock:
             if ws in self.games:
                 return await _send(ws, {"type": "error", "message": "이미 대국 중입니다."})
@@ -172,7 +202,7 @@ class Lobby:
                 self.rooms[code] = owner       # can't join your own room
                 return await _send(ws, {"type": "error", "message": "자기 방에는 참가할 수 없습니다."})
             self._drop_from_lobby(ws)
-            await self._start_game(owner, (ws, name, rating))
+            await self._start_game(owner, (ws, name, rating, uid))
 
     async def cancel(self, ws: WebSocket) -> None:
         async with self.lock:
@@ -181,6 +211,9 @@ class Lobby:
 
     # ------------------------------------------------------------------ #
     async def move(self, ws: WebSocket, uci: str) -> None:
+        st = None
+        result = None                  # set only when the flag falls before this move
+        end_result = end_reason = None
         async with self.lock:
             game = self.games.get(ws)
             if game is None or game.over:
@@ -203,29 +236,27 @@ class Lobby:
                 game.over = True
                 self._cleanup_game(game)
                 result = "0-1" if color == chess.WHITE else "1-0"
-                end = {"type": "end", "result": result, "reason": "timeout"}
-                for c in (chess.WHITE, chess.BLACK):
-                    await _send(game.ws[c], end)
-                return
-            game.clock[color] = left
-            game.turn_started = now
-            game.draw_offer_by = None   # a move withdraws any pending draw offer
-            game.san.append(game.board.san(mv))
-            game.board.push(mv)
-            game.moves.append(uci)
-            st = self._state(game)
-            ended = st["gameOver"]
-            if ended:
-                game.over = True
-                self._cleanup_game(game)
+            else:
+                game.clock[color] = left
+                game.turn_started = now
+                game.draw_offer_by = None   # a move withdraws any pending draw offer
+                game.san.append(game.board.san(mv))
+                game.board.push(mv)
+                game.moves.append(uci)
+                st = self._state(game)
+                if st["gameOver"]:
+                    game.over = True
+                    self._cleanup_game(game)
+                    end_result = st["result"]
+                    end_reason = "checkmate" if game.board.is_checkmate() else "draw"
+        # flag fell before the move: end on time, no state broadcast
+        if st is None:
+            return await self._finish(game, result, "timeout")
         payload = {"type": "state", "lastUci": uci, "state": st}
         for c in (chess.WHITE, chess.BLACK):
             await _send(game.ws[c], payload)
-        if ended:
-            reason = "checkmate" if game.board.is_checkmate() else "draw"
-            end = {"type": "end", "result": st["result"], "reason": reason}
-            for c in (chess.WHITE, chess.BLACK):
-                await _send(game.ws[c], end)
+        if end_result is not None:
+            await self._finish(game, end_result, end_reason)
 
     async def resign(self, ws: WebSocket) -> None:
         async with self.lock:
@@ -236,9 +267,7 @@ class Lobby:
             game.over = True
             self._cleanup_game(game)
         result = "0-1" if color == chess.WHITE else "1-0"
-        end = {"type": "end", "result": result, "reason": "resign"}
-        for c in (chess.WHITE, chess.BLACK):
-            await _send(game.ws[c], end)
+        await self._finish(game, result, "resign")
 
     async def _sweep_clocks(self) -> None:
         """End games on the clock: if the side to move runs out of time and
@@ -263,9 +292,7 @@ class Lobby:
                 if not self.games and not ended:
                     break                      # idle — stop; restarted on next game
             for game, result in ended:
-                end = {"type": "end", "result": result, "reason": "timeout"}
-                for c in (chess.WHITE, chess.BLACK):
-                    await _send(game.ws[c], end)
+                await self._finish(game, result, "timeout")
 
     async def draw_offer(self, ws: WebSocket) -> None:
         agree = False
@@ -304,9 +331,7 @@ class Lobby:
                 return
             game.over = True
             self._cleanup_game(game)
-        end = {"type": "end", "result": "1/2-1/2", "reason": "agreement"}
-        for c in (chess.WHITE, chess.BLACK):
-            await _send(game.ws[c], end)
+        await self._finish(game, "1/2-1/2", "agreement")
 
     async def draw_decline(self, ws: WebSocket) -> None:
         async with self.lock:
@@ -329,23 +354,25 @@ class Lobby:
         await _send(other, {"type": "chat", "text": text})
 
     async def disconnect(self, ws: WebSocket) -> None:
-        other = None
+        game = None
         result = None
         async with self.lock:
             self._drop_from_lobby(ws)
-            game = self.games.get(ws)
-            if game is not None:
-                self._cleanup_game(game)
-                if not game.over:
-                    game.over = True
-                    other = game.opponent_ws(ws)
-                    result = "1-0" if game.ws[chess.WHITE] is other else "0-1"
-        if other is not None:
-            await _send(other, {"type": "end", "result": result, "reason": "forfeit"})
+            g = self.games.get(ws)
+            if g is not None:
+                color = g.color_of(ws)
+                self._cleanup_game(g)
+                if not g.over:
+                    g.over = True
+                    game = g
+                    # the player who left loses to their opponent
+                    result = "1-0" if color == chess.BLACK else "0-1"
+        if game is not None:
+            await self._finish(game, result, "forfeit")
 
 
-def register_online(app: FastAPI, legal_state) -> Lobby:
-    lobby = Lobby(legal_state)
+def register_online(app: FastAPI, legal_state, rating_hooks: dict | None = None) -> Lobby:
+    lobby = Lobby(legal_state, rating_hooks)
 
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket):  # noqa: ANN001
@@ -360,18 +387,25 @@ def register_online(app: FastAPI, legal_state) -> Lobby:
                     continue               # malformed frame — ignore
                 t = msg.get("type")
                 name = str(msg.get("name") or "플레이어")[:20].strip() or "플레이어"
+                # rating is DISPLAY-ONLY from the client; for logged-in players the
+                # server overrides it (and learns their account id) from the token.
                 try:
                     rating = max(0, min(4000, int(msg.get("rating") or 400)))
                 except (TypeError, ValueError):
                     rating = 400
+                uid = None
+                if t in ("quick", "create", "join") and lobby._resolve:
+                    resolved = lobby._resolve(str(msg.get("token") or ""))
+                    if resolved is not None:
+                        uid, rating = resolved
                 if t == "ping":
                     await _send(ws, {"type": "pong"})
                 elif t == "quick":
-                    await lobby.quick(ws, name, rating)
+                    await lobby.quick(ws, name, rating, uid)
                 elif t == "create":
-                    await lobby.create(ws, name, rating)
+                    await lobby.create(ws, name, rating, uid)
                 elif t == "join":
-                    await lobby.join(ws, str(msg.get("code") or "").strip().upper(), name, rating)
+                    await lobby.join(ws, str(msg.get("code") or "").strip().upper(), name, rating, uid)
                 elif t == "cancel":
                     await lobby.cancel(ws)
                 elif t == "move":

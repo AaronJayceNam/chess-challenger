@@ -1656,17 +1656,58 @@ function pzSolved() {
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
   pzStreakInc();   // consecutive-solve streak
   if (typeof checkAchievements === "function") checkAchievements();
+  const sub = (p.mateIn
+      ? t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn)
+      : t("pz_solved_sub_tac").replace("{n}", p.level).replace("{theme}", t("pztheme_" + (p.theme || "tactic"))))
+    + pzStreakSuffix();
+
+  // Was this the last puzzle of its theme? If so, celebrate the theme and steer
+  // the player toward another theme instead of clamping on the final puzzle.
+  const { start, count } = pzCatRange(PZ.cat);
+  if (PZ.idx >= start + count - 1) {
+    const themeName = t("pztheme_" + (p.theme || "tactic"));
+    const nextCat = pzSuggestTheme(PZ.cat);
+    const actions = [];
+    if (nextCat != null) {
+      const np = PZ.list[pzCatRange(nextCat).start];
+      const nName = t("pztheme_" + ((np && np.theme) || "tactic"));
+      actions.push({ label: t("pz_theme_next_btn").replace("{theme}", nName), primary: true,
+        onClick: () => { PZ.cat = nextCat; loadPuzzle(pzCatRange(nextCat).start); } });
+    }
+    actions.push({ label: t("pz_retry_btn"), onClick: () => loadPuzzle(PZ.idx) });
+    actions.push({ label: t("pz_theme_list_btn"), onClick: () => renderPzGrid() });
+    showResult({
+      kind: "win", icon: "🎉", title: t("pz_theme_done_title"),
+      sub: t("pz_theme_done_sub").replace("{theme}", themeName) + (sub ? " · " + sub : ""),
+      actions,
+    });
+    return;
+  }
+
   showResult({
-    kind: "win", icon: "🏆", title: t("pz_solved_title"),
-    sub: (p.mateIn
-        ? t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn)
-        : t("pz_solved_sub_tac").replace("{n}", p.level).replace("{theme}", t("pztheme_" + (p.theme || "tactic"))))
-      + pzStreakSuffix(),
+    kind: "win", icon: "🏆", title: t("pz_solved_title"), sub,
     actions: [
       { label: t("pz_next_btn"), primary: true, onClick: () => loadPuzzle(Math.min(PZ.list.length - 1, PZ.idx + 1)) },
       { label: t("pz_retry_btn"), onClick: () => loadPuzzle(PZ.idx) },
     ],
   });
+}
+
+// Suggest the next theme (category) to try after finishing `curCat`: cycle to the
+// next present category, preferring one that isn't fully solved yet. Returns a cat
+// number, or null if this is the only theme.
+function pzSuggestTheme(curCat) {
+  const cats = [...new Set(PZ.list.map((p, i) => (typeof p.cat === "number") ? p.cat : Math.floor(i / 25)))].sort((a, b) => a - b);
+  if (cats.length < 2) return null;
+  const solvedAll = (c) => { const { start, count } = pzCatRange(c);
+    for (let i = start; i < start + count; i++) if (!PZ.solved.has(PZ.list[i].level)) return false; return true; };
+  const idx = cats.indexOf(curCat);
+  // first pass: next unfinished theme; fallback: just the next theme in the cycle
+  for (let step = 1; step <= cats.length; step++) {
+    const c = cats[(idx + step) % cats.length];
+    if (c !== curCat && !solvedAll(c)) return c;
+  }
+  return cats[(idx + 1) % cats.length];
 }
 
 // ---- puzzle solve streak (consecutive solves; reveal-answer breaks it) ----
@@ -1922,6 +1963,8 @@ function ogConnect(then) {
 }
 
 function ogName() { return ($("ogName").value || t("og_player")).trim().slice(0, 20) || t("og_player"); }
+// auth token → the server resolves it to the account and owns the rating.
+function ogToken() { return (typeof AUTH !== "undefined" && AUTH && AUTH.token) || ""; }
 
 // Matchmaking always starts on a FRESH socket: closing the old one makes the
 // server clean up any stale queue/room/game state for us, so the user can
@@ -1989,7 +2032,7 @@ function ogHandle(msg) {
       ogAppendChat(OG.opponent || t("og_opp"), msg.text || "", false);
       break;
     case "end":
-      ogEnd(msg.result, msg.reason);
+      ogEnd(msg.result, msg.reason, msg.rating);
       break;
     case "error":
       setStatus(OG.started ? "ogStatus" : "ogSetupStatus", msg.message || t("og_error"), true);
@@ -2089,7 +2132,7 @@ function updateOgTurn() {
     (st.check ? ` · <b style='color:#ff8a80'>${T("turn_check")}</b>` : "");
 }
 
-function ogEnd(result, reason) {
+function ogEnd(result, reason, rInfo) {
   OG.over = true; ogExitGame(); renderOgBoard(); updateOgTurn();
   let kind = "draw";
   if (result === "1-0") kind = OG.color === "w" ? "win" : "loss";
@@ -2109,13 +2152,21 @@ function ogEnd(result, reason) {
   actions.push({ label: t("og_new_match"), onClick: ogReset });
 
   // Rating changes ONLY here — an online match result. Apply exactly once.
+  // The SERVER is authoritative: it sends this player's {before, after, delta}
+  // in the end message. We only fall back to a client estimate if it's absent
+  // (e.g. a guest game, or an older server).
   let badge = null;
   if (!OG.ratingApplied) {
     OG.ratingApplied = true;
-    const before = myRating();
-    const score = kind === "win" ? 1 : kind === "loss" ? 0 : 0.5;
-    const newRating = Math.max(0, before + eloDelta(before, OG.oppRating, score));
-    const applied = newRating - before;   // what actually changed (0-floor aware)
+    let before, newRating, applied;
+    if (rInfo && typeof rInfo.after === "number") {
+      before = rInfo.before; newRating = rInfo.after; applied = rInfo.delta;
+    } else {
+      before = myRating();
+      const score = kind === "win" ? 1 : kind === "loss" ? 0 : 0.5;
+      newRating = Math.max(0, before + eloDelta(before, OG.oppRating, score));
+      applied = newRating - before;   // what actually changed (0-floor aware)
+    }
     setMyRating(newRating);
     addHistory({ mode: "online", opponent: OG.opponent || t("og_opp"), result: kind, ratingDelta: applied,
       moves: [...movesCopy], white, black });
@@ -2154,19 +2205,19 @@ function ogReset() {
 $("ogQuick").onclick = () => {
   if (!requireLogin()) return;
   setStatus("ogSetupStatus", t("og_connecting"));
-  ogFresh(() => ogSend({ type: "quick", name: ogName(), rating: myRating() }));
+  ogFresh(() => ogSend({ type: "quick", name: ogName(), rating: myRating(), token: ogToken() }));
 };
 $("ogCreate").onclick = () => {
   if (!requireLogin()) return;
   setStatus("ogSetupStatus", t("og_connecting"));
-  ogFresh(() => ogSend({ type: "create", name: ogName(), rating: myRating() }));
+  ogFresh(() => ogSend({ type: "create", name: ogName(), rating: myRating(), token: ogToken() }));
 };
 $("ogJoin").onclick = () => {
   if (!requireLogin()) return;
   const code = ($("ogJoinCode").value || "").trim().toUpperCase();
   if (code.length !== 4) { setStatus("ogSetupStatus", t("og_code_len"), true); return; }
   setStatus("ogSetupStatus", t("og_joining"));
-  ogFresh(() => ogSend({ type: "join", code, name: ogName(), rating: myRating() }));
+  ogFresh(() => ogSend({ type: "join", code, name: ogName(), rating: myRating(), token: ogToken() }));
 };
 $("ogCancel").onclick = () => ogSend({ type: "cancel" });
 $("ogResign").onclick = () => {

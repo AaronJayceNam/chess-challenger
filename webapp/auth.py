@@ -161,6 +161,31 @@ _IS_PG = _PG_URL.startswith(("postgres://", "postgresql://"))
 _ID_RE = re.compile(r"^[A-Za-z0-9_\-가-힣]{2,20}$")
 _MAX_PROGRESS_BYTES = 200_000
 
+# --------------------------------------------------------------------------- #
+# server-authoritative rating (online games only).
+# The rating lives in a dedicated users.rating column that ONLY finished online
+# games write — never the client. The progress blob's own `rating` field is
+# never read back; every load/leaderboard reply is filled from this column so a
+# forged localStorage value can never inflate the ladder. Elo math mirrors the
+# client (app.js: kWin/kLoss/eloDelta) exactly so displayed deltas match.
+# --------------------------------------------------------------------------- #
+RATING_START = 400
+
+
+def _kwin(r: float) -> float:
+    return max(32.0, 160.0 - r * 0.06)
+
+
+def _kloss(r: float) -> float:
+    return min(120.0, 20.0 + r * 0.04)
+
+
+def _elo_delta(mine: float, opp: float, score: float) -> int:
+    expected = 1.0 / (1.0 + 10 ** ((opp - mine) / 400.0))
+    raw = score - expected
+    k = _kwin(mine) if raw >= 0 else _kloss(mine)
+    return round(k * raw)
+
 
 # --------------------------------------------------------------------------- #
 # storage layer (same SQL on both backends; only placeholders differ)
@@ -212,7 +237,70 @@ def _init_db() -> None:
             friend_id TEXT NOT NULL,
             created TEXT,
             PRIMARY KEY (user_id, friend_id))""")
+        # server-authoritative rating column (added by migration on old DBs)
+        if _IS_PG:
+            cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS rating INTEGER")
+        else:
+            have = [r[1] for r in cur.execute("PRAGMA table_info(users)").fetchall()]
+            if "rating" not in have:
+                cur.execute("ALTER TABLE users ADD COLUMN rating INTEGER")
+        # seed any NULL rating from the account's existing progress blob (once),
+        # so the migration preserves ratings people already earned.
+        cur.execute("SELECT id, progress FROM users WHERE rating IS NULL")
+        for uid, prog in cur.fetchall():
+            try:
+                seed = max(0, int(json.loads(prog or "{}").get("rating", RATING_START) or RATING_START))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                seed = RATING_START
+            cur.execute(f"UPDATE users SET rating = {_ph()} WHERE id = {_ph()}", (seed, uid))
         con.commit()
+
+
+def _rating_of(con, uid: str) -> int:
+    cur = con.cursor()
+    cur.execute(f"SELECT rating FROM users WHERE id = {_ph()}", (uid,))
+    row = cur.fetchone()
+    if not row or row[0] is None:
+        return RATING_START
+    return max(0, int(row[0]))
+
+
+# ------- called by online.py: server owns online-game rating end-to-end ------- #
+def rating_for_token(token: str):
+    """(uid, rating) for a valid session token, else None. Used when an online
+    match starts so the server — not the client — supplies each player's rating."""
+    if not token:
+        return None
+    try:
+        with _connect() as con:
+            uid = _user_for_token(con, token)
+            if uid is None:
+                return None
+            return uid, _rating_of(con, uid)
+    except Exception:
+        return None
+
+
+def apply_online_result(uid_w: str, uid_b: str, result: str):
+    """Persist a finished online game's Elo change for both accounts and return
+    {'white': {before,after,delta}, 'black': {...}}. result is '1-0'/'0-1'/
+    '1/2-1/2'. Returns None if either side is a guest (no rating change)."""
+    if not uid_w or not uid_b or uid_w == uid_b:
+        return None
+    score_w = 1.0 if result == "1-0" else 0.0 if result == "0-1" else 0.5
+    try:
+        with _connect() as con:
+            rw, rb = _rating_of(con, uid_w), _rating_of(con, uid_b)
+            nw = max(0, rw + _elo_delta(rw, rb, score_w))
+            nb = max(0, rb + _elo_delta(rb, rw, 1.0 - score_w))
+            cur = con.cursor()
+            cur.execute(f"UPDATE users SET rating = {_ph()} WHERE id = {_ph()}", (nw, uid_w))
+            cur.execute(f"UPDATE users SET rating = {_ph()} WHERE id = {_ph()}", (nb, uid_b))
+            con.commit()
+    except Exception:
+        return None
+    return {"white": {"before": rw, "after": nw, "delta": nw - rw},
+            "black": {"before": rb, "after": nb, "delta": nb - rb}}
 
 
 def _hash_pw(pw: str, salt: str) -> str:
@@ -342,9 +430,9 @@ def register_auth(app: FastAPI) -> None:
                 raise HTTPException(409, "이미 사용 중인 아이디입니다.")
             salt = secrets.token_hex(16)
             cur.execute(
-                f"INSERT INTO users (id, pw_hash, salt, progress, created) "
-                f"VALUES ({_ph()}, {_ph()}, {_ph()}, {_ph()}, {_ph()})",
-                (uid, _hash_pw(pw, salt), salt, progress, _now()))
+                f"INSERT INTO users (id, pw_hash, salt, progress, created, rating) "
+                f"VALUES ({_ph()}, {_ph()}, {_ph()}, {_ph()}, {_ph()}, {_ph()})",
+                (uid, _hash_pw(pw, salt), salt, progress, _now(), RATING_START))
             rsalt = secrets.token_hex(16)
             cur.execute(
                 f"INSERT INTO recovery (user_id, code_hash, salt) VALUES ({_ph()}, {_ph()}, {_ph()})",
@@ -353,9 +441,11 @@ def register_auth(app: FastAPI) -> None:
                 cur.execute(f"INSERT INTO user_email (user_id, email) VALUES ({_ph()}, {_ph()})", (uid, email))
             token = _issue_token(con, uid)
             con.commit()
+        prog_out = json.loads(progress)
+        prog_out["rating"] = RATING_START   # authoritative from the new column
         # `recovery` returned ONCE; the client shows it only if no email was given
         return {"ok": True, "id": uid, "token": token, "recovery": rcode,
-                "hasEmail": bool(email), "progress": json.loads(progress)}
+                "hasEmail": bool(email), "progress": prog_out}
 
     @app.post("/api/auth/login")
     def auth_login(req: LoginRequest):
@@ -367,8 +457,9 @@ def register_auth(app: FastAPI) -> None:
                 raise HTTPException(401, "아이디 또는 비밀번호가 올바르지 않습니다.")
             token = _issue_token(con, uid)
             con.commit()
-            return {"ok": True, "id": row[0], "token": token,
-                    "progress": json.loads(row[3] or "{}")}
+            prog = json.loads(row[3] or "{}")
+            prog["rating"] = _rating_of(con, uid)
+            return {"ok": True, "id": row[0], "token": token, "progress": prog}
 
     @app.post("/api/auth/request_reset")
     def auth_request_reset(req: IdRequest):
@@ -431,8 +522,10 @@ def register_auth(app: FastAPI) -> None:
             cur.execute(f"DELETE FROM tokens WHERE user_id = {_ph()}", (uid,))   # log out other sessions
             token = _issue_token(con, uid)
             urow = _get_user(con, uid)
+            prog = json.loads(urow[3] or "{}")
+            prog["rating"] = _rating_of(con, uid)
             con.commit()
-        return {"ok": True, "id": uid, "token": token, "progress": json.loads(urow[3] or "{}")}
+        return {"ok": True, "id": uid, "token": token, "progress": prog}
 
     @app.post("/api/auth/logout")
     def auth_logout(req: TokenRequest):
@@ -464,17 +557,19 @@ def register_auth(app: FastAPI) -> None:
             if uid is None:
                 raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인하세요.")
             row = _get_user(con, uid)
-            return {"ok": True, "id": uid, "progress": json.loads(row[3] or "{}")}
+            prog = json.loads(row[3] or "{}")
+            prog["rating"] = _rating_of(con, uid)
+            return {"ok": True, "id": uid, "progress": prog}
 
     @app.get("/api/leaderboard")
     def leaderboard():
         """Registered accounts ranked by rating, puzzles solved and best streak."""
         with _connect() as con:
             cur = con.cursor()
-            cur.execute("SELECT id, progress FROM users")
+            cur.execute("SELECT id, progress, rating FROM users")
             rows = cur.fetchall()
         entries = []
-        for uid, prog in rows:
+        for uid, prog, rt in rows:
             try:
                 p = json.loads(prog or "{}")
             except (ValueError, TypeError, json.JSONDecodeError):
@@ -485,7 +580,7 @@ def register_auth(app: FastAPI) -> None:
             pz = p.get("puzzles")
             entries.append({
                 "id": uid,
-                "rating": _int(p.get("rating")),
+                "rating": _int(rt if rt is not None else RATING_START),   # authoritative column
                 "puzzles": len(pz) if isinstance(pz, list) else 0,
                 "pzStreakBest": _int(p.get("pzStreakBest")),
             })
@@ -543,13 +638,7 @@ def register_auth(app: FastAPI) -> None:
             fids = [r[0] for r in cur.fetchall()]
             out = []
             for fid in fids:
-                cur.execute(f"SELECT progress FROM users WHERE id = {_ph()}", (fid,))
-                row = cur.fetchone()
-                rating = 0
-                if row:
-                    try: rating = max(0, int(json.loads(row[0] or "{}").get("rating", 0) or 0))
-                    except (ValueError, TypeError, json.JSONDecodeError): rating = 0
-                out.append({"id": fid, "rating": rating})
+                out.append({"id": fid, "rating": _rating_of(con, fid)})   # authoritative column
             out.sort(key=lambda e: -e["rating"])
         return {"ok": True, "friends": out}
 

@@ -675,6 +675,10 @@ var I18N = {
   pz_next_btn:    { ko: "다음 퍼즐 ▶", en: "Next puzzle ▶", ja: "次のパズル ▶", zh: "下一题 ▶", es: "Siguiente puzzle ▶" },
   pz_retry_btn:   { ko: "이 퍼즐 다시", en: "Retry this puzzle", ja: "この問題をもう一度", zh: "重做本题", es: "Reintentar este puzzle" },
   pz_grid_progress:{ ko: "(푼 문제 {n}/{total})", en: "(Solved {n}/{total})", ja: "(解答済み {n}/{total})", zh: "(已解 {n}/{total})", es: "(Resueltos {n}/{total})" },
+  pz_theme_done_title:{ ko: "테마 완료! 🎉", en: "Theme complete! 🎉", ja: "テーマ完了! 🎉", zh: "主题完成! 🎉", es: "¡Tema completado! 🎉" },
+  pz_theme_done_sub: { ko: "{theme} 테마를 모두 풀었어요.", en: "You solved every {theme} puzzle.", ja: "{theme}テーマをすべて解きました。", zh: "你解开了所有{theme}谜题。", es: "Resolviste todos los puzzles de {theme}." },
+  pz_theme_next_btn: { ko: "{theme} 테마 도전 ▶", en: "Try {theme} puzzles ▶", ja: "{theme}に挑戦 ▶", zh: "挑战{theme} ▶", es: "Probar {theme} ▶" },
+  pz_theme_list_btn: { ko: "퍼즐 목록으로", en: "Back to puzzle list", ja: "パズル一覧へ", zh: "返回谜题列表", es: "Volver a la lista" },
 
   // ----- growth report (dynamic) -----
   gr_chart_empty: { ko: "온라인 대국을 하면 레이팅 변화가 그래프로 그려집니다.", en: "Play online games and your rating changes will be charted here.", ja: "オンライン対局をすると、レートの変化がグラフに表示されます。", zh: "进行在线对局后，等级分变化会绘制成图表。", es: "Juega partidas en línea y tu evolución de rating aparecerá aquí." },
