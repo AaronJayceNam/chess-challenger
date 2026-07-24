@@ -1055,3 +1055,31 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 /* 960 toggle + invite block share the same quiet framing */
 .v960-toggle{ background:var(--panel2); }
 .og-friend{ margin-top:18px; padding-top:16px; }
+
+/* ============================================================
+   LAYOUT / BUTTON PLACEMENT (v-lp) — move the primary actions
+   out of the bottom of a long scroll and dock them where the
+   thumb/eye already is. Controls tuck tight under the board.
+   ============================================================ */
+/* MOBILE: the main action docks to the bottom of the screen, always reachable */
+@media (max-width:760px){
+  .setup-go{ position:fixed; left:12px; right:12px; bottom:74px; z-index:30; margin:0 !important; }
+  .setup-go .primary{ box-shadow:0 12px 30px -8px rgba(0,0,0,.75) !important; }
+  .og-actions{ position:fixed; left:12px; right:12px; bottom:74px; z-index:30; margin:0 !important; }
+  .og-actions .primary{ box-shadow:0 12px 30px -8px rgba(0,0,0,.75) !important; }
+  /* keep the last card clear of the docked button */
+  #tab-ai .cols > div:last-child, #tab-online .cols > div:last-child{ padding-bottom:76px; }
+}
+
+/* DESKTOP: the action sticks to the bottom edge of the setup panel while scrolling */
+@media (min-width:761px){
+  .setup-go, .og-actions{ position:sticky; bottom:10px; z-index:4; margin-top:18px;
+    padding-top:14px; background:linear-gradient(180deg, transparent, var(--panel) 45%); }
+}
+
+/* in-game controls: tighter, icon-forward row hugging the board */
+.cols > div:first-child > .controls{ margin-top:10px !important; gap:6px !important; }
+.cols > div:first-child > .controls .ghost{ padding:8px 14px !important; font-size:13px !important; }
+
+/* the board column gets the turn line right under the board, controls under that */
+.cols > div:first-child > .turn{ margin:10px 0 2px !important; }
