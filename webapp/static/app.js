@@ -1265,11 +1265,30 @@ if ($("aiNext")) $("aiNext").onclick = () => aiView((AIG.viewIdx == null ? AIG.m
 $("aiLevel").oninput = (e) => {
   $("aiLevelLabel").textContent = aiLevelText(+e.target.value);
 };
+
+// ---- difficulty as a button grid (replaces the slider) ----
+const AI_LEVEL_PRESETS = [1, 3, 5, 7, 9, 10];
+function renderAiLevels() {
+  const el = document.getElementById("aiLevelBtns"); if (!el) return;
+  const cur = +($("aiLevel").value) || 3;
+  const T = (typeof t === "function") ? t : ((k) => k);
+  el.innerHTML = AI_LEVEL_PRESETS.map((lv) =>
+    '<button type="button" class="diflevel' + (lv === cur ? " active" : "") + '" data-lv="' + lv + '">' +
+      "<b>" + aiTitle(lv) + "</b><span>" + aiLevelWord() + " " + aiRatingOf(lv) + "</span></button>").join("");
+  el.querySelectorAll(".diflevel").forEach((b) => { b.onclick = () => setAiLevel(+b.dataset.lv); });
+}
+function setAiLevel(lv) {
+  const inp = $("aiLevel"); inp.value = lv;
+  const lab = $("aiLevelLabel"); if (lab) lab.textContent = aiLevelText(lv);
+  renderAiLevels();
+}
+
 $("aiStyle").onchange = (e) => {
   const styled = e.target.value !== "default";
   $("aiStyleNote").style.display = styled ? "block" : "none";
   $("aiLevel").disabled = styled;
   $("aiLevelLabel").style.opacity = styled ? "0.4" : "1";
+  const g = document.getElementById("aiLevelBtns"); if (g) g.classList.toggle("dim", styled);
 };
 $("aiStart").onclick = aiStart;
 
@@ -3523,3 +3542,4 @@ function renderHome() {
   }
 }
 try { renderHome(); } catch (e) {}
+try { renderAiLevels(); } catch (e) {}

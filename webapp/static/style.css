@@ -1188,3 +1188,22 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .v960-toggle{ padding:16px 0 4px !important; margin-top:18px; }
 .setup-go{ margin-top:20px !important; }
 .setup-go .primary, .og-actions .primary{ padding:15px !important; font-size:15.5px !important; }
+
+/* ============================================================
+   DIFFICULTY BUTTONS (v-dif) — a sleek button grid replacing the
+   AI rating slider. Two-line buttons: tier name + rating.
+   ============================================================ */
+.diflevels{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:8px 0 2px; }
+.diflevel{ display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;
+  padding:11px 8px; border-radius:12px; font-family:inherit; text-align:center;
+  color:var(--muted); background:var(--panel2); border:1px solid var(--line);
+  transition:background .15s, border-color .15s, color .15s, transform .06s; }
+.diflevel:hover{ background:var(--elevated); color:var(--ink); border-color:var(--line2); }
+.diflevel:active{ transform:translateY(1px); }
+.diflevel b{ font-size:14px; font-weight:700; letter-spacing:-.2px; }
+.diflevel span{ font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }
+.diflevel.active{ color:#fff; border-color:transparent;
+  background:linear-gradient(180deg,var(--accent2),var(--accent)); }
+.diflevel.active span{ color:rgba(255,255,255,.85); }
+.diflevels.dim{ opacity:.4; pointer-events:none; }
+@media (max-width:560px){ .diflevels{ grid-template-columns:repeat(3,1fr); } }
