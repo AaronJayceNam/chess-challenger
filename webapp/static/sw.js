@@ -2,7 +2,8 @@
    updates instant. The API and WebSocket always go straight to the network;
    the HTML is network-first (so a new deploy's ?v= assets load immediately),
    and versioned static assets are cache-first. Bump CACHE to purge old caches. */
-const CACHE = "matevio-v28";
+const CACHE = "matevio-v29";
+const MSG_CACHE = "matevio-msg";   // holds the localized reminder text (never purged)
 const SHELL = [
   "/",
   "/static/style.css",
@@ -21,9 +22,32 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== MSG_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// ---- daily reminder: periodic background sync fires (installed PWA, Chrome/
+// Android) → show the localized "today's puzzle / streak" notification. ----
+self.addEventListener("periodicsync", (e) => {
+  if (e.tag === "daily-reminder") e.waitUntil(showDailyReminder());
+});
+async function showDailyReminder() {
+  let title = "오늘의 퍼즐 🔥", body = "스트릭을 지키세요 — 오늘의 퍼즐이 기다려요!";
+  try {
+    const r = await caches.open(MSG_CACHE).then((c) => c.match("/__reminder"));
+    if (r) { const j = await r.json(); title = j.title || title; body = j.body || body; }
+  } catch (e2) {}
+  return self.registration.showNotification(title, {
+    body, tag: "daily-reminder", icon: "/static/icons/icon-192.png", badge: "/static/icons/icon-192.png",
+  });
+}
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window" }).then((cs) => {
+    for (const c of cs) { if ("focus" in c) return c.focus(); }
+    return self.clients.openWindow("/");
+  }));
 });
 
 self.addEventListener("fetch", (e) => {

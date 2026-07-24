@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=97">
+<link rel="stylesheet" href="/static/style.css?v=98">
 </head>
 <body>
 
@@ -615,6 +615,10 @@
       <span class="switch"><input type="checkbox" id="setSound"><span class="slider"></span></span>
     </label>
     <label class="setrow">
+      <span><b data-i18n="set_remind_label">매일 리마인더</b><br><span class="setdesc" data-i18n="set_remind_desc">매일 오늘의 퍼즐·스트릭 알림을 받습니다. (앱 설치 시 · 크롬/안드로이드에서 가장 잘 작동)</span><span class="status" id="setRemindStatus" style="margin-top:4px"></span></span>
+      <span class="switch"><input type="checkbox" id="setRemind"><span class="slider"></span></span>
+    </label>
+    <label class="setrow">
       <span><b data-i18n="set_coords_label">보드 좌표 표시</b><br><span class="setdesc" data-i18n="set_coords_desc">보드에 a–h, 1–8 좌표를 표시합니다.</span></span>
       <span class="switch"><input type="checkbox" id="setCoords"><span class="slider"></span></span>
     </label>
@@ -726,9 +730,9 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=97"></script>
-<script src="/static/sfclient.js?v=97"></script>
-<script src="/static/app.js?v=97"></script>
+<script src="/static/i18n.js?v=98"></script>
+<script src="/static/sfclient.js?v=98"></script>
+<script src="/static/app.js?v=98"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {

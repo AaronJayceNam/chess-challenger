@@ -1582,14 +1582,68 @@ function markDailySolved() {
     localStorage.setItem("cc_daily_solved", JSON.stringify(arr));
     if (typeof authSchedulePush === "function") authSchedulePush();
   }
+  maintainStreak();
 }
-// consecutive days ending today (or yesterday if today isn't done yet)
+
+// ---- streak freeze: a missed day doesn't instantly reset the streak. One
+// freeze is available per ISO week; on app open we retroactively "freeze" a
+// single missed day per week so the run survives. Duolingo-style. ----
+function frozenDates() { try { return JSON.parse(localStorage.getItem("cc_freeze_dates") || "[]") || []; } catch (e) { return []; } }
+function _isoWeekKey(d) {
+  // Monday-based week key "YYYY-Wn" (stable enough to cap 1 freeze per week)
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (t.getUTCDay() + 6) % 7;               // Mon=0..Sun=6
+  t.setUTCDate(t.getUTCDate() - day + 3);            // nearest Thursday
+  const week1 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const wk = 1 + Math.round(((t - week1) / 86400000 - 3 + ((week1.getUTCDay() + 6) % 7)) / 7);
+  return t.getUTCFullYear() + "-W" + wk;
+}
+function maintainStreak() {
+  const solved = new Set(dailySolvedDates());
+  if (!solved.size) return;
+  const frozen = new Set(frozenDates());
+  const weekUsed = {};
+  frozen.forEach((f) => { weekUsed[_isoWeekKey(new Date(f))] = true; });
+  // walk back from yesterday; a missing day is covered by a freeze if that week
+  // still has its freeze; if not, the streak legitimately breaks there.
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  let guard = 0, changed = false;
+  while (guard++ < 400) {
+    const ds = dateStr(d);
+    if (solved.has(ds) || frozen.has(ds)) break;      // run continues here
+    const wk = _isoWeekKey(d);
+    if (weekUsed[wk]) break;                           // no freeze left this week → break
+    frozen.add(ds); weekUsed[wk] = true; changed = true;
+    d.setDate(d.getDate() - 1);
+  }
+  if (changed) {
+    localStorage.setItem("cc_freeze_dates", JSON.stringify([...frozen]));
+    if (typeof authSchedulePush === "function") authSchedulePush();
+  }
+}
+// consecutive days (solved OR frozen) ending today (or yesterday if today pending)
 function dailyStreakCount() {
-  const set = new Set(dailySolvedDates());
+  const solved = new Set(dailySolvedDates()), frozen = new Set(frozenDates());
+  const has = (ds) => solved.has(ds) || frozen.has(ds);
   let n = 0; const d = new Date();
-  if (!set.has(dateStr(d))) d.setDate(d.getDate() - 1);   // today pending → don't break the run yet
-  while (set.has(dateStr(d))) { n++; d.setDate(d.getDate() - 1); }
+  if (!has(dateStr(d))) d.setDate(d.getDate() - 1);   // today pending → don't break the run yet
+  while (has(dateStr(d))) { n++; d.setDate(d.getDate() - 1); }
   return n;
+}
+// milestone badges at 7 / 30 / 100 consecutive days
+const STREAK_MILES = [7, 30, 100];
+function streakMilesReached() { try { return JSON.parse(localStorage.getItem("cc_streak_miles") || "[]") || []; } catch (e) { return []; } }
+// returns a newly-crossed milestone number (or 0), recording it
+function checkStreakMilestone() {
+  const n = dailyStreakCount(), got = streakMilesReached();
+  const hit = STREAK_MILES.find((m) => n >= m && !got.includes(m));
+  if (hit) {
+    got.push(hit);
+    localStorage.setItem("cc_streak_miles", JSON.stringify(got));
+    if (typeof authSchedulePush === "function") authSchedulePush();
+    return hit;
+  }
+  return 0;
 }
 // load today's puzzle, bypassing the sequential lock
 function loadDaily() {
@@ -1598,7 +1652,7 @@ function loadDaily() {
   loadPuzzle(dailyIndex(), { force: true });
 }
 function monthCalendarHTML() {
-  const set = new Set(dailySolvedDates());
+  const set = new Set(dailySolvedDates()), fz = new Set(frozenDates());
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
   const firstDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), todayD = now.getDate();
   const dow = (t("cal_dow") || "S,M,T,W,T,F,S").split(",");
@@ -1609,15 +1663,24 @@ function monthCalendarHTML() {
     const ds = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
     let cls = "cal-cell";
     if (set.has(ds)) cls += " solved";
+    else if (fz.has(ds)) cls += " frozen";       // covered by a streak freeze
     if (d === todayD) cls += " today";
-    cells += '<span class="' + cls + '">' + d + "</span>";
+    const label = fz.has(ds) && !set.has(ds) ? "❄" : d;
+    cells += '<span class="' + cls + '">' + label + "</span>";
   }
   return '<div class="pz-cal"><div class="cal-head">' + head + '</div><div class="cal-grid">' + cells + "</div></div>";
 }
 function renderDaily() {
   const el = document.getElementById("pzDaily"); if (!el) return;
   if (!PZ.list.length) { el.innerHTML = ""; return; }
+  if (typeof maintainStreak === "function") maintainStreak();   // keep the streak honest on open
   const solved = isDailySolved(), streak = dailyStreakCount();
+  // milestone chips + next target
+  const got = (typeof streakMilesReached === "function") ? streakMilesReached() : [];
+  const next = STREAK_MILES.find((m) => m > streak);
+  const mileHtml = got.length
+    ? '<span class="pzd-miles">' + got.map((m) => '<span class="pzd-badge">🏅' + m + "</span>").join("") + "</span>" : "";
+  const nextHtml = next ? '<span class="pzd-next">' + t("streak_next").replace("{n}", next - streak).replace("{m}", next) + "</span>" : "";
   el.innerHTML =
     '<div class="pzd-main">' +
       '<div class="pzd-info"><div class="pzd-title">🗓️ ' + t("daily_title") + "</div>" +
@@ -1625,7 +1688,7 @@ function renderDaily() {
       '<button class="pzd-btn' + (solved ? " done" : "") + '" id="pzDailyBtn">' +
         (solved ? "✓ " + t("daily_btn_done") : t("daily_btn")) + "</button>" +
     "</div>" +
-    '<div class="pzd-streak">🔥 ' + t("daily_streak").replace("{n}", streak) + "</div>" +
+    '<div class="pzd-streak">🔥 ' + t("daily_streak").replace("{n}", streak) + mileHtml + nextHtml + "</div>" +
     monthCalendarHTML();
   const b = document.getElementById("pzDailyBtn"); if (b) b.onclick = loadDaily;
 }
@@ -1866,14 +1929,22 @@ function pzSolved() {
   if (typeof checkAchievements === "function") checkAchievements();
 
   if (wasDaily) {   // dedicated celebration for the daily puzzle + streak
-    showResult({
-      kind: "win", icon: "🗓️", title: t("daily_solved_title"),
-      sub: t("daily_solved_sub").replace("{n}", dailyStreakCount()),
-      actions: [
-        { label: t("daily_more_btn"), primary: true, onClick: () => loadPuzzle(pzCatRange(0).start) },
-        { label: t("pz_theme_list_btn"), onClick: () => renderPzGrid() },
-      ],
-    });
+    const mile = (typeof checkStreakMilestone === "function") ? checkStreakMilestone() : 0;
+    const streak = dailyStreakCount();
+    showResult(mile
+      ? { kind: "win", icon: "🏅", title: t("streak_mile_title").replace("{n}", mile),
+          sub: t("streak_mile_sub").replace("{n}", mile),
+          badge: { small: t("streak_mile_badge"), text: "🔥 " + mile, master: mile >= 100 },
+          actions: [
+            { label: t("daily_more_btn"), primary: true, onClick: () => loadPuzzle(pzCatRange(0).start) },
+            { label: t("pz_theme_list_btn"), onClick: () => renderPzGrid() },
+          ] }
+      : { kind: "win", icon: "🗓️", title: t("daily_solved_title"),
+          sub: t("daily_solved_sub").replace("{n}", streak),
+          actions: [
+            { label: t("daily_more_btn"), primary: true, onClick: () => loadPuzzle(pzCatRange(0).start) },
+            { label: t("pz_theme_list_btn"), onClick: () => renderPzGrid() },
+          ] });
     return;
   }
   const sub = (p.mateIn
@@ -2650,6 +2721,8 @@ function collectProgress() {
     pzStreakBest: pzStreakBest(),
     achievements: [...achUnlocked()],
     dailySolved: (typeof dailySolvedDates === "function") ? dailySolvedDates() : [],
+    freezeDates: (typeof frozenDates === "function") ? frozenDates() : [],
+    streakMiles: (typeof streakMilesReached === "function") ? streakMilesReached() : [],
   };
 }
 
@@ -2674,6 +2747,14 @@ function applyProgress(p) {
     const cur = (typeof dailySolvedDates === "function") ? dailySolvedDates() : [];
     const merged = [...new Set([...cur, ...p.dailySolved])].sort();
     localStorage.setItem("cc_daily_solved", JSON.stringify(merged));
+  }
+  if (Array.isArray(p.freezeDates)) {   // union streak-freeze days across devices
+    const cur = (typeof frozenDates === "function") ? frozenDates() : [];
+    localStorage.setItem("cc_freeze_dates", JSON.stringify([...new Set([...cur, ...p.freezeDates])].sort()));
+  }
+  if (Array.isArray(p.streakMiles)) {   // union reached milestones
+    const cur = (typeof streakMilesReached === "function") ? streakMilesReached() : [];
+    localStorage.setItem("cc_streak_miles", JSON.stringify([...new Set([...cur, ...p.streakMiles])].sort((a, b) => a - b)));
   }
   updateRatingChip(); renderHistory(); updateRankBadge();
   if (typeof renderAchievements === "function") renderAchievements();
@@ -3362,6 +3443,7 @@ $("settingsBtn").onclick = () => {
   $("setShowDots").checked = SETTINGS.showDots;
   $("setSound").checked = SETTINGS.sound;
   $("setCoords").checked = SETTINGS.coords;
+  if ($("setRemind")) { $("setRemind").checked = (typeof reminderEnabled === "function") && reminderEnabled(); setStatus("setRemindStatus", ""); }
   $("setBoard").value = SETTINGS.boardTheme;
   const row = $("setAccountRow"); if (row) row.style.display = (AUTH && AUTH.token) ? "flex" : "none";
   $("settingsModal").classList.remove("hidden");
@@ -3415,6 +3497,40 @@ $("setCoords").onchange = (e) => {
   localStorage.setItem("cc_coords", SETTINGS.coords ? "1" : "0");
   rerenderBoards();
 };
+
+// ---- daily reminder (local notification via the SW's periodic background sync;
+// works best on an installed PWA in Chrome/Android, no-ops gracefully elsewhere) ----
+function reminderEnabled() { return localStorage.getItem("cc_reminder") === "1"; }
+async function setReminder(on) {
+  if (!on) {
+    localStorage.setItem("cc_reminder", "0");
+    try { const reg = await navigator.serviceWorker.ready; if (reg.periodicSync) await reg.periodicSync.unregister("daily-reminder"); } catch (e) {}
+    return true;
+  }
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) { setStatus("setRemindStatus", t("notif_unsupported"), true); return false; }
+  let perm = Notification.permission;
+  if (perm === "default") { try { perm = await Notification.requestPermission(); } catch (e) { perm = "denied"; } }
+  if (perm !== "granted") { localStorage.setItem("cc_reminder", "0"); if ($("setRemind")) $("setRemind").checked = false; setStatus("setRemindStatus", t("notif_denied"), true); return false; }
+  localStorage.setItem("cc_reminder", "1");
+  // stash the localized message where the SW can read it on wake-up
+  try {
+    const c = await caches.open("matevio-msg");
+    await c.put("/__reminder", new Response(JSON.stringify({ title: t("notif_title"), body: t("notif_body") }),
+      { headers: { "Content-Type": "application/json" } }));
+  } catch (e) {}
+  // register periodic background sync when the browser + install state allow it
+  let scheduled = false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (reg.periodicSync && navigator.permissions) {
+      const st = await navigator.permissions.query({ name: "periodic-background-sync" }).catch(() => ({ state: "denied" }));
+      if (st.state === "granted") { await reg.periodicSync.register("daily-reminder", { minInterval: 20 * 60 * 60 * 1000 }); scheduled = true; }
+    }
+  } catch (e) {}
+  setStatus("setRemindStatus", scheduled ? t("notif_on") : t("notif_on_limited"), false);
+  return true;
+}
+if ($("setRemind")) $("setRemind").onchange = (e) => { setReminder(e.target.checked); };
 $("setBoard").onchange = (e) => {
   SETTINGS.boardTheme = e.target.value;
   localStorage.setItem("cc_board", SETTINGS.boardTheme);
@@ -3924,7 +4040,9 @@ function pickToday() {
   }
   // 1) today's daily puzzle, if not done yet → strongest daily hook
   if (PZ && PZ.list && PZ.list.length && typeof isDailySolved === "function" && !isDailySolved()) {
-    return { ic: "🗓️", label: T("today_daily"), sub: T("today_daily_s"), go: () => loadDaily() };
+    const s = (typeof dailyStreakCount === "function") ? dailyStreakCount() : 0;
+    const sub = s >= 2 ? T("today_daily_warn").replace("{n}", s) : T("today_daily_s");   // loss-aversion
+    return { ic: "🗓️", label: T("today_daily"), sub, go: () => loadDaily() };
   }
   // 2) a recent game to review
   const lastG = (typeof lastPlayedGame === "function") ? lastPlayedGame() : null;
