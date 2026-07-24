@@ -1166,3 +1166,25 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 /* --- online panel: same language --- */
 .og-rating-head b#ogRating{ font-size:40px !important; letter-spacing:-1px; }
 .og-actions .primary{ padding:16px !important; font-size:16px !important; border-radius:14px; }
+
+/* ============================================================
+   SETUP PANELS v4 (v-sp4) — sidebar left alone. Shrink the AI
+   rating headline (it wrapped to 2 lines), and tighten the two
+   setup panels into clean, compact, one-line-safe cards.
+   ============================================================ */
+/* AI rating: one line, tidy — no more 2-line wrap */
+.strength-val{ font-size:20px !important; font-weight:800 !important; letter-spacing:-.3px !important;
+  white-space:nowrap; margin:6px 0 12px !important; }
+.strength-val b{ font-size:22px; }
+.og-rating-head b#ogRating{ font-size:28px !important; }
+
+/* the setup panel: tighter rhythm, quieter dividers, calmer header */
+.setup-card{ padding:20px 20px 22px; }
+.setup-head{ margin-bottom:14px; }
+.setup-head .rankbadge{ font-size:10.5px !important; padding:4px 9px !important; }
+.setup-card > .field{ margin-top:18px !important; padding-top:15px; font-size:10.5px !important; }
+.seg-btn{ padding:10px 14px !important; font-size:13.5px !important; }
+.seg-color .seg-btn{ padding:13px !important; font-size:14.5px !important; }
+.v960-toggle{ padding:16px 0 4px !important; margin-top:18px; }
+.setup-go{ margin-top:20px !important; }
+.setup-go .primary, .og-actions .primary{ padding:15px !important; font-size:15.5px !important; }
