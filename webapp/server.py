@@ -85,6 +85,30 @@ _qlock = threading.Lock()
 _pool = {"engines": None}       # engine pool for analysis
 _plock = threading.Lock()
 
+# Small LRU cache for /api/eval_fen. On a 0.1-CPU box the biggest shared load is
+# the DAILY puzzle: everyone solves the SAME positions, so identical (fen, moves,
+# movetime) requests recur constantly. Caching them removes redundant engine work.
+from collections import OrderedDict as _OrderedDict  # noqa: E402
+_EVAL_CACHE = _OrderedDict()
+_EVAL_CACHE_MAX = 4000
+_eval_cache_lock = threading.Lock()
+
+
+def _eval_cache_get(key):
+    with _eval_cache_lock:
+        if key in _EVAL_CACHE:
+            _EVAL_CACHE.move_to_end(key)
+            return _EVAL_CACHE[key]
+    return None
+
+
+def _eval_cache_put(key, val):
+    with _eval_cache_lock:
+        _EVAL_CACHE[key] = val
+        _EVAL_CACHE.move_to_end(key)
+        while len(_EVAL_CACHE) > _EVAL_CACHE_MAX:
+            _EVAL_CACHE.popitem(last=False)
+
 
 def _quick_engine() -> Engine:
     if _quick["e"] is None:
@@ -588,6 +612,11 @@ def eval_fen(req: EvalFenRequest):
     Never raises into the request path: engine failures return best-effort JSON
     with a null evaluation.
     """
+    _ckey = (req.fen, tuple(req.moves), int(req.movetime or 300))
+    _cached = _eval_cache_get(_ckey)
+    if _cached is not None:
+        return _cached
+
     try:
         board = chess.Board(req.fen)
     except ValueError:
@@ -621,6 +650,7 @@ def eval_fen(req: EvalFenRequest):
     }
 
     if state["gameOver"] or not EngineConfig().path:
+        _eval_cache_put(_ckey, resp)
         return resp
 
     mt = max(50, min(3000, req.movetime or 300))
@@ -651,6 +681,7 @@ def eval_fen(req: EvalFenRequest):
     except Exception:
         pass
 
+    _eval_cache_put(_ckey, resp)
     return resp
 
 

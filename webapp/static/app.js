@@ -2180,7 +2180,7 @@ const OG = {
   viewState: null, viewLast: null, viewIdx: null,
   oppRating: RATING_START, ratingApplied: false,
   gid: null, reconnecting: false, reconnectDeadline: null,   // mid-game reconnect
-  fallbackTimer: null,                                       // empty-lobby → play AI
+  fallbackTimer: null, fallbackTick: null,                   // empty-lobby → play AI
   clock: { w: 600, b: 600 }, clockSyncedAt: 0,
 };
 
@@ -2303,25 +2303,49 @@ function ogName() { return ($("ogName").value || t("og_player")).trim().slice(0,
 // auth token → the server resolves it to the account and owns the rating.
 function ogToken() { return (typeof AUTH !== "undefined" && AUTH && AUTH.token) || ""; }
 
-// quick-match empty-lobby fallback: if no opponent appears within ~15s, offer to
-// play the AI right away instead of waiting forever in an empty queue.
+// quick-match empty-lobby BOT BACKFILL: the queue is often empty on a small
+// free-tier server, so a lone new player would wait forever. After ~15s with no
+// opponent we honestly offer an AI game at a level matched to their rating —
+// every first "online" tap ends in an actual game, not an empty screen.
 function ogClearFallback() {
   if (OG.fallbackTimer) { clearTimeout(OG.fallbackTimer); OG.fallbackTimer = null; }
+  if (OG.fallbackTick) { clearInterval(OG.fallbackTick); OG.fallbackTick = null; }
   const el = $("ogFallback"); if (el) el.classList.add("hidden");
 }
 function ogArmFallback() {
   ogClearFallback();
+  let left = 15;
+  setStatus("ogSetupStatus", t("og_searching_count").replace("{n}", left));
+  OG.fallbackTick = setInterval(() => {
+    if (OG.started) { ogClearFallback(); return; }
+    left--;
+    if (left > 0) setStatus("ogSetupStatus", t("og_searching_count").replace("{n}", left));
+  }, 1000);
   OG.fallbackTimer = setTimeout(() => {
+    if (OG.fallbackTick) { clearInterval(OG.fallbackTick); OG.fallbackTick = null; }
     if (OG.started) return;                       // matched in the meantime
     const el = $("ogFallback"); if (el) el.classList.remove("hidden");
+    setStatus("ogSetupStatus", "");
   }, 15000);
+}
+// map the player's rating to a comparable AI difficulty level (1-10)
+function aiLevelForRating(r) {
+  if (r < 500) return 2; if (r < 800) return 3; if (r < 1100) return 4;
+  if (r < 1400) return 5; if (r < 1700) return 6; if (r < 2000) return 7;
+  return 8;
 }
 if ($("ogFallbackBtn")) $("ogFallbackBtn").onclick = () => {
   ogSend({ type: "cancel" });                     // leave the queue cleanly
   ogClearFallback();
   $("ogCancel").classList.add("hidden");
   setStatus("ogSetupStatus", "");
+  // start an AI game right away, at a level near the player's rating
   switchTab("ai");
+  const lv = aiLevelForRating((typeof myRating === "function") ? myRating() : 400);
+  if (typeof setAiLevel === "function") setAiLevel(lv); else { const s = $("aiLevel"); if (s) s.value = String(lv); }
+  const st = $("aiStyle"); if (st) st.value = "default";
+  const c960 = $("ai960"); if (c960) c960.checked = false;
+  if (typeof aiStart === "function") aiStart();
 };
 
 // Matchmaking always starts on a FRESH socket: closing the old one makes the

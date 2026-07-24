@@ -28,11 +28,11 @@ URL = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    "webapp", "static", "puzzles.json")
 
-RATING_MIN, RATING_MAX = 600, 1600
+RATING_MIN, RATING_MAX = 500, 1900   # wider band → room for adaptive difficulty
 MAX_PLIES = 5            # <= 5 half-moves in the solution (approachable)
-COLLECT_PER = 220        # gather this many per theme, then sort + trim
-KEEP_PER = 80            # keep this many per theme in the final set
-ROW_CAP = 1_500_000      # hard stop on rows scanned (safety)
+COLLECT_PER = 400        # gather this many per theme, then sort + trim
+KEEP_PER = 150           # keep this many per theme in the final set (~900 total)
+ROW_CAP = 3_000_000      # hard stop on rows scanned (safety)
 
 # (our theme key, cat index, predicate over the Lichess Themes string)
 CATS = [
@@ -122,6 +122,7 @@ def main():
                 pz = build_puzzle(row[1], row[2].split(), theme, cat)
                 if pz is None:
                     break
+                pz["rating"] = rating          # original Lichess difficulty (for adaptive)
                 buckets[theme].append((rating, pz))
                 kept += 1
                 if len(buckets[theme]) >= COLLECT_PER:

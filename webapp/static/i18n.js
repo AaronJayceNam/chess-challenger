@@ -523,6 +523,7 @@ var I18N = {
   og_opp_disconnected:{ ko: "상대의 연결이 끊겼습니다. {s}초 안에 돌아오지 않으면 당신의 승리입니다.", en: "Opponent disconnected. If they don't return within {s}s, you win.", ja: "相手の接続が切れました。{s}秒以内に戻らなければあなたの勝ちです。", zh: "对手已断开。若{s}秒内未返回，你获胜。", es: "El rival se desconectó. Si no vuelve en {s} s, ganas tú." },
   og_opp_reconnected:{ ko: "상대가 다시 연결되었습니다.", en: "Opponent reconnected.", ja: "相手が再接続しました。", zh: "对手已重新连接。", es: "El rival se reconectó." },
   og_searching:  { ko: "상대를 찾는 중… 다른 사람이 '빠른 매치'를 누르면 연결됩니다.", en: "Looking for an opponent… you'll connect when someone else taps 'Find a match'.", ja: "対戦相手を探しています…他の人が「クイックマッチ」を押すと接続されます。", zh: "正在寻找对手…当其他人点击“快速匹配”时即可连接。", es: "Buscando rival… te conectarás cuando otra persona pulse «Buscar partida»." },
+  og_searching_count:{ ko: "상대를 찾는 중… ({n}초)", en: "Looking for an opponent… ({n}s)", ja: "対戦相手を探しています…({n}秒)", zh: "正在寻找对手…（{n}秒）", es: "Buscando rival… ({n} s)" },
   og_room_wait:  { ko: "친구가 코드를 입력하면 대국이 시작됩니다.", en: "The game starts when your friend enters the code.", ja: "友達がコードを入力すると対局が始まります。", zh: "好友输入代码后对局即开始。", es: "La partida empieza cuando tu amigo introduce el código." },
   og_cancelled:  { ko: "매칭을 취소했습니다.", en: "Matchmaking cancelled.", ja: "マッチングを取り消しました。", zh: "已取消匹配。", es: "Emparejamiento cancelado." },
   og_you_are:    { ko: "당신은 {side}입니다.", en: "You are {side}.", ja: "あなたは{side}です。", zh: "你执{side}。", es: "Juegas con {side}." },
