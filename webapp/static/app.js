@@ -1106,7 +1106,9 @@ const AI_STYLE_LABEL = { tal: "name_tal", fischer: "name_fischer", carlsen: "nam
 // shows the widening gap. Titles are translated via i18n (lvl_1..lvl_10).
 const AI_LEVEL_RATING = [0, 200, 400, 600, 800, 1100, 1400, 1700, 2000, 2300, 2850];
 // each AI opponent gets a face — friendlier at low levels, fiercer at the top
-const AI_FACE = { 1: "🐣", 2: "😀", 3: "🙂", 4: "😐", 5: "😎", 6: "🧐", 7: "🤨", 8: "🥷", 9: "🤖", 10: "👑" };
+// one cohesive family — facial expressions growing from friendly → fierce,
+// with a crown for the top level (was a mismatched chick/ninja/robot/crown mix).
+const AI_FACE = { 1: "😀", 2: "🙂", 3: "😊", 4: "🤔", 5: "😎", 6: "🧐", 7: "😏", 8: "😤", 9: "😈", 10: "👑" };
 const AI_STYLE_FACE = { tal: "⚔️", fischer: "🎯", carlsen: "♟️", petrosian: "🛡️" };
 function aiFace(n) { return AI_FACE[Math.max(1, Math.min(10, +n || 1))] || "🤖"; }
 function aiOppFace() {
