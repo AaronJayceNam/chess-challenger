@@ -300,6 +300,7 @@ function switchTab(name) {
     if (typeof updateOgAuthGate === "function") updateOgAuthGate();
   }
   if (name === "home" && typeof renderHome === "function") renderHome();
+  if (name === "puzzle" && typeof renderDaily === "function") renderDaily();
   if (name === "growth" && typeof renderGrowth === "function") renderGrowth();
   if (name === "ai" && typeof refreshDashboard === "function") refreshDashboard();
   if (name === "analysis" && typeof initAnalysis === "function") initAnalysis();
@@ -1428,6 +1429,79 @@ function pzLoadSolved() {
 }
 function pzSaveSolved() { localStorage.setItem("cc_puzzles_solved", JSON.stringify([...PZ.solved])); authSchedulePush(); }
 
+// =========================================================================== //
+// DAILY PUZZLE + STREAK CALENDAR — one puzzle a day (same for everyone, chosen
+// by the date), a consecutive-day streak, and a month calendar of solved days.
+// A strong return hook: miss a day and the streak resets.
+// =========================================================================== //
+function dateStr(d) {
+  d = d || new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+// deterministic index from today's date → everyone gets the same daily puzzle
+function dailyIndex() {
+  if (!PZ.list.length) return 0;
+  const s = dateStr(); let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h % PZ.list.length;
+}
+function dailySolvedDates() { try { return JSON.parse(localStorage.getItem("cc_daily_solved") || "[]") || []; } catch (e) { return []; } }
+function isDailySolved(d) { return dailySolvedDates().includes(d || dateStr()); }
+function markDailySolved() {
+  const arr = dailySolvedDates(), today = dateStr();
+  if (!arr.includes(today)) {
+    arr.push(today);
+    localStorage.setItem("cc_daily_solved", JSON.stringify(arr));
+    if (typeof authSchedulePush === "function") authSchedulePush();
+  }
+}
+// consecutive days ending today (or yesterday if today isn't done yet)
+function dailyStreakCount() {
+  const set = new Set(dailySolvedDates());
+  let n = 0; const d = new Date();
+  if (!set.has(dateStr(d))) d.setDate(d.getDate() - 1);   // today pending → don't break the run yet
+  while (set.has(dateStr(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+// load today's puzzle, bypassing the sequential lock
+function loadDaily() {
+  if (!PZ.list.length) return;
+  if (typeof switchTab === "function") switchTab("puzzle");
+  loadPuzzle(dailyIndex(), { force: true });
+}
+function monthCalendarHTML() {
+  const set = new Set(dailySolvedDates());
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const firstDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), todayD = now.getDate();
+  const dow = (t("cal_dow") || "S,M,T,W,T,F,S").split(",");
+  let head = dow.map((d) => '<span class="cal-dow">' + d + "</span>").join("");
+  let cells = "";
+  for (let i = 0; i < firstDow; i++) cells += '<span class="cal-cell empty"></span>';
+  for (let d = 1; d <= days; d++) {
+    const ds = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    let cls = "cal-cell";
+    if (set.has(ds)) cls += " solved";
+    if (d === todayD) cls += " today";
+    cells += '<span class="' + cls + '">' + d + "</span>";
+  }
+  return '<div class="pz-cal"><div class="cal-head">' + head + '</div><div class="cal-grid">' + cells + "</div></div>";
+}
+function renderDaily() {
+  const el = document.getElementById("pzDaily"); if (!el) return;
+  if (!PZ.list.length) { el.innerHTML = ""; return; }
+  const solved = isDailySolved(), streak = dailyStreakCount();
+  el.innerHTML =
+    '<div class="pzd-main">' +
+      '<div class="pzd-info"><div class="pzd-title">🗓️ ' + t("daily_title") + "</div>" +
+        '<div class="pzd-sub">' + (solved ? t("daily_done") : t("daily_go_sub")) + "</div></div>" +
+      '<button class="pzd-btn' + (solved ? " done" : "") + '" id="pzDailyBtn">' +
+        (solved ? "✓ " + t("daily_btn_done") : t("daily_btn")) + "</button>" +
+    "</div>" +
+    '<div class="pzd-streak">🔥 ' + t("daily_streak").replace("{n}", streak) + "</div>" +
+    monthCalendarHTML();
+  const b = document.getElementById("pzDailyBtn"); if (b) b.onclick = loadDaily;
+}
+
 async function loadPuzzles() {
   $("pzPrompt").textContent = t("pz_loading");
   try { PZ.list = await (await fetch("/static/puzzles.json")).json(); }
@@ -1435,6 +1509,7 @@ async function loadPuzzles() {
   if (PZ.list.length) {
     renderPzGrid();
     renderPzStreak();
+    renderDaily();
     let idx = PZ.list.findIndex((p) => !PZ.solved.has(p.level));  // resume at first unsolved
     if (idx < 0) idx = 0;
     loadPuzzle(idx);
@@ -1461,7 +1536,7 @@ function renderPzGrid() {
   $("pzProgress").textContent = t("pz_grid_progress").replace("{n}", solvedCount).replace("{total}", PZ.list.length);
 }
 
-async function loadPuzzle(idx) {
+async function loadPuzzle(idx, opts) {
   if (idx < 0 || idx >= PZ.list.length) return;
   PZ.idx = idx; PZ.cat = pzCatOf(idx);
   PZ.fails = 0;                     // reset wrong-attempt counter (auto-hint after 3)
@@ -1469,7 +1544,7 @@ async function loadPuzzle(idx) {
     b.classList.toggle("active", +b.dataset.cat === PZ.cat));
   const p = PZ.list[idx];
   renderPzGrid();
-  if (!pzUnlocked(idx)) {           // sequential lock — must beat the previous level first
+  if (!(opts && opts.force) && !pzUnlocked(idx)) {   // sequential lock — must beat the previous level first (daily bypasses)
     PZ.locked = true; PZ.fen = p.fen; PZ.sel = null; PZ.lastUci = null; PZ.hintSq = null; PZ.busy = false;
     PZ.legal = { legal: {} };
     $("pzPrompt").innerHTML = t("pz_locked").replace("{n}", p.level).replace("{prev}", p.level - 1);
@@ -1655,7 +1730,23 @@ function pzSolved() {
   const p = PZ.list[PZ.idx];
   PZ.solved.add(p.level); pzSaveSolved(); renderPzGrid();
   pzStreakInc();   // consecutive-solve streak
+  // if this was today's daily puzzle, log it for the streak + calendar
+  const wasDaily = (typeof dailyIndex === "function" && PZ.idx === dailyIndex() && !isDailySolved());
+  if (wasDaily) { markDailySolved(); }
+  if (typeof renderDaily === "function") renderDaily();
   if (typeof checkAchievements === "function") checkAchievements();
+
+  if (wasDaily) {   // dedicated celebration for the daily puzzle + streak
+    showResult({
+      kind: "win", icon: "🗓️", title: t("daily_solved_title"),
+      sub: t("daily_solved_sub").replace("{n}", dailyStreakCount()),
+      actions: [
+        { label: t("daily_more_btn"), primary: true, onClick: () => loadPuzzle(pzCatRange(0).start) },
+        { label: t("pz_theme_list_btn"), onClick: () => renderPzGrid() },
+      ],
+    });
+    return;
+  }
   const sub = (p.mateIn
       ? t("pz_solved_sub").replace("{n}", p.level).replace("{mate}", p.mateIn)
       : t("pz_solved_sub_tac").replace("{n}", p.level).replace("{theme}", t("pztheme_" + (p.theme || "tactic"))))
@@ -1875,6 +1966,7 @@ const OG = {
   viewState: null, viewLast: null, viewIdx: null,
   oppRating: RATING_START, ratingApplied: false,
   gid: null, reconnecting: false, reconnectDeadline: null,   // mid-game reconnect
+  fallbackTimer: null,                                       // empty-lobby → play AI
   clock: { w: 600, b: 600 }, clockSyncedAt: 0,
 };
 
@@ -1997,6 +2089,27 @@ function ogName() { return ($("ogName").value || t("og_player")).trim().slice(0,
 // auth token → the server resolves it to the account and owns the rating.
 function ogToken() { return (typeof AUTH !== "undefined" && AUTH && AUTH.token) || ""; }
 
+// quick-match empty-lobby fallback: if no opponent appears within ~15s, offer to
+// play the AI right away instead of waiting forever in an empty queue.
+function ogClearFallback() {
+  if (OG.fallbackTimer) { clearTimeout(OG.fallbackTimer); OG.fallbackTimer = null; }
+  const el = $("ogFallback"); if (el) el.classList.add("hidden");
+}
+function ogArmFallback() {
+  ogClearFallback();
+  OG.fallbackTimer = setTimeout(() => {
+    if (OG.started) return;                       // matched in the meantime
+    const el = $("ogFallback"); if (el) el.classList.remove("hidden");
+  }, 15000);
+}
+if ($("ogFallbackBtn")) $("ogFallbackBtn").onclick = () => {
+  ogSend({ type: "cancel" });                     // leave the queue cleanly
+  ogClearFallback();
+  $("ogCancel").classList.add("hidden");
+  setStatus("ogSetupStatus", "");
+  switchTab("ai");
+};
+
 // Matchmaking always starts on a FRESH socket: closing the old one makes the
 // server clean up any stale queue/room/game state for us, so the user can
 // never get stuck in "이미 대국 중입니다".
@@ -2007,6 +2120,7 @@ function ogFresh(then) {
   }
   OG.started = false; OG.over = false;
   OG.reconnecting = false; OG.reconnectDeadline = null;   // fresh match, not a resume
+  ogClearFallback();
   ogConnect(then);
 }
 
@@ -2015,6 +2129,7 @@ function ogHandle(msg) {
     case "waiting":
       setStatus("ogSetupStatus", t("og_searching"));
       $("ogCancel").classList.remove("hidden");
+      ogArmFallback();          // if nobody shows up in ~15s, offer "play AI now"
       break;
     case "room":
       $("ogCodeBox").classList.remove("hidden");
@@ -2023,11 +2138,13 @@ function ogHandle(msg) {
       $("ogCancel").classList.remove("hidden");
       break;
     case "cancelled":
+      ogClearFallback();
       setStatus("ogSetupStatus", t("og_cancelled"));
       $("ogCancel").classList.add("hidden");
       $("ogCodeBox").classList.add("hidden");
       break;
     case "start":
+      ogClearFallback();
       OG.started = true; OG.over = false; OG.ratingApplied = false;
       OG.gid = msg.gid || null; OG.reconnecting = false; OG.reconnectDeadline = null;
       OG.oppRating = +(msg.opponentRating || RATING_START);
@@ -2403,6 +2520,7 @@ function collectProgress() {
     pzStreak: pzStreak(),
     pzStreakBest: pzStreakBest(),
     achievements: [...achUnlocked()],
+    dailySolved: (typeof dailySolvedDates === "function") ? dailySolvedDates() : [],
   };
 }
 
@@ -2423,8 +2541,14 @@ function applyProgress(p) {
     const merged = new Set([...achUnlocked(), ...p.achievements]);   // union across devices
     localStorage.setItem("cc_achievements", JSON.stringify([...merged]));
   }
+  if (Array.isArray(p.dailySolved)) {   // union daily-solved dates across devices
+    const cur = (typeof dailySolvedDates === "function") ? dailySolvedDates() : [];
+    const merged = [...new Set([...cur, ...p.dailySolved])].sort();
+    localStorage.setItem("cc_daily_solved", JSON.stringify(merged));
+  }
   updateRatingChip(); renderHistory(); updateRankBadge();
   if (typeof renderAchievements === "function") renderAchievements();
+  if (typeof renderDaily === "function") renderDaily();
   if (PZ.list.length) renderPzGrid();
 }
 
@@ -3627,8 +3751,43 @@ function miniBoard(fen) {
   return html + "</div>";
 }
 
+// ONE recommended action for right now — a single, unmissable "what should I do"
+// button. Removes choice paralysis; picks by the player's current state.
+function pickToday() {
+  const T = (typeof t === "function") ? t : ((k) => k);
+  // 1) today's daily puzzle, if not done yet → strongest daily hook
+  if (PZ && PZ.list && PZ.list.length && typeof isDailySolved === "function" && !isDailySolved()) {
+    return { ic: "🗓️", label: T("today_daily"), sub: T("today_daily_s"), go: () => loadDaily() };
+  }
+  // 2) a recent game to review
+  const lastG = (typeof lastPlayedGame === "function") ? lastPlayedGame() : null;
+  if (lastG && lastG.moves && lastG.moves.length) {
+    return { ic: "📊", label: T("today_review"), sub: T("today_review_s").replace("{opp}", lastG.opponent || ""), go: () => switchTab("review") };
+  }
+  // 3) unsolved puzzles remain → keep training
+  let unsolved = -1;
+  try { if (PZ && PZ.list) unsolved = PZ.list.findIndex((p) => !PZ.solved.has(p.level)); } catch (e) {}
+  if (unsolved >= 0) {
+    return { ic: "🧩", label: T("today_puzzle"), sub: T("today_puzzle_s"), go: () => { switchTab("puzzle"); loadPuzzle(unsolved); } };
+  }
+  // 4) fall back to a fresh game vs AI
+  return { ic: "🤖", label: T("today_ai"), sub: T("today_ai_s"), go: () => switchTab("ai") };
+}
+function renderHubToday() {
+  const el = document.getElementById("hubToday"); if (!el) return;
+  const a = pickToday();
+  el.innerHTML =
+    '<span class="ht-ic">' + a.ic + "</span>" +
+    '<span class="ht-txt"><span class="ht-k">' + t("today_kicker") + '</span>' +
+      '<b>' + a.label + "</b><span class='ht-sub'>" + a.sub + "</span></span>" +
+    '<span class="ht-go">▶</span>';
+  el.hidden = false;
+  el.onclick = a.go;
+}
+
 function renderHome() {
   const T = (typeof t === "function") ? t : ((k) => k);
+  renderHubToday();
   const hello = $("hubHello");
   if (hello) hello.textContent = (AUTH && AUTH.id) ? T("hub_hi").replace("{id}", AUTH.id) : "Matevio";
 

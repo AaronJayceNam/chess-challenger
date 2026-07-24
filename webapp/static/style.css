@@ -1252,3 +1252,46 @@ button.primary:active{ transform:translateY(1px) !important; box-shadow:none !im
 .hub-cards .hub-card:nth-child(3) .miniboard{ box-shadow:0 0 0 2px rgba(233,178,58,.30); }
 /* section headings across tabs get a soft accent underline */
 .card > h3{ position:relative; }
+
+/* ---- daily puzzle + streak calendar (v-daily) ---- */
+.pz-daily{ background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:0 0 12px; }
+.pzd-main{ display:flex; align-items:center; gap:10px; }
+.pzd-info{ flex:1; min-width:0; }
+.pzd-title{ font-weight:800; font-size:15px; }
+.pzd-sub{ font-size:12px; color:var(--muted); margin-top:2px; line-height:1.4; }
+.pzd-btn{ flex:0 0 auto; border:none; border-radius:10px; padding:9px 16px; font-weight:800; cursor:pointer;
+  background:var(--accent); color:#08110b; transition:transform .08s ease; }
+.pzd-btn:active{ transform:scale(.96); }
+.pzd-btn.done{ background:var(--card2); color:var(--muted); cursor:default; }
+.pzd-streak{ margin:10px 0 8px; font-weight:800; font-size:13px; color:#ffb454; }
+.pz-cal{ border-top:1px solid var(--line); padding-top:8px; }
+.cal-head,.cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.cal-dow{ text-align:center; font-size:10px; color:var(--faint); padding:2px 0; }
+.cal-cell{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:11px;
+  color:var(--muted); border-radius:6px; }
+.cal-cell.empty{ visibility:hidden; }
+.cal-cell.solved{ background:var(--accent); color:#08110b; font-weight:800; }
+.cal-cell.today{ outline:2px solid var(--accent); outline-offset:-2px; color:var(--ink); font-weight:800; }
+.cal-cell.today.solved{ outline-color:#fff; }
+
+/* ---- home 'do this now' single CTA (v-today) ---- */
+.hub-today{ display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;
+  border:none; border-radius:16px; padding:16px 18px; margin:0 0 14px;
+  background:linear-gradient(135deg, var(--accent) 0%, #3fa268 100%); color:#08130c;
+  box-shadow:0 6px 20px rgba(79,184,119,.28); transition:transform .1s ease, box-shadow .1s ease; }
+.hub-today:hover{ transform:translateY(-1px); box-shadow:0 10px 26px rgba(79,184,119,.36); }
+.hub-today:active{ transform:translateY(0) scale(.99); }
+.hub-today .ht-ic{ font-size:30px; line-height:1; flex:0 0 auto; }
+.hub-today .ht-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.hub-today .ht-k{ font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; opacity:.72; }
+.hub-today .ht-txt b{ font-size:18px; font-weight:900; line-height:1.2; }
+.hub-today .ht-sub{ font-size:12.5px; font-weight:600; opacity:.82; line-height:1.35;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hub-today .ht-go{ flex:0 0 auto; font-size:16px; font-weight:900; opacity:.8; }
+
+/* ---- quick-match empty-lobby fallback (v-fb) ---- */
+.og-fallback{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:10px 0 0;
+  padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--panel2); }
+.og-fallback .ogfb-txt{ flex:1; min-width:160px; font-size:13px; color:var(--ink); }
+.og-fallback #ogFallbackBtn{ flex:0 0 auto; border:none; border-radius:10px; padding:9px 15px;
+  font-weight:800; cursor:pointer; }
