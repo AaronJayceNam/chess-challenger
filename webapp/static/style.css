@@ -948,7 +948,8 @@ body.ingame .movenav{
 
 /* roomier boards on desktop (board-first) */
 @media (min-width:761px){
-  :root{ --board:min(524px, 58vh, 48vw); --rvboard:min(524px, 58vh, calc(48vw - 34px)); }
+  /* generous board: no tight vh clamp (that shrank it on short windows) */
+  :root{ --board:min(560px, 44vw, 78vh); --rvboard:min(560px, calc(44vw - 34px), calc(78vh - 34px)); }
 }
 
 /* in-game controls → a cohesive centered pill bar right under the board */
