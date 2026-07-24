@@ -1124,13 +1124,52 @@ async function aiHumanMove(uci) {
   await aiReply();   // no artificial delay
 }
 
+// ---- client-side AI move (Stockfish in the browser; server is the fallback) ----
+// Mirrors the server ladder (chess_coach/engine.py _LADDER): low levels mostly
+// blunder a random legal move; higher levels play at a capped Elo.
+const AI_LADDER = {
+  1: { rand: 0.30, elo: 1320 }, 2: { rand: 0.20, elo: 1320 }, 3: { rand: 0.10, elo: 1320 },
+  4: { rand: 0.05, elo: 1320 }, 5: { rand: 0.02, elo: 1400 }, 6: { rand: 0.00, elo: 1550 },
+  7: { rand: 0.00, elo: 1750 }, 8: { rand: 0.00, elo: 2000 }, 9: { rand: 0.00, elo: 2400 },
+  10: { rand: 0.00, elo: null },
+};
+function randomLegalUci(state) {
+  const legal = (state && state.legal) || {};
+  const froms = Object.keys(legal).filter((f) => legal[f] && legal[f].length);
+  if (!froms.length) return null;
+  const from = froms[Math.floor(Math.random() * froms.length)];
+  const tos = legal[from];
+  let uci = from + tos[Math.floor(Math.random() * tos.length)];
+  try { const m = parseFen(state.fen); if (m[from] && m[from].toLowerCase() === "p" && (uci[3] === "8" || uci[3] === "1")) uci += "q"; } catch (e) {}
+  return uci;
+}
+async function aiComputeMoveLocal() {
+  if (!(window.SF && SF.available)) return null;
+  if (AIG.variant) return null;                            // Chess960 castling → server
+  if (AIG.style && AIG.style !== "default") return null;   // famous-player styles → server
+  const st = AIG.state; if (!st || !st.fen) return null;
+  const cfg = AI_LADDER[Math.max(1, Math.min(10, AIG.level))] || AI_LADDER[10];
+  if (cfg.rand && Math.random() < cfg.rand) { const r = randomLegalUci(st); if (r) return r; }
+  const movetime = cfg.elo == null ? 1500 : 180 + AIG.level * 35;
+  try { const res = await SF.bestMove(st.fen, { elo: cfg.elo, movetime }); return (res && res.bestmove) || null; }
+  catch (e) { return null; }
+}
+
 async function aiReply() {
   // NOTE: do not re-render the board here — that would wipe the player's
   // in-flight slide animation. Input is already gated by AIG.thinking.
   AIG.thinking = true; updateAiTurn();
-  let res;
-  try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level, style: AIG.style, startFen: AIG.startFen }); }
-  catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_reply_err") + e.message, true); return; }
+  let res = null;
+  // Try the local engine first (offloads the slow 0.1-CPU server search).
+  const localUci = await aiComputeMoveLocal();
+  if (localUci) {
+    try { res = await api("/api/legal", { moves: [...AIG.moves, localUci], startFen: AIG.startFen }); res.move = localUci; }
+    catch (e) { res = null; }
+  }
+  if (!res) {
+    try { res = await api("/api/ai_move", { moves: AIG.moves, level: AIG.level, style: AIG.style, startFen: AIG.startFen }); }
+    catch (e) { AIG.thinking = false; updateAiTurn(); setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_reply_err") + e.message, true); return; }
+  }
   AIG.thinking = false;
   if (res.move) AIG.moves.push(res.move);
   AIG.state = res;
@@ -1198,6 +1237,7 @@ async function aiStart() {
   AIG.moves = []; AIG.sel = null; AIG.over = false; AIG.thinking = false; AIG.started = true; AIG.hint = null;
   AIG.variant = !!($("ai960") && $("ai960").checked);
   AIG.startFen = null;
+  if (window.SF && SF.available) { SF.warmup(); SF.newGame(); }   // preload engine + clear hash
   $("aiAnalyze").classList.add("hidden");
   const T = (typeof t === "function") ? t : ((k) => k);
   if (AIG.variant) {
@@ -1239,10 +1279,17 @@ async function aiHint() {
   if (!AIG.started || AIG.over || AIG.thinking || !AIG.state) return;
   if (AIG.state.turn !== AIG.human) return;       // only when it's your move
   setStatus("aiStatus", t("hint_thinking"), false);
-  let r;
-  try { r = await api("/api/eval_fen", { fen: AIG.state.fen, movetime: 300 }); }
-  catch (e) { setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
-  const uci = r && r.bestUci;
+  // local engine first (best hint offloads the server); fall back to the server.
+  let uci = null;
+  if (window.SF && SF.available && !AIG.variant) {
+    try { const lr = await SF.bestMove(AIG.state.fen, { movetime: 500 }); uci = lr && lr.bestmove; } catch (e) {}
+  }
+  if (!uci) {
+    let r;
+    try { r = await api("/api/eval_fen", { fen: AIG.state.fen, movetime: 300 }); }
+    catch (e) { setStatus("aiStatus", isOffline(e) ? t("offline_msg") : t("ai_move_err") + e.message, true); return; }
+    uci = r && r.bestUci;
+  }
   if (!uci) { setStatus("aiStatus", t("hint_none"), false); return; }
   AIG.hint = { from: uci.slice(0, 2), to: uci.slice(2, 4) };
   renderAiBoard();
