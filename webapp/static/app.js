@@ -755,7 +755,13 @@ function moveCoachText(m) {
   let s = t(key).replace("{mv}", m.san + (m.symbol || ""));
   const weak = (m.classification === "Inaccuracy" || m.classification === "Mistake" || m.classification === "Blunder");
   const strong = !weak && (m.classification === "Brilliant" || m.classification === "Great" || m.classification === "Best" || m.isBest);
-  const pieceName = (code) => code ? t("piece_" + code) : t("piece_pawn");
+  // Korean object particle (을/를) depends on the piece's final sound
+  const KO_OBJ = { pawn: "을", knight: "를", bishop: "을", rook: "을", queen: "을", king: "을" };
+  const koUI2 = (typeof CC_LANG === "undefined" || CC_LANG === "ko");
+  const pieceName = (code) => {
+    const nm = t("piece_" + (code || "pawn"));
+    return (koUI2 && code) ? nm + (KO_OBJ[code] || "을") : nm;
+  };
   // ---- causal WHY (localized; the rich Korean `explain` is shown separately to ko users) ----
   if (m.isMate) {
     // checkmate — the classification comment already says it
@@ -2189,6 +2195,44 @@ function learnTopic(topic) {
       title: t("learn_t_promo"), pieces: { e7: "P" }, moves: ["e8"], captures: [],
       desc: t("learn_d_promo"),
     };
+    // ---- tactical concepts (static illustrations; `atk` = attacked/key squares) ----
+    case "fork": return {
+      title: t("learn_t_fork"), pieces: { c7: "N", a8: "r", e8: "k" }, moves: [], captures: [], atk: ["a8", "e8"],
+      desc: t("learn_d_fork"), puzzleCat: 1,
+    };
+    case "pin": return {
+      title: t("learn_t_pin"), pieces: { b5: "B", c6: "n", e8: "k" }, moves: [], captures: [], atk: ["c6"],
+      desc: t("learn_d_pin"), puzzleCat: 2,
+    };
+    case "skewer": return {
+      title: t("learn_t_skewer"), pieces: { a1: "R", a4: "k", a6: "q" }, moves: [], captures: [], atk: ["a4", "a6"],
+      desc: t("learn_d_skewer"), puzzleCat: 3,
+    };
+    case "discovered": return {
+      title: t("learn_t_disc"), pieces: { e1: "R", e4: "N", e8: "k" }, moves: ["c5", "d6", "f6", "g5"], captures: [], atk: ["e8"],
+      desc: t("learn_d_disc"), puzzleCat: 4,
+    };
+    case "hanging": return {
+      title: t("learn_t_hang"), pieces: { d5: "n", c3: "N" }, moves: [], captures: [], atk: ["d5"],
+      desc: t("learn_d_hang"), puzzleCat: 5,
+    };
+    case "backrank": return {
+      title: t("learn_t_backrank"), pieces: { g8: "k", f7: "p", g7: "p", h7: "p", e1: "R" }, moves: ["e8"], captures: [], atk: ["g8"],
+      desc: t("learn_d_backrank"), puzzleCat: 0,
+    };
+    // ---- endgame essentials ----
+    case "kqmate": return {
+      title: t("learn_t_kqmate"), pieces: { f6: "K", h8: "k", g1: "Q" }, moves: ["g7"], captures: [], atk: ["h8"],
+      desc: t("learn_d_kqmate"),
+    };
+    case "krmate": return {
+      title: t("learn_t_krmate"), pieces: { f6: "K", h8: "k", a1: "R" }, moves: ["a8"], captures: [], atk: ["h8"],
+      desc: t("learn_d_krmate"),
+    };
+    case "opposition": return {
+      title: t("learn_t_oppo"), pieces: { e6: "K", e8: "k", e5: "P" }, moves: [], captures: [], atk: [],
+      desc: t("learn_d_oppo"),
+    };
     default: return learnTopic("pawn");
   }
 }
@@ -2196,7 +2240,7 @@ function learnTopic(topic) {
 function renderLearnBoard(cfg) {
   const board = $("learnBoard"); board.innerHTML = "";
   const files = [..."abcdefgh"], ranks = [8, 7, 6, 5, 4, 3, 2, 1];
-  const moves = new Set(cfg.moves || []), caps = new Set(cfg.captures || []);
+  const moves = new Set(cfg.moves || []), caps = new Set(cfg.captures || []), atk = new Set(cfg.atk || []);
   for (const rank of ranks) {
     for (const f of files) {
       const sq = f + rank, fi = "abcdefgh".indexOf(f);
@@ -2211,6 +2255,7 @@ function renderLearnBoard(cfg) {
       }
       if (moves.has(sq)) { const d = document.createElement("div"); d.className = "lmove"; div.appendChild(d); }
       if (caps.has(sq)) { const d = document.createElement("div"); d.className = "lcap"; div.appendChild(d); }
+      if (atk.has(sq)) div.classList.add("latk");   // attacked/key square in a tactic lesson
       board.appendChild(div);
     }
   }
@@ -2221,6 +2266,14 @@ function showLearn(topic) {
   renderLearnBoard(cfg);
   $("learnTitle").textContent = cfg.title;
   $("learnDesc").innerHTML = cfg.desc;
+  // tactic lessons link straight to that theme's puzzles
+  const btn = $("learnPuzzleBtn");
+  if (btn) {
+    if (cfg.puzzleCat != null) {
+      btn.classList.remove("hidden");
+      btn.onclick = () => { if (typeof practiceTheme === "function") practiceTheme(cfg.puzzleCat); };
+    } else { btn.classList.add("hidden"); }
+  }
 }
 document.querySelectorAll("#learnSel button").forEach((b) => {
   b.onclick = () => {

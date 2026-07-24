@@ -18,7 +18,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Matevio">
-<link rel="stylesheet" href="/static/style.css?v=103">
+<link rel="stylesheet" href="/static/style.css?v=104">
 </head>
 <body>
 
@@ -255,6 +255,17 @@
         <button data-topic="castle" data-i18n="pc_castle">캐슬링</button>
         <button data-topic="enpassant" data-i18n="pc_enp">앙파상</button>
         <button data-topic="promotion" data-i18n="pc_promo">승격</button>
+        <span class="learn-div" data-i18n="learn_grp_tactics">전술</span>
+        <button data-topic="fork" data-i18n="pc_fork">🍴 포크</button>
+        <button data-topic="pin" data-i18n="pc_pin">📌 핀</button>
+        <button data-topic="skewer" data-i18n="pc_skewer">🍢 스큐어</button>
+        <button data-topic="discovered" data-i18n="pc_disc">💥 디스커버드</button>
+        <button data-topic="hanging" data-i18n="pc_hang">🪝 매달린 기물</button>
+        <button data-topic="backrank" data-i18n="pc_backrank">♚ 백랭크 메이트</button>
+        <span class="learn-div" data-i18n="learn_grp_endgame">엔드게임</span>
+        <button data-topic="kqmate" data-i18n="pc_kqmate">퀸 메이트</button>
+        <button data-topic="krmate" data-i18n="pc_krmate">룩 메이트</button>
+        <button data-topic="opposition" data-i18n="pc_oppo">오포지션</button>
       </div>
       <div class="legend" style="margin-top:10px">
         <span><span class="lg move"></span> <span data-i18n="learn_lg_move">이동 가능</span></span>
@@ -265,6 +276,7 @@
       <div class="card">
         <h3 id="learnTitle">폰 (Pawn)</h3>
         <div id="learnDesc" style="font-size:14.5px; line-height:1.75"></div>
+        <button class="primary hidden" id="learnPuzzleBtn" data-i18n="learn_practice" style="margin-top:12px">이 전술 퍼즐 풀기 ▶</button>
       </div>
       <div class="card">
         <h3 data-i18n="learn_rules_title">체스의 기본 규칙</h3>
@@ -735,9 +747,9 @@
   <a href="/privacy" target="_blank" rel="noopener" data-i18n="set_privacy">개인정보 처리방침</a>
 </footer>
 
-<script src="/static/i18n.js?v=103"></script>
-<script src="/static/sfclient.js?v=103"></script>
-<script src="/static/app.js?v=103"></script>
+<script src="/static/i18n.js?v=104"></script>
+<script src="/static/sfclient.js?v=104"></script>
+<script src="/static/app.js?v=104"></script>
 <script>
   // PWA: register the service worker (installable app + fast loads + instant updates)
   function showUpdateBanner() {
