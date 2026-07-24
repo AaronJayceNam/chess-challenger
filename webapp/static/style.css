@@ -954,3 +954,43 @@ body.ingame .movenav{
 /* in-game controls → a cohesive centered pill bar right under the board */
 .cols > div:first-child > .controls{ justify-content:center; gap:8px; margin-top:14px; flex-wrap:wrap; }
 .cols > div:first-child > .controls .ghost{ border-radius:999px; padding:9px 15px; }
+
+/* ============================================================
+   SETUP PANELS REFINED (v-sp) — the AI "새 대국 설정" + online
+   match + friends panels. Fix the title/record collision, drop
+   the nested green tints and heavy button glow, add breathing
+   room and clean section dividers. (colours/dark tone unchanged)
+   ============================================================ */
+/* card gets more air */
+.setup-card, #tab-online .cols > div:last-child .card{ padding:20px 20px 22px; }
+
+/* header: title stays on ONE line; best-record shrinks to a quiet outlined chip */
+.setup-head{ flex-wrap:nowrap !important; align-items:center; gap:10px; margin-bottom:6px; }
+.setup-head h3{ white-space:nowrap; font-size:15px !important; color:var(--ink) !important; letter-spacing:-.2px; }
+.setup-head .rankbadge{ background:none !important; color:var(--muted) !important; box-shadow:none !important;
+  border:1px solid var(--line2); font-size:11px !important; font-weight:600 !important; padding:5px 11px !important;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* flatten the nested tinted boxes into clean surfaces */
+.strength-pick{ background:var(--panel2) !important; border:1px solid var(--line) !important; padding:15px 16px 14px; }
+.og-rating{ background:var(--panel2) !important; border:1px solid var(--line) !important; }
+.og-code{ background:var(--panel2) !important; border:1px solid var(--line) !important; }
+
+/* clean flat primary buttons — no glow, no fake 3D edge; taller + confident */
+button.primary{ background:var(--accent) !important; box-shadow:none !important; border:none !important;
+  border-radius:13px; padding:14px 20px; font-weight:700; letter-spacing:-.1px; }
+button.primary:hover{ background:var(--accent2) !important; filter:none !important; }
+button.primary:active{ transform:translateY(1px) !important; box-shadow:none !important; }
+
+/* segmented chips: flat active state, no glow */
+.seg-btn{ border-radius:10px; padding:10px 14px; }
+.seg-btn.active{ box-shadow:none !important; }
+
+/* color toggle fills the row evenly; 960 toggle matches the card radius */
+.v960-toggle{ border-radius:12px; margin-top:16px; }
+
+/* labels above each control group get a touch more space for rhythm */
+.setup-card > .field, #tab-online .og-field > .field{ margin-top:18px; display:block; font-size:12.5px; color:var(--muted); }
+
+/* start / quick-match buttons: full width + prominent */
+.setup-go .primary, .og-actions .primary{ width:100%; font-size:15.5px; padding:15px; }
