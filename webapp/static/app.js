@@ -1345,6 +1345,10 @@ function aiEndGame() {
     actions.push({ label: T("ai_review_btn"), primary: true, onClick: () => runAnalyze(reviewReq) });
   }
   actions.push({ label: T("ai_again_btn"), onClick: () => aiStart() });
+  actions.push({ label: T("card_share"), onClick: () => shareResultCard({
+    icon: kind === "win" ? "🏆" : kind === "loss" ? "😢" : "🤝",
+    title: kind === "win" ? T("res_win") : kind === "loss" ? T("res_loss") : T("res_draw"),
+    sub: "vs " + aiName, fen: AIG.state && AIG.state.fen }) });
   actions.push({ label: T("exit_btn"), onClick: () => exitImmersive() });
   const opts = kind === "win"
     ? { kind, icon: "🏆", title: T("res_win"), sub: T("won_vs").replace("{ai}", aiName) + streakSuffix(), badge, actions }
@@ -1694,6 +1698,7 @@ function checkStreakMilestone() {
     got.push(hit);
     localStorage.setItem("cc_streak_miles", JSON.stringify(got));
     if (typeof authSchedulePush === "function") authSchedulePush();
+    if (typeof xpAdd === "function") xpAdd(40);      // milestone bonus XP
     return hit;
   }
   return 0;
@@ -1763,6 +1768,7 @@ function reviewAdd(level) {                          // a failed puzzle → sche
 }
 function reviewSolved(level) {                       // solved a queued puzzle → advance/graduate
   const q = reviewQueue(); if (!q[level]) return;
+  if (typeof xpAdd === "function") xpAdd(10);        // completing a review is high-value learning
   const nb = (q[level].box || 0) + 1;
   if (nb >= REVIEW_BOXES.length) delete q[level];    // graduated out of the queue
   else q[level] = { box: nb, due: addDays(dateStr(), REVIEW_BOXES[nb]) };
@@ -2009,10 +2015,11 @@ function pzSolved() {
   pzStreakInc();   // consecutive-solve streak
   if (typeof reviewSolved === "function") reviewSolved(p.level);   // advance/graduate in the review queue
   if (typeof questBump === "function") questBump("puzzles");        // daily quest progress
+  if (typeof xpAdd === "function") xpAdd(5);                        // learning XP (first solve only)
   if (typeof suggestSaveProgress === "function") suggestSaveProgress();   // guests: gentle save nudge
   // if this was today's daily puzzle, log it for the streak + calendar
   const wasDaily = (typeof dailyIndex === "function" && PZ.idx === dailyIndex() && !isDailySolved());
-  if (wasDaily) { markDailySolved(); }
+  if (wasDaily) { markDailySolved(); if (typeof xpAdd === "function") xpAdd(15); }   // daily bonus XP
   if (typeof renderDaily === "function") renderDaily();
   if (typeof checkAchievements === "function") checkAchievements();
 
@@ -2709,6 +2716,10 @@ function ogEnd(result, reason, rInfo) {
       onClick: () => runAnalyze(reviewReq, "ogStatus") });
   }
   actions.push({ label: t("og_new_match"), onClick: ogReset });
+  actions.push({ label: t("card_share"), onClick: () => shareResultCard({
+    icon: kind === "win" ? "🏆" : kind === "loss" ? "😢" : "🤝",
+    title: kind === "win" ? t("res_win") : kind === "loss" ? t("res_loss") : t("res_draw"),
+    sub: "vs " + (OG.opponent || t("og_opp")), fen: OG.state && OG.state.fen }) });
 
   // Rating changes ONLY here — an online match result. Apply exactly once.
   // The SERVER is authoritative: it sends this player's {before, after, delta}
@@ -2894,6 +2905,7 @@ function collectProgress() {
     freezeDates: (typeof frozenDates === "function") ? frozenDates() : [],
     streakMiles: (typeof streakMilesReached === "function") ? streakMilesReached() : [],
     reviewQueue: (typeof reviewQueue === "function") ? reviewQueue() : {},
+    xp: (typeof xpGet === "function") ? xpGet() : 0,
   };
 }
 
@@ -2927,6 +2939,7 @@ function applyProgress(p) {
     const cur = (typeof streakMilesReached === "function") ? streakMilesReached() : [];
     localStorage.setItem("cc_streak_miles", JSON.stringify([...new Set([...cur, ...p.streakMiles])].sort((a, b) => a - b)));
   }
+  if (typeof p.xp === "number") localStorage.setItem("cc_xp", String(Math.max(p.xp, (typeof xpGet === "function") ? xpGet() : 0)));
   if (p.reviewQueue && typeof p.reviewQueue === "object") {   // merge review queue (keep more-graduated box)
     const cur = (typeof reviewQueue === "function") ? reviewQueue() : {};
     const merged = { ...cur };
@@ -4126,6 +4139,61 @@ async function shareGame(g) {
   try { await navigator.clipboard.writeText(url); shareFlash(t("share_copied")); }
   catch (e) { window.prompt(t("share_copy_manual"), url); }
 }
+// ---- shareable IMAGE result card (canvas → navigator.share files) ----
+function _cardMiniBoard(x, fen, ox, oy, size) {
+  let map = {}; try { map = parseFen(fen); } catch (e) {}
+  const cell = size / 8, files = "abcdefgh", ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+    const light = (f + ranks[r]) % 2 === 0;
+    x.fillStyle = light ? "#ebecd0" : "#6f9350";
+    x.fillRect(ox + f * cell, oy + r * cell, cell, cell);
+    const p = map[files[f] + ranks[r]];
+    if (p) {
+      x.fillStyle = (p === p.toUpperCase()) ? "#fafafa" : "#20242a";
+      x.font = Math.round(cell * 0.82) + "px 'Segoe UI Symbol','Noto Sans Symbols2',system-ui,sans-serif";
+      x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillText(GLYPH[p.toLowerCase()] || "", ox + f * cell + cell / 2, oy + r * cell + cell / 2 + 1);
+    }
+  }
+}
+async function shareResultCard(o) {
+  try {
+    const S = 800, c = document.createElement("canvas"); c.width = S; c.height = S;
+    const x = c.getContext("2d");
+    const g = x.createLinearGradient(0, 0, S, S); g.addColorStop(0, "#15452e"); g.addColorStop(1, "#0d1016");
+    x.fillStyle = g; x.fillRect(0, 0, S, S);
+    x.textBaseline = "alphabetic";
+    // wordmark
+    x.textAlign = "center"; x.font = "800 34px system-ui,sans-serif";
+    const mw = x.measureText("Mate").width, vw = x.measureText("vio").width, wx = S / 2 - (mw + vw) / 2;
+    x.textAlign = "left"; x.fillStyle = "#4fb877"; x.fillText("Mate", wx, 74);
+    x.fillStyle = "#eef3f7"; x.fillText("vio", wx + mw, 74);
+    // headline
+    x.textAlign = "center";
+    x.font = "44px system-ui,sans-serif"; x.fillText(o.icon || "🏆", S / 2, 168);
+    x.font = "800 52px system-ui,sans-serif"; x.fillStyle = "#fff"; x.fillText(o.title || "", S / 2, 232);
+    if (o.sub) { x.font = "26px system-ui,sans-serif"; x.fillStyle = "#b9c6d2"; x.fillText(o.sub, S / 2, 274); }
+    // mini board
+    const bs = 380, bx = (S - bs) / 2, by = 312;
+    x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(bx - 8, by - 8, bs + 16, bs + 16);
+    _cardMiniBoard(x, o.fen || HUB_START_FEN, bx, by, bs);
+    // footer
+    x.textAlign = "center"; x.font = "700 24px system-ui,sans-serif"; x.fillStyle = "#4fb877";
+    x.fillText("matevio.com", S / 2, by + bs + 54);
+    const blob = await new Promise((res) => c.toBlob(res, "image/png"));
+    if (!blob) throw new Error("no blob");
+    const file = new File([blob], "matevio.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Matevio", text: t("share_text") });
+      return;
+    }
+    // fallback: download the image
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = "matevio.png"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    shareFlash(t("card_saved"));
+  } catch (e) { /* user dismissed or unsupported */ }
+}
+
 // On load: if the URL carries a shared game, replay it in Review.
 function checkSharedGame() {
   let g;
@@ -4315,10 +4383,34 @@ function renderQuests() {
     }).join("") + "</div>";
 }
 
+// ---- XP: earned only from LEARNING signals (first-time puzzle solves, reviews,
+// daily/streak) — never from grinding, since solved puzzles never re-award. ----
+function xpGet() { return +(localStorage.getItem("cc_xp") || 0); }
+function xpLevel(xp) { return Math.floor(Math.sqrt((xp || 0) / 60)) + 1; }
+function xpForLevel(lv) { return (lv - 1) * (lv - 1) * 60; }
+function xpAdd(n) {
+  if (!n) return;
+  const before = xpLevel(xpGet());
+  const v = xpGet() + n; localStorage.setItem("cc_xp", String(v));
+  if (typeof authSchedulePush === "function") authSchedulePush();
+  const home = document.getElementById("tab-home");
+  if (home && home.classList.contains("active")) renderXp();
+  if (xpLevel(v) > before && typeof shareFlash === "function") shareFlash(t("xp_levelup").replace("{n}", xpLevel(v)));
+}
+function renderXp() {
+  const el = document.getElementById("hubXp"); if (!el) return;
+  const xp = xpGet(), lv = xpLevel(xp), cur = xpForLevel(lv), next = xpForLevel(lv + 1);
+  const pct = Math.max(0, Math.min(100, (xp - cur) / Math.max(1, next - cur) * 100));
+  el.innerHTML = '<div class="xp-row"><span class="xp-lv">Lv ' + lv + "</span>" +
+    '<div class="xp-bar"><div class="xp-fill" style="width:' + pct + '%"></div></div>' +
+    '<span class="xp-num">' + (xp - cur) + " / " + (next - cur) + " XP</span></div>";
+}
+
 function renderHome() {
   const T = (typeof t === "function") ? t : ((k) => k);
   renderHubToday();
   renderQuests();
+  renderXp();
   const hello = $("hubHello");
   if (hello) hello.textContent = (AUTH && AUTH.id) ? T("hub_hi").replace("{id}", AUTH.id) : "Matevio";
 
